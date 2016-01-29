@@ -1,0 +1,6 @@
+1、TrueType文字引擎                              .
+2、常用图像格式支持（bmp,jpg,png,gif,ppm）       bmp,png,gif(load,)
+3、二线性插值                                    done
+4、线条图案                                      .
+5、GPC                                           done
+6、B-spline                                      .
