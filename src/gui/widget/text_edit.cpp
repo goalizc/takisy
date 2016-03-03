@@ -22,6 +22,8 @@ public:
         , focused_(false), caret_visible_(false), blink_interval_(500)
         , caret_timer_(100)
     {
+        text_.margin(3);
+
         vscroll_.show();
         vscroll_.step(text_.line_height() * 3);
         vscroll_.onScroll(
@@ -109,13 +111,23 @@ text_edit::text_edit(const char* text, const char* codec)
 text_edit::text_edit(const wchar_t* _text)
     : impl_(new implement(this))
 {
+    attribute("intercept.onClick", true);
     add(&impl_->hscroll_);
     add(&impl_->vscroll_);
-
-    margin(3);
     text(_text);
 
-    attribute("intercept.onClick", true);
+    impl_->text_.onCaretPositionChanged(
+        [this](class text& text)
+        {
+            Window* window = Window::find(forefather());
+            if (window)
+            {
+                point cp = text.caret_point() + text.offset();
+                cp = cp + screen_xy() - forefather()->xy();
+                cp.y += text.font()->emheight();
+                window->setCompositionWindow(cp.x, cp.y);
+            }
+        });
 }
 
 text_edit::~text_edit(void)
@@ -149,16 +161,9 @@ unsigned int text_edit::caret(void) const
     return impl_->text_.caret();
 }
 
-struct text_edit::margin text_edit::margin(void) const
+struct margin text_edit::margin(void) const
 {
-    struct margin margin;
-
-    margin.left   = impl_->text_.margin().left;
-    margin.top    = impl_->text_.margin().top;
-    margin.right  = impl_->text_.margin().right;
-    margin.bottom = impl_->text_.margin().bottom;
-
-    return margin;
+    return impl_->text_.margin();
 }
 
 int text_edit::margin_left(void) const
@@ -186,14 +191,9 @@ unsigned int text_edit::indent(void) const
     return impl_->text_.indent();
 }
 
-text_edit::Alignment text_edit::alignment(void) const
+Alignment text_edit::alignment(void) const
 {
-    switch (impl_->text_.alignment())
-    {
-    default:            return aLeft;
-    case text::aCenter: return aCenter;
-    case text::aRight:  return aRight;
-    }
+    return impl_->text_.alignment();
 }
 
 bool text_edit::readonly(void) const
@@ -347,13 +347,7 @@ void text_edit::indent(unsigned int indent)
 
 void text_edit::alignment(Alignment alignment)
 {
-    switch (alignment)
-    {
-    default:      impl_->text_.alignment(text::aLeft);   break;
-    case aCenter: impl_->text_.alignment(text::aCenter); break;
-    case aRight:  impl_->text_.alignment(text::aRight);  break;
-    }
-
+    impl_->text_.alignment(alignment);
     repaint();
 }
 
@@ -629,18 +623,7 @@ bool text_edit::onKeyPress(unsigned int chr)
         if (chr == 13) // enter
             chr  = 10;
         if (impl_->text_.typewrite(codec::gbk2unicode(chr)))
-        {
             impl_->update();
-
-            Window* wnd = Window::find(forefather());
-            if (wnd)
-            {
-                point cp = impl_->text_.caret_point() + impl_->text_.offset();
-                cp = cp + screen_xy() - forefather()->xy();
-                cp.y += impl_->text_.font()->emheight();
-                wnd->setCompositionWindow(cp.x, cp.y);
-            }
-        }
     }
 
     return true;

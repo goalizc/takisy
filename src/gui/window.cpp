@@ -28,7 +28,7 @@ struct TitleBar : public horizontal_layout
 public:
     TitleBar(void)
     {
-        caption.alignment(Caption::haCenter, Caption::vaCenter);
+        caption.alignment(aCenter);
         caption.show();
 
         min.color = color::yellow();
@@ -44,7 +44,7 @@ public:
         close.show();
 
         absolute_height(20);
-        alignment(TitleBar::aFrontward);
+        alignment(aLeft);
         add(&caption);
         add(&min);
         add(&max);
@@ -212,7 +212,7 @@ window::window(Layout layout, const char* caption, const Rect& rect)
     : impl_(new implement(layout))
 {
     impl_->frame_.caption().text(caption);
-    impl_->frame_.client().rect(rect);
+    impl_->frame_.rect(rect);
 }
 
 window::~window(void)

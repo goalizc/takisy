@@ -3,39 +3,63 @@
 
 class layout::implement
 {
-    friend class widget;
     friend class layout;
+    friend class horizontal_layout;
     friend class vertical_layout;
-
-public:
-    class spacer final : public widget
-    {};
+    friend class grid_layout;
 
 public:
     implement(layout* _this)
-        : this_(_this), alignment_(layout::aCenter)
-        , margin_({0, 0, 0, 0}), spacing_(0), recalculating_(false)
+        : this_(_this), readapting_(false)
+        , alignment_(aCenter), margin_({0, 0, 0, 0}), spacing_(0)
     {}
 
 public:
-    layout::Alignment get_alignment(widget* widget) const
+    Alignment get_alignment(widget* widget) const
     {
         if (widget->exists_attribute("alignment"))
-            return widget->attribute<layout::Alignment>("alignment");
+            return widget->attribute<Alignment>("alignment");
 
         return alignment_;
     }
 
-    void recalculate(void);
+    std::vector<widget*> visible_children(void) const
+    {
+        std::vector<widget*> children = this_->children();
+
+        children.erase(std::remove_if(children.begin(), children.end(),
+                                      [](widget* child) -> bool
+                                      {
+                                         return !child->visible();
+                                      }),
+                       children.end());
+
+        return children;
+    }
+
+    void readapt(void)
+    {
+        if (readapting_)
+            return;
+
+        struct david
+        {
+            bool& readapting;
+        public:
+            david(bool& readapting) : readapting(readapting)
+                        { readapting = true; }
+           ~david(void) { readapting = false; }
+        } __david__(readapting_);
+
+        this_->readapt();
+    }
 
 private:
-    layout*              this_;
-    bool                 vertical_;
-    layout::Alignment    alignment_;
-    layout::Margin       margin_;
-    unsigned int         spacing_;
-    std::vector<spacer*> spacers_;
-    bool                 recalculating_;
+    layout*       this_;
+    bool          readapting_;
+    Alignment     alignment_;
+    struct margin margin_;
+    unsigned int  spacing_;
 };
 
 #endif // layout_hpp_20160113

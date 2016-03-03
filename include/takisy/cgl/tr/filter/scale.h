@@ -11,9 +11,9 @@ public:
 
 public:
     template <unsigned int Shift>
-    static inline table_t table(unsigned int src, unsigned int dst)
+    static table_t table(unsigned int src, unsigned int dst)
     {
-        double ratio = (1 << Shift) * (src - 1.0) / (dst - 1), foobar = 0;
+        double ratio = (src - 1.0) * (1 << Shift) / (dst - 1), foobar = 0;
         table_t table(dst);
 
         for (unsigned int i = 0; i < dst; ++i, foobar += ratio)

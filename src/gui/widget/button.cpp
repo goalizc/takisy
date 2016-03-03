@@ -126,8 +126,7 @@ text_button::text_button(const wchar_t* caption)
     impl_->label_.text(caption);
     impl_->label_.margin(3);
     impl_->label_.word_wrap(true);
-    impl_->label_.horizontal_alignment(label::haCenter);
-    impl_->label_.vertical_alignment(label::vaCenter);
+    impl_->label_.alignment(aCenter);
     impl_->label_.show();
 
     add(&impl_->label_);
@@ -163,9 +162,9 @@ brush_sptr text_button::foreground_brush(void) const
     return impl_->label_.foreground_brush();
 }
 
-widget::Size text_button::optimal(void) const
+widget::Size text_button::optimal_size(void) const
 {
-    return impl_->label_.optimal();
+    return impl_->label_.optimal_size();
 }
 
 void text_button::caption(const char* caption)

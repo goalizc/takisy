@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <takisy/core/handler.h>
 #include <takisy/core/algorithm.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/cgl/basic/point.h>
@@ -13,6 +14,7 @@
 #include <takisy/cgl/font/font.h>
 #include <takisy/cgl/font/tfont_simple.h>
 #include <takisy/gui/basic/brush.h>
+#include <takisy/gui/basic/define.h>
 #include <takisy/gui/basic/graphics.h>
 
 class text {
@@ -25,16 +27,12 @@ class text {
         std::wstring content;
     };
 
-public:
-    struct margin {
-        int left, top, right, bottom;
-    };
+    ENABLE_HANDLER(onCaretPositionChanged);
 
+public:
     struct line {
         int words, width;
     };
-
-    enum Alignment { aLeft, aCenter, aRight };
 
 public:
     text(void)
@@ -45,7 +43,7 @@ public:
         : content_(content), max_length_(~0u)
         , caret_({-1, (long)content_.size()})
         , world_(0, 0, 0, 0), view_(~0u >> 1, ~0u >> 1)
-        , fixed_brush_(true), margin_({0}), indent_(0), alignment_(aLeft)
+        , fixed_brush_(true), margin_({0}), indent_(0), alignment_(aLeftTop)
         , multiline_(true), word_wrap_(true)
         , line_spacing_(0), word_spacing_(0)
         , font_(tfont_simple::get())
@@ -295,7 +293,7 @@ public:
         if (count > 0) {
             caret_.e += count;
             recalculate();
-            adapt();
+            readapt();
             return true;
         }
         return false;
@@ -324,7 +322,7 @@ public:
         }
 
         recalculate();
-        adapt();
+        readapt();
     }
 
     void move(int caret_e, bool shift=false, bool ctrl=false) {
@@ -348,7 +346,7 @@ public:
             caret_.e = fix_e;
         }
 
-        adapt();
+        readapt();
     }
 
     void select(int start, int end) {
@@ -619,11 +617,12 @@ private:
         int width  = algorithm::max(world_.width(), view_.width);
             width -= margin_.left + margin_.right;
 
-        switch (alignment_)
+        switch (alignment_ & aHorizontal)
         {
-        default:                 return  0;
-        case Alignment::aCenter: return (width - line.width) / 2;
-        case Alignment::aRight:  return  width - line.width;
+        default:
+        case aLeft:   return  0;
+        case aCenter: return (width - line.width) / 2;
+        case aRight:  return  width - line.width;
         }
     }
 
@@ -746,7 +745,7 @@ private:
         ;
     }
 
-    void adapt(void) {
+    void readapt(void) {
         point offset = world_.left_top();
         if (world_.right < view_.width) {
             offset.x += view_.width - world_.right;
@@ -774,6 +773,8 @@ private:
         else if (caret.y > mv.bottom) offset.y += mv.bottom - caret.y;
 
         this->offset(offset.x, offset.y);
+
+        onCaretPositionChanged();
     }
 
 private:

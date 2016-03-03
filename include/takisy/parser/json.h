@@ -11,8 +11,6 @@ class json
     class implement;
 
 public:
-    class value;
-
     enum ObjectType
     {
         otUndefined = 0,
@@ -26,7 +24,7 @@ public:
 
 public:
     json(void);
-    json(const char* content);
+    json(const char* filepath_or_content);
     json(const stream& stream);
     json(const json& json);
     json(object*&);
@@ -35,14 +33,14 @@ public:
 public:
     bool load(const char* content);
     bool load(const stream& stream);
-    bool load_file(const char* file_path);
+    bool load_file(const char* filepath);
 
     std::string dump(void) const;
     std::string dump(int indent) const;
     bool dump(stream& stream) const;
     bool dump(stream& stream, int indent) const;
-    bool dump_file(const char* file_path) const;
-    bool dump_file(const char* file_path, int indent) const;
+    bool dump_file(const char* filepath) const;
+    bool dump_file(const char* filepath, int indent) const;
 
 public: // set value
     json& operator=(std::nullptr_t);

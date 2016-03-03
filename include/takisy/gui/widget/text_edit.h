@@ -1,22 +1,12 @@
 #ifndef text_edit_h_20151228
 #define text_edit_h_20151228
 
+#include <takisy/gui/basic/define.h>
 #include <takisy/gui/widget/widget.h>
 
 class text_edit : public widget
 {
     class implement;
-
-public:
-    struct margin
-    {
-        int left, top, right, bottom;
-    };
-
-    enum Alignment
-    {
-        aLeft, aCenter, aRight
-    };
 
 public:
     text_edit(void);

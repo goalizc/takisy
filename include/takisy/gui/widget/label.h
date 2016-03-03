@@ -1,27 +1,12 @@
 #ifndef label_h_20151208
 #define label_h_20151208
 
+#include <takisy/gui/basic/define.h>
 #include <takisy/gui/widget/widget.h>
 
 class label : public widget
 {
     class implement;
-
-public:
-    struct margin
-    {
-        int left, top, right, bottom;
-    };
-
-    enum HorizontalAlignment
-    {
-        haLeft, haCenter, haRight
-    };
-
-    enum VerticalAlignment
-    {
-        vaTop, vaCenter, vaBottom
-    };
 
 public:
     label(void);
@@ -46,9 +31,8 @@ public:
     brush_sptr          background_brush(void) const;
     brush_sptr          foreground_brush(void) const;
     bool                fixed_brush(void) const;
-    HorizontalAlignment horizontal_alignment(void) const;
-    VerticalAlignment   vertical_alignment(void) const;
-    widget::Size        optimal(void) const;
+    Alignment           alignment(void) const;
+    Size                optimal_size(void) const override;
 
 public:
     void text(const char* text);
@@ -71,9 +55,7 @@ public:
     void foreground_color(const color& foreground_color);
     void foreground_brush(const brush_sptr& foreground_brush);
     void fixed_brush(bool fixed);
-    void alignment(HorizontalAlignment ha, VerticalAlignment va);
-    void horizontal_alignment(HorizontalAlignment ha);
-    void vertical_alignment(VerticalAlignment va);
+    void alignment(Alignment alignment);
 
 public:
     void onSize(Size size) override;

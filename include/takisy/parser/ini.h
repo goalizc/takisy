@@ -3,6 +3,7 @@
 
 #include <map>
 #include <string>
+#include <takisy/core/stream.h>
 
 class ini
 {
@@ -14,15 +15,21 @@ public:
 
 public:
     ini(void);
-    ini(const char* file_path);
+    ini(const char* filepath_or_content);
+    ini(const stream& stream);
     ini(const ini& ini);
    ~ini(void);
 
     ini& operator=(const ini& ini);
 
 public:
-    bool load(const char* file_path);
-    bool save(const char* file_path) const;
+    bool load(const char* content);
+    bool load(const stream& stream);
+    bool load_file(const char* filepath);
+
+    std::string dump(void) const;
+    bool dump(stream& stream) const;
+    bool dump_file(const char* filepath) const;
 
 public:
     section_type& operator[](const std::string& section_name);

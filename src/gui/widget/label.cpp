@@ -9,7 +9,7 @@ class label::implement
 
 public:
     implement(label* _this)
-        : this_(_this), valignment_(label::vaTop)
+        : this_(_this)
     {}
 
 public:
@@ -18,11 +18,12 @@ public:
         int a = this_->height();
         int b = text_.height();
 
-        switch (valignment_)
+        switch (text_.alignment())
         {
-        default:       text_.offset_top(0); break;
-        case vaCenter: text_.offset_top((a - b) / 2); break;
-        case vaBottom: text_.offset_top( a - b); break;
+        default:
+        case aTop:    text_.offset_top(0); break;
+        case aCenter: text_.offset_top((a - b) / 2); break;
+        case aBottom: text_.offset_top( a - b); break;
         }
 
         this_->repaint();
@@ -32,7 +33,6 @@ private:
     label* this_;
     class text text_;
     brush_sptr background_brush_;
-    label::VerticalAlignment valignment_;
 };
 
 label::label(void)
@@ -68,16 +68,9 @@ const wchar_t* label::text(void) const
     return impl_->text_.content().c_str();
 }
 
-struct label::margin label::margin(void) const
+struct margin label::margin(void) const
 {
-    struct margin margin;
-
-    margin.left   = impl_->text_.margin().left;
-    margin.top    = impl_->text_.margin().top;
-    margin.right  = impl_->text_.margin().right;
-    margin.bottom = impl_->text_.margin().bottom;
-
-    return margin;
+    return impl_->text_.margin();
 }
 
 int label::margin_left(void) const
@@ -140,22 +133,12 @@ bool label::fixed_brush(void) const
     return impl_->text_.fixed_brush();
 }
 
-label::HorizontalAlignment label::horizontal_alignment(void) const
+Alignment label::alignment(void) const
 {
-    switch (impl_->text_.alignment())
-    {
-    default:            return haLeft;
-    case text::aCenter: return haCenter;
-    case text::aRight:  return haRight;
-    }
+    return impl_->text_.alignment();
 }
 
-label::VerticalAlignment label::vertical_alignment(void) const
-{
-    return impl_->valignment_;;
-}
-
-widget::Size label::optimal(void) const
+widget::Size label::optimal_size(void) const
 {
     return impl_->text_.world().size();
 }
@@ -274,31 +257,10 @@ void label::fixed_brush(bool fixed)
     repaint();
 }
 
-void label::alignment(HorizontalAlignment ha, VerticalAlignment va)
+void label::alignment(Alignment alignment)
 {
-    horizontal_alignment(ha);
-    vertical_alignment(va);
-}
-
-void label::horizontal_alignment(HorizontalAlignment ha)
-{
-    switch (ha)
-    {
-    default:       impl_->text_.alignment(text::aLeft);   break;
-    case haCenter: impl_->text_.alignment(text::aCenter); break;
-    case haRight:  impl_->text_.alignment(text::aRight);  break;
-    }
-
-    repaint();
-}
-
-void label::vertical_alignment(VerticalAlignment va)
-{
-    if (va != impl_->valignment_)
-    {
-        impl_->valignment_ = va;
-        impl_->update();
-    }
+    impl_->text_.alignment(alignment);
+    impl_->update();
 }
 
 void label::onSize(Size size)

@@ -10,9 +10,9 @@
 #include "../basic/window.h"
 #include "impl/layout.hpp"
 
-#define recalculate(widget)                                  \
-    ({ layout* layout = dynamic_cast<class layout*>(widget); \
-       if (layout) layout->impl_->recalculate(); })
+#define readapt(widget)                                            \
+    ({ class layout* layout = dynamic_cast<class layout*>(widget); \
+       if (layout) layout->impl_->readapt(); })
 
 class widget::implement
 {
@@ -229,6 +229,11 @@ widget::Size widget::maximal_size(void) const
     return impl_->maximal_;
 }
 
+widget::Size widget::optimal_size(void) const
+{
+    return size();
+}
+
 bool widget::pure(void)
 {
     return impl_->pure_;
@@ -257,7 +262,7 @@ bool widget::add(widget* widget)
     widget->impl_->father_ = this;
 
     if (widget->visible())
-        recalculate(this);
+        readapt(this);
 
     repaint();
 
@@ -275,7 +280,7 @@ void widget::remove(widget* widget)
     widget->impl_->father_ = nullptr;
 
     if (widget->visible())
-        recalculate(this);
+        readapt(this);
 
     repaint();
 }
@@ -305,7 +310,7 @@ void widget::xy(Point _xy)
     onMove(_xy);
 
     if (visible())
-        recalculate(father());
+        readapt(father());
 
     repaint();
 }
@@ -340,8 +345,8 @@ void widget::size(Size _size)
     onSize(_size);
 
     if (visible())
-        recalculate(father());
-    recalculate(this);
+        readapt(father());
+    readapt(this);
 
     repaint();
 }
@@ -377,7 +382,7 @@ void widget::visible(bool visible)
     else
         onHidden();
 
-    recalculate(father());
+    readapt(father());
     repaint();
 }
 

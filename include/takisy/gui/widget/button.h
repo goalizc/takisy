@@ -48,7 +48,7 @@ public:
     unsigned int   margin(void) const;
     const font&    font(void) const;
     brush_sptr     foreground_brush(void) const;
-    widget::Size   optimal(void) const;
+    Size           optimal_size(void) const override;
 
 public:
     void caption(const char* caption);

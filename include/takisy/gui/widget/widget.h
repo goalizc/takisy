@@ -61,6 +61,7 @@ public:
     unsigned int maximal_width(void) const;
     unsigned int maximal_height(void) const;
     Size         maximal_size(void) const;
+    virtual Size optimal_size(void) const;
 
 public:
     bool pure(void);

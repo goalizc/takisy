@@ -1,20 +1,30 @@
+#include <io.h>
 #include <cstdlib>
-#include <takisy/core/stream.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/ini.h>
 
-ini::ini(void) {}
+ini::ini(void)
+{}
 
-ini::ini(const char* file_path)
+ini::ini(const char* filepath_or_content)
 {
-    load(file_path);
+    if (access(filepath_or_content, 0) == 0)
+        load_file(filepath_or_content);
+    else
+        load(filepath_or_content);
+}
+
+ini::ini(const stream& stream)
+{
+    load(stream);
 }
 
 ini::ini(const ini& ini)
     : sections_(ini.sections_)
 {}
 
-ini::~ini(void) {}
+ini::~ini(void)
+{}
 
 ini& ini::operator=(const ini& ini)
 {
@@ -24,17 +34,21 @@ ini& ini::operator=(const ini& ini)
     return *this;
 }
 
-bool ini::load(const char* file_path)
+bool ini::load(const char* content)
+{
+    return load(buffer_stream(content, strlen(content)));
+}
+
+bool ini::load(const stream& stream)
 {
     std::string section_name = "default";
-    file_stream fs(file_path, "r");
 
-    while (fs.working())
+    while (stream.working())
     {
         std::string line;
         char ch;
 
-        while (fs.read(&ch, sizeof(ch)) == sizeof(ch) && ch != '\n')
+        while (stream.read(&ch, sizeof(ch)) == sizeof(ch) && ch != '\n')
             line += ch;
 
         if (stralgo::trim(line).empty())
@@ -70,28 +84,41 @@ bool ini::load(const char* file_path)
     return true;
 }
 
-bool ini::save(const char* file_path) const
+bool ini::load_file(const char* filepath)
 {
-    file_stream fs(file_path, "w");
-    auto write = [&fs](const std::string& content) -> bool {
-        return fs.write(content.c_str(), content.size()) == content.size();
-    };
+    return load(file_stream(filepath, "r"));
+}
+
+std::string ini::dump(void) const
+{
+    std::string content;
 
     for (const decltype(sections_)::value_type& section : sections_)
     {
-        if (!write(stralgo::format("[%s]\n", section.first.c_str())))
-            return false;
+        content += stralgo::format("[%s]\n", section.first.c_str());
 
         for (const section_type::value_type& pair : section.second)
-            if (!write(stralgo::format("%s=%s\n", pair.first.c_str(),
-                                                  pair.second.as_string())))
-                return false;
+            content += stralgo::format("    %s=%s\n", pair.first.c_str(),
+                                                      pair.second.as_string());
 
-        if (!write("\n"))
-            return false;
+        content += "\n";
     }
 
-    return true;
+    return content;
+}
+
+bool ini::dump(stream& stream) const
+{
+    std::string content = dump();
+
+    return stream.write(content.data(), content.size()) == content.size();
+}
+
+bool ini::dump_file(const char* filepath) const
+{
+    file_stream fstream(filepath, "w");
+
+    return dump(fstream);
 }
 
 ini::section_type& ini::operator[](const std::string& section_name)

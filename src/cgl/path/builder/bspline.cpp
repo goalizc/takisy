@@ -37,9 +37,9 @@ public:
 
         switch (path.size())
         {
+        case  2: result_ = path;
         case  0:
         case  1: return result_;
-        case  2: return path;
         default: break;
         }
 
@@ -219,5 +219,5 @@ const path& bspline::build(const path& path)
 const path& bspline::build(const path::vertex_type* vertices,
                            unsigned int size)
 {
-    return build(vertices_wrapper(vertices, size));
+    return impl_->build(vertices_wrapper(vertices, size));
 }

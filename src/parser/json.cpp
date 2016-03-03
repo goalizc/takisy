@@ -1,3 +1,4 @@
+#include <io.h>
 #include <map>
 #include <cstdlib>
 #include <cstring>
@@ -5,20 +6,20 @@
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/json.h>
 
-class json_error : public std::exception
+class json_exception : public std::exception
 {
 public:
-    json_error(const char* what)
+    json_exception(const char* what)
         : what_(what)
     {}
 
     template <typename... Args>
-    json_error(const char* format, const Args&... args)
+    json_exception(const char* format, const Args&... args)
     {
         what_ = stralgo::format(format, args...);
     }
 
-    ~json_error(void)
+    ~json_exception(void)
     {}
 
 public:
@@ -31,8 +32,8 @@ private:
     std::string what_;
 };
 
-#define throwje(format, args...) \
-    throw json_error(format, ##args)
+#define throw(format, args...) \
+    ({ throw json_exception(format, ##args); })
 
 class json::object
 {
@@ -89,7 +90,7 @@ public:
     static char* read(const stream& stream, char* buffer, unsigned int size)
     {
         if (stream.read(buffer, size) != size)
-            throwje("stream error: read(%d).", size);
+            throw("stream error: read(%d).", size);
 
         return buffer;
     }
@@ -168,12 +169,12 @@ public:
 
     inline json::object*& element(int index) override
     {
-        throwje("invalid member function: null::operator[](int).");
+        throw("invalid member function: null::operator[](int).");
     }
 
     inline json::object*& element(const char* key) override
     {
-        throwje("invalid member function: null::operator[](string).");
+        throw("invalid member function: null::operator[](string).");
     }
 
     inline json::object* clone(void) const override
@@ -206,12 +207,12 @@ public:
 
     inline json::object*& element(int index) override
     {
-        throwje("invalid member function: boolean::operator[](int).");
+        throw("invalid member function: boolean::operator[](int).");
     }
 
     inline json::object*& element(const char* key) override
     {
-        throwje("invalid member function: boolean::operator[](string).");
+        throw("invalid member function: boolean::operator[](string).");
     }
 
     inline json::object* clone(void) const override
@@ -257,7 +258,7 @@ public:
         if (c == '-' or stralgo::isdigit(c))
             desc += c;
         else
-            throwje("undefined number beginning: '%c'.", c);
+            throw("undefined number beginning: '%c'.", c);
 
         while (stralgo::isdigit((c = getchar_nothrow(stream))))
             desc += c;
@@ -276,7 +277,7 @@ public:
             if (c == '+' || c == '-' || stralgo::isdigit(c))
                 desc += c;
             else
-                throwje("undefined `e' sign: %c", c);
+                throw("undefined `e' sign: %c", c);
 
             while(stralgo::isdigit((c = getchar_nothrow(stream))))
                 desc += c;
@@ -296,12 +297,12 @@ public:
 
     inline json::object*& element(int index) override
     {
-        throwje("invalid member function: number::operator[](int).");
+        throw("invalid member function: number::operator[](int).");
     }
 
     inline json::object*& element(const char* key) override
     {
-        throwje("invalid member function: number::operator[](string).");
+        throw("invalid member function: number::operator[](string).");
     }
 
     inline json::object* clone(void) const override
@@ -368,7 +369,7 @@ public:
                     value.append(reinterpret_cast<char*>(&wch), sizeof(wch));
                     break;
                 default:
-                    throwje("invalid ESC: '%c'.", ch);
+                    throw("invalid ESC: '%c'.", ch);
                 }
                 break;
             case 0x22:
@@ -388,12 +389,12 @@ public:
 
     inline json::object*& element(int index) override
     {
-        throwje("invalid member function: string::operator[](int).");
+        throw("invalid member function: string::operator[](int).");
     }
 
     inline json::object*& element(const char* key) override
     {
-        throwje("invalid member function: string::operator[](string).");
+        throw("invalid member function: string::operator[](string).");
     }
 
     inline json::object* clone(void) const override
@@ -487,14 +488,14 @@ public:
     inline json::object*& element(int index) override
     {
         if (static_cast<unsigned int>(index) >= elements.size())
-            throwje("index(%d) out of range[0, %d).", index, elements.size());
+            throw("index(%d) out of range[0, %d).", index, elements.size());
 
         return elements[index];
     }
 
     inline json::object*& element(const char* key) override
     {
-        throwje("invalid member function: array::operator[](string).");
+        throw("invalid member function: array::operator[](string).");
     }
 
     inline json::object* clone(void) const override
@@ -575,7 +576,7 @@ public:
 
     inline json::object*& element(int index) override
     {
-        throwje("invalid member function: dict::operator[](int).");
+        throw("invalid member function: dict::operator[](int).");
     }
 
     inline json::object*& element(const char* key) override
@@ -639,7 +640,7 @@ public:
 json::object* json::implement::parse_null(const stream& stream)
 {
     if (!compare(stream, "ull"))
-        throwje("failed to parse null.");
+        throw("failed to parse null.");
 
     return new null;
 }
@@ -647,7 +648,7 @@ json::object* json::implement::parse_null(const stream& stream)
 json::object* json::implement::parse_true(const stream& stream)
 {
     if (!compare(stream, "rue"))
-        throwje("failed to parse boolean:true.");
+        throw("failed to parse boolean:true.");
 
     return new boolean(true);
 }
@@ -655,7 +656,7 @@ json::object* json::implement::parse_true(const stream& stream)
 json::object* json::implement::parse_false(const stream& stream)
 {
     if (!compare(stream, "alse"))
-        throwje("failed to parse boolean:false.");
+        throw("failed to parse boolean:false.");
 
     return new boolean(false);
 }
@@ -700,7 +701,7 @@ json::object* json::implement::parse_array(const stream& stream)
         if (element->type() != otNumber || stralgo::isspace(ch))
             ch = read_char(stream, true);
         if (ch == ']') break; else
-        if (ch == ',') ch=-1; else throwje("failed to parse array.");
+        if (ch == ',') ch=-1; else throw("failed to parse array.");
     }
 
     return array;
@@ -720,11 +721,11 @@ json::object* json::implement::parse_dict(const stream& stream)
     {
         json::object* key = parse(stream, ch);
         if (key->type() != otString)
-            throwje("dict's key must be string.");
+            throw("dict's key must be string.");
 
         char colon = read_char(stream, true);
         if (colon != ':')
-            throwje("colon couldn't be find between key and value.");
+            throw("colon couldn't be find between key and value.");
 
         json::object* value = parse(stream, ch);
         dict->pairs[*dynamic_cast<string*>(key)] = value;
@@ -733,7 +734,7 @@ json::object* json::implement::parse_dict(const stream& stream)
         if (value->type() != otNumber || stralgo::isspace(ch))
             ch = read_char(stream, true);
         if (ch == '}') break; else
-        if (ch == ',') ch=-1; else throwje("failed to parse dict.");
+        if (ch == ',') ch=-1; else throw("failed to parse dict.");
     }
 
     return dict;
@@ -748,7 +749,7 @@ json::object* json::implement::parse(const stream& stream, int& ch)
 
     switch (ch)
     {
-    case  0 : throwje("parse ERROR.");
+    case  0 : throw("parse ERROR.");
     case 'n': object = implement::parse_null  (stream); ch = -1; break;
     case 't': object = implement::parse_true  (stream); ch = -1; break;
     case 'f': object = implement::parse_false (stream); ch = -1; break;
@@ -765,10 +766,13 @@ json::json(void)
     : impl_(new implement)
 {}
 
-json::json(const char* content)
+json::json(const char* filepath_or_content)
     : json()
 {
-    load(content);
+    if (access(filepath_or_content, 0) == 0)
+        load_file(filepath_or_content);
+    else
+        load(filepath_or_content);
 }
 
 json::json(const stream& stream)
@@ -811,9 +815,9 @@ bool json::load(const stream& stream)
     }
 }
 
-bool json::load_file(const char* file_path)
+bool json::load_file(const char* filepath)
 {
-    return load(file_stream(file_path, "r"));
+    return load(file_stream(filepath, "r"));
 }
 
 std::string json::dump(void) const
@@ -829,7 +833,7 @@ std::string json::dump(int indent) const
     std::string content;
 
     if (!impl_->obj()->dump(content, indent > 0 ? 1 : 0, indent))
-        throwje("failed to dump json to string.");
+        throw("failed to dump json to string.");
     else
         content += '\n';
 
@@ -848,14 +852,14 @@ bool json::dump(stream& stream, int indent) const
     return stream.write(content.data(), content.size()) == content.size();
 }
 
-bool json::dump_file(const char* file_path) const
+bool json::dump_file(const char* filepath) const
 {
-    return dump_file(file_path, 0);
+    return dump_file(filepath, 0);
 }
 
-bool json::dump_file(const char* file_path, int indent) const
+bool json::dump_file(const char* filepath, int indent) const
 {
-    file_stream fstream(file_path, "w");
+    file_stream fstream(filepath, "w");
 
     return dump(fstream, indent);
 }
@@ -928,7 +932,7 @@ json& json::operator=(ObjectType object_type)
     {
     case otArray: impl_->obj() = new implement::array(); break;
     case otDict:  impl_->obj() = new implement::dict();  break;
-    default: throwje("invalid object type.");
+    default: throw("invalid object type.");
     }
 
     return *this;
@@ -955,7 +959,7 @@ json& json::operator=(const json& json)
 void json::append(std::nullptr_t)
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::append(null).",
+        throw("invalid member function: %s::append(null).",
                 implement::type_desc(type()).c_str());
 
     dynamic_cast<implement::array*>(impl_->obj())
@@ -965,7 +969,7 @@ void json::append(std::nullptr_t)
 void json::append(bool boolean)
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::append(boolean).",
+        throw("invalid member function: %s::append(boolean).",
                 implement::type_desc(type()).c_str());
 
     dynamic_cast<implement::array*>(impl_->obj())
@@ -985,7 +989,7 @@ void json::append(long long number)
 void json::append(double number)
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::append(number).",
+        throw("invalid member function: %s::append(number).",
                 implement::type_desc(type()).c_str());
 
     dynamic_cast<implement::array*>(impl_->obj())
@@ -995,7 +999,7 @@ void json::append(double number)
 void json::append(const char* string)
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::append(string).",
+        throw("invalid member function: %s::append(string).",
                 implement::type_desc(type()).c_str());
 
     dynamic_cast<implement::array*>(impl_->obj())
@@ -1005,7 +1009,7 @@ void json::append(const char* string)
 void json::append(ObjectType object_type)
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::append(object).",
+        throw("invalid member function: %s::append(object).",
                 implement::type_desc(type()).c_str());
 
     object* object = nullptr;
@@ -1018,7 +1022,7 @@ void json::append(ObjectType object_type)
     case otString:  object = new implement::string;  break;
     case otArray:   object = new implement::array;   break;
     case otDict:    object = new implement::dict;    break;
-    default: throwje("Invalid object type.");
+    default: throw("Invalid object type.");
     }
 
     dynamic_cast<implement::array*>(impl_->obj())->append(object);
@@ -1027,7 +1031,7 @@ void json::append(ObjectType object_type)
 unsigned int json::count(void) const
 {
     if (type() != otArray)
-        throwje("invalid member function: %s::count(void).",
+        throw("invalid member function: %s::count(void).",
                 implement::type_desc(type()).c_str());
 
     return dynamic_cast<implement::array*>(impl_->obj())->count();
@@ -1041,7 +1045,7 @@ json json::operator[](int index) const
 std::vector<std::string> json::keys(void) const
 {
     if (type() != otDict)
-        throwje("invalid member function: %s::keys(void).",
+        throw("invalid member function: %s::keys(void).",
                 implement::type_desc(type()).c_str());
 
     return dynamic_cast<implement::dict*>(impl_->obj())->keys();
@@ -1082,14 +1086,14 @@ bool json::as_bool(void) const
     case otDict:
         return !dynamic_cast<implement::dict*>   (object)->pairs.empty();
     default:
-        throwje("invalid object type.");
+        throw("invalid object type.");
     }
 }
 
 double json::as_number(void) const
 {
     if (impl_->obj()->type() != otNumber)
-        throwje("json object is not number type.");
+        throw("json object is not number type.");
 
     return dynamic_cast<implement::number*>(impl_->obj())->value;
 }
@@ -1097,7 +1101,7 @@ double json::as_number(void) const
 const char* json::as_string(void) const
 {
     if (impl_->obj()->type() != otString)
-        throwje("json object is not string type.");
+        throw("json object is not string type.");
 
     return dynamic_cast<implement::string*>(impl_->obj())->value.c_str();
 }

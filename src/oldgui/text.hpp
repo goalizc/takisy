@@ -139,7 +139,7 @@ public:
             return;
         action_insert(caret_.e++, &chr, 1);
         reconfigure();
-        adapt();
+        readapt();
     }
 
     void typewrite(const std::wstring& str) {
@@ -149,7 +149,7 @@ public:
         action_insert(caret_.e, str.c_str(), str.size());
         caret_.e += str.size();
         reconfigure();
-        adapt();
+        readapt();
     }
 
     void erase(int offset = 0) {
@@ -175,7 +175,7 @@ public:
         }
 
         reconfigure();
-        adapt();
+        readapt();
     }
 
     void move(int caret_e, bool shift, bool ctrl=false) {
@@ -199,7 +199,7 @@ public:
             caret_.e = fix_e;
         }
 
-        adapt();
+        readapt();
     }
 
     void select(int start, int end) {
@@ -440,7 +440,7 @@ private:
         area_.bottom = area_.top + line_count() * font_->height();
     }
 
-    void adapt(void) {
+    void readapt(void) {
         Point offset = area_.left_top();
         if (area_.right < canvas_.width) {
             offset.x += canvas_.width - area_.right;

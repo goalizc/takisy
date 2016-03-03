@@ -32,7 +32,7 @@ public:
     bool               dynamic(void) const;
     class image&       image(void);
     const class image& image(void) const;
-    widget::Size       optimal(void) const;
+    Size               optimal_size(void) const override;
 
 public:
     void scalable(bool scalable);

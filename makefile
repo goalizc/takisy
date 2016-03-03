@@ -31,7 +31,7 @@ rm              = rm -rf
 mkdir           = mkdir -p
 
 ccflags         =
-cxxflags        = -g $(LEVEL) --std=gnu++11 -Wall -Werror
+cxxflags        = -g $(LEVEL) --std=gnu++11 -Wall -Werror -Wno-array-bounds
 ldflags         =
 
 ########################################################################

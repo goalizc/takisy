@@ -1,8 +1,6 @@
 #ifndef bilinear_interpolator_h_20131203
 #define bilinear_interpolator_h_20131203
 
-#include <takisy/core/math.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/cgl/basic/point.h>
 #include <takisy/cgl/basic/pixel_format.h>
 
