@@ -1,5 +1,5 @@
-#include <io.h>
 #include <cstdlib>
+#include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/ini.h>
 
@@ -8,7 +8,7 @@ ini::ini(void)
 
 ini::ini(const char* filepath_or_content)
 {
-    if (access(filepath_or_content, 0) == 0)
+    if (os::path::isfile(filepath_or_content))
         load_file(filepath_or_content);
     else
         load(filepath_or_content);

@@ -16,30 +16,30 @@ public:
    ~label(void);
 
 public:
-    const char*         text(const char* codec) const;
-    const wchar_t*      text(void) const;
-    struct margin       margin(void) const;
-    int                 margin_left(void) const;
-    int                 margin_top(void) const;
-    int                 margin_right(void) const;
-    int                 margin_bottom(void) const;
-    unsigned int        indent(void) const;
-    bool                word_wrap(void) const;
-    unsigned int        line_spacing(void) const;
-    unsigned int        word_spacing(void) const;
-    const font&         font(void) const;
-    brush_sptr          background_brush(void) const;
-    brush_sptr          foreground_brush(void) const;
-    bool                fixed_brush(void) const;
-    Alignment           alignment(void) const;
-    Size                optimal_size(void) const override;
+    const char*    text(const char* codec) const;
+    const wchar_t* text(void) const;
+    Margin         margin(void) const;
+    int            margin_left(void) const;
+    int            margin_top(void) const;
+    int            margin_right(void) const;
+    int            margin_bottom(void) const;
+    unsigned int   indent(void) const;
+    bool           word_wrap(void) const;
+    unsigned int   line_spacing(void) const;
+    unsigned int   word_spacing(void) const;
+    const font&    font(void) const;
+    brush_sptr     background_brush(void) const;
+    brush_sptr     foreground_brush(void) const;
+    bool           fixed_brush(void) const;
+    Alignment      alignment(void) const;
+    Size           optimal_size(void) const override;
 
 public:
     void text(const char* text);
     void text(const char* text, const char* codec);
     void text(const wchar_t* text);
     void margin(int margin);
-    void margin(struct margin& margin);
+    void margin(const Margin& margin);
     void margin(int left, int top, int right, int bottom);
     void margin_left(int left);
     void margin_top(int top);
@@ -58,7 +58,7 @@ public:
     void alignment(Alignment alignment);
 
 public:
-    void onSize(Size size) override;
+    void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
 
 private:

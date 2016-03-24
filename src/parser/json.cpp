@@ -1,8 +1,8 @@
-#include <io.h>
 #include <map>
 #include <cstdlib>
 #include <cstring>
 #include <stdexcept>
+#include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/json.h>
 
@@ -769,7 +769,7 @@ json::json(void)
 json::json(const char* filepath_or_content)
     : json()
 {
-    if (access(filepath_or_content, 0) == 0)
+    if (os::path::isfile(filepath_or_content))
         load_file(filepath_or_content);
     else
         load(filepath_or_content);

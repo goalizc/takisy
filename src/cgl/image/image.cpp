@@ -2,8 +2,9 @@
 #include <cctype>
 #include <string>
 #include <map>
-#include <takisy/algorithm/stralgo.h>
+#include <takisy/core/os.h>
 #include <takisy/core/stretchy_buffer.h>
+#include <takisy/algorithm/stralgo.h>
 #include <third_party/stb/stb_image.h>
 #include <takisy/cgl/image/image.h>
 
@@ -31,14 +32,14 @@ public:
     }
 
 public:
-    static inline std::string suffix(const std::string& file_path)
+    static inline std::string suffix(const std::string& filepath)
     {
-        std::string::size_type pos = file_path.find_last_of('.');
+        std::string suffix = os::path::suffix(filepath);
 
-        if (pos == std::string::npos)
-            return "";
+        if (suffix.empty())
+            return suffix;
         else
-            return stralgo::lowerc(file_path.substr(pos + 1));
+            return suffix.substr(1);
     }
 
 private:
@@ -121,14 +122,14 @@ bool image::load_uri(const char* uri, const char* suffix)
     return load_stream(*stream::from_uri(uri), suffix);
 }
 
-bool image::load_file(const char* file_path)
+bool image::load_file(const char* filepath)
 {
-    return load_file(file_path, implement::suffix(file_path).c_str());
+    return load_file(filepath, implement::suffix(filepath).c_str());
 }
 
-bool image::load_file(const char* file_path, const char* suffix)
+bool image::load_file(const char* filepath, const char* suffix)
 {
-    return load_stream(file_stream(file_path, "rb"), suffix);
+    return load_stream(file_stream(filepath, "rb"), suffix);
 }
 
 bool image::load_stream(const stream& stream)
@@ -182,11 +183,11 @@ bool image::load_stream(const stream& stream, const char* suffix)
     return load_stream(stream);
 }
 
-bool image::dump_file(const char* file_path) const
+bool image::dump_file(const char* filepath) const
 {
-    file_stream fstream(file_path, "wb");
+    file_stream fstream(filepath, "wb");
 
-    return dump_stream(fstream, implement::suffix(file_path).c_str());
+    return dump_stream(fstream, implement::suffix(filepath).c_str());
 }
 
 bool image::dump_stream(stream& stream, const char* suffix) const

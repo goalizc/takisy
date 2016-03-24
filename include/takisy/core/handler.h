@@ -1,7 +1,7 @@
 #ifndef handler_h_20150715
 #define handler_h_20150715
 
-#include <cstddef>
+#include <vector>
 #include <memory>
 
 class handler
@@ -14,13 +14,13 @@ public:
 typedef std::shared_ptr<handler> handler_sptr;
 
 template <typename Lambda, typename This>
-inline handler_sptr make_lambda_handler(This t, Lambda l)
+inline handler_sptr make_lambda_handler(This _this, Lambda lambda)
 {
     class lambda_handler : public handler
     {
     public:
-        inline lambda_handler(This t, Lambda l)
-            : this_(t), lambda_(l)
+        inline lambda_handler(This _this, Lambda lambda)
+            : this_(_this), lambda_(lambda)
         {}
 
     public:
@@ -34,18 +34,24 @@ inline handler_sptr make_lambda_handler(This t, Lambda l)
         Lambda lambda_;
     };
 
-    return handler_sptr(new lambda_handler(t, l));
+    return handler_sptr(new lambda_handler(_this, lambda));
 }
 
-#define ENABLE_HANDLER(h)                                                      \
+#define DECLARE_HANDLER(h)                                                     \
 public:                                                                        \
-    template <typename L>                                                      \
-    inline handler_sptr h(L l) { return h(make_lambda_handler(this, l)); }     \
-    inline handler_sptr h(std::nullptr_t) { return h(handler_sptr(nullptr)); } \
-    inline handler_sptr h(handler_sptr h) { h##_handler_.swap(h); return h; }  \
-public:                                                                        \
-    inline void         h(void) { if (h##_handler_) h##_handler_->handle(); }  \
+    template <typename Lambda>                                                 \
+    inline void h(Lambda lambda)                                               \
+    {                                                                          \
+        h##_handlers_.push_back(make_lambda_handler(this, lambda));            \
+    }                                                                          \
+                                                                               \
+    inline void h(void)                                                        \
+    {                                                                          \
+        for (handler_sptr& handler : h##_handlers_)                            \
+            handler->handle();                                                 \
+    }                                                                          \
+                                                                               \
 private:                                                                       \
-    handler_sptr h##_handler_;
+    std::vector<handler_sptr> h##_handlers_;
 
 #endif // handler_h_20150715

@@ -1,7 +1,7 @@
-/*#include <io.h>
-#include <map>
+/*#include <map>
 #include <vector>
 #include <stdexcept>
+#include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/xml.h>
 
@@ -69,7 +69,7 @@ xml::xml(void)
 xml::xml(const char* filepath_or_content)
     : xml()
 {
-    if (access(filepath_or_content, 0) == 0)
+    if (os::path::isfile(filepath_or_content))
         load_file(filepath_or_content);
     else
         load(filepath_or_content);

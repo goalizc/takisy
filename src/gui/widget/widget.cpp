@@ -2,28 +2,54 @@
 #include <memory>
 #include <algorithm>
 #include <stdexcept>
+#if defined(__WINNT__) || defined(__CYGWIN__)
+#include <Windows.h>
+#endif
 #include <takisy/core/algorithm.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/widget.h>
-#include <takisy/gui/widget/layout.h>
-#include "../basic/window.h"
-#include "impl/layout.hpp"
 
-#define readapt(widget)                                            \
-    ({ class layout* layout = dynamic_cast<class layout*>(widget); \
-       if (layout) layout->impl_->readapt(); })
+namespace takisy
+{
+    extern const char*
+        class_name__;
+
+    extern widget*
+        captured_widget__;
+
+    extern std::map<cross_platform_window::Handle, widget*>
+        all_windows__;
+
+    cross_platform_window::Handle handleFromLPWIDGET(const widget* widget)
+    {
+        for (auto& pair : all_windows__)
+            if (pair.second == widget)
+                return pair.first;
+
+        return nullptr;
+    }
+}
 
 class widget::implement
 {
     friend class Window;
     friend class widget;
 
+    static constexpr unsigned int limit = 1 << 20;
+
 public:
     implement(void)
-        : father_(nullptr), pure_(false), visible_(false), rect_(0, 0, 0, 0)
-        , minimal_(0, 0), maximal_(~0u, ~0u), id_(id())
+        : father_(nullptr), visible_(false), rect_(0, 0, 0, 0)
+        , minimal_(0, 0), maximal_(limit, limit)
+        , id_(id()), color_scheme_(nullptr)
     {}
+
+    ~implement(void)
+    {
+        if (color_scheme_)
+            delete color_scheme_;
+    }
 
 public:
     std::vector<widget*>::const_iterator find_child(widget* widget) const
@@ -42,11 +68,12 @@ private:
 private:
     widget* father_;
     std::vector<widget*> children_;
-    bool pure_, visible_;
-    widget::Rect rect_;
-    widget::Size minimal_, maximal_;
+    bool visible_;
+    Rect rect_;
+    Size minimal_, maximal_;
     const unsigned int id_;
     std::map<std::string, stretchy_buffer<unsigned char>> attributes_;
+    class color_scheme* color_scheme_;
 };
 
 widget::widget(void)
@@ -64,7 +91,7 @@ widget::~widget(void)
     for (widget* child : children())
         child->father(nullptr);
     father(nullptr);
-    doIfAsWindow(this, destroy);
+    as_window(nullptr);
     delete impl_;
 }
 
@@ -108,6 +135,19 @@ std::vector<widget*> widget::children(void) const
     return impl_->children_;
 }
 
+class color_scheme* widget::color_scheme(void)
+{
+    const widget* widget = this;
+
+    while (widget)
+        if (widget->impl_->color_scheme_)
+            return widget->impl_->color_scheme_;
+        else
+            widget = widget->father();
+
+    return &color_scheme::default_color_scheme();
+}
+
 int widget::x(void) const
 {
     return impl_->rect_.left;
@@ -118,7 +158,7 @@ int widget::y(void) const
     return impl_->rect_.top;
 }
 
-widget::Point widget::xy(void) const
+Point widget::xy(void) const
 {
     return impl_->rect_.left_top();
 }
@@ -133,12 +173,12 @@ unsigned int widget::height(void) const
     return impl_->rect_.height();
 }
 
-widget::Size widget::size(void) const
+Size widget::size(void) const
 {
     return impl_->rect_.size();
 }
 
-widget::Rect widget::rect(void) const
+Rect widget::rect(void) const
 {
     return impl_->rect_;
 }
@@ -148,7 +188,7 @@ bool widget::visible(void) const
     return impl_->visible_;
 }
 
-widget::Rect widget::client_rect(void) const
+Rect widget::client_rect(void) const
 {
     return Rect(0, 0, width(), height());
 }
@@ -163,12 +203,12 @@ int widget::window_y(void) const
     return window_xy().y;
 }
 
-widget::Point widget::window_xy(void) const
+Point widget::window_xy(void) const
 {
     return screen_xy() - forefather()->xy();
 }
 
-widget::Rect widget::window_rect(void) const
+Rect widget::window_rect(void) const
 {
     return Rect(window_xy(), size());
 }
@@ -183,7 +223,7 @@ int widget::screen_y(void) const
     return screen_xy().y;
 }
 
-widget::Point widget::screen_xy(void) const
+Point widget::screen_xy(void) const
 {
     const widget* widget = this;
     Point point = xy();
@@ -194,7 +234,7 @@ widget::Point widget::screen_xy(void) const
     return point;
 }
 
-widget::Rect widget::screen_rect(void) const
+Rect widget::screen_rect(void) const
 {
     return Rect(screen_xy(), size());
 }
@@ -209,7 +249,7 @@ unsigned int widget::minimal_height(void) const
     return minimal_size().height;
 }
 
-widget::Size widget::minimal_size(void) const
+Size widget::minimal_size(void) const
 {
     return impl_->minimal_;
 }
@@ -224,19 +264,14 @@ unsigned int widget::maximal_height(void) const
     return maximal_size().height;
 }
 
-widget::Size widget::maximal_size(void) const
+Size widget::maximal_size(void) const
 {
     return impl_->maximal_;
 }
 
-widget::Size widget::optimal_size(void) const
+Size widget::optimal_size(void) const
 {
     return size();
-}
-
-bool widget::pure(void)
-{
-    return impl_->pure_;
 }
 
 bool widget::father(widget* father)
@@ -252,37 +287,58 @@ bool widget::father(widget* father)
 
 bool widget::add(widget* widget)
 {
-    if (!widget || widget == this || is_senior(widget) || Window::find(widget))
+    if (!widget || widget == this || is_senior(widget) || widget->is_window())
+        return false;
+    if (!onAdding(widget))
         return false;
 
     if (widget->father())
         widget->father()->remove(widget);
-
     impl_->children_.push_back(widget);
     widget->impl_->father_ = this;
 
-    if (widget->visible())
-        readapt(this);
-
+    onAdd(widget);
     repaint();
 
     return true;
 }
 
-void widget::remove(widget* widget)
+bool widget::remove(widget* widget)
 {
     typedef std::vector<class widget*>::const_iterator widget_iterator;
     widget_iterator child = impl_->find_child(widget);
     if (child == impl_->children_.end())
-        return;
+        return false;
+    if (!onRemoving(widget))
+        return false;
 
     impl_->children_.erase(child);
     widget->impl_->father_ = nullptr;
 
-    if (widget->visible())
-        readapt(this);
-
+    onRemove(widget);
     repaint();
+
+    return true;
+}
+
+class color_scheme* widget::color_scheme(const class color_scheme* colorscheme)
+{
+    if (!impl_->color_scheme_)
+    {
+        if (!colorscheme)
+            colorscheme = color_scheme();
+
+        impl_->color_scheme_ = new class color_scheme(*colorscheme);
+        repaint();
+    }
+    else
+    if (!colorscheme)
+    {
+        *impl_->color_scheme_ = *colorscheme;
+        repaint();
+    }
+
+    return impl_->color_scheme_;
 }
 
 void widget::x(int x)
@@ -304,14 +360,18 @@ void widget::xy(Point _xy)
 {
     if (_xy == xy())
         return;
+    if (!onMoving(_xy))
+        return;
+    if (impl_->father_ && !impl_->father_->onChildMoving(this, _xy))
+        return;
 
     impl_->rect_ = impl_->rect_.move(_xy);
-    doIfAsWindow(this, xy, _xy.x, _xy.y);
-    onMove(_xy);
 
-    if (visible())
-        readapt(father());
+    onMove();
+    if (impl_->father_)
+        impl_->father_->onChildMove(this);
 
+    window().xy(_xy - window().client_offset());
     repaint();
 }
 
@@ -336,18 +396,25 @@ void widget::size(Size _size)
             impl_->minimal_.width, impl_->maximal_.width);
     _size.height = algorithm::clamp(_size.height,
             impl_->minimal_.height, impl_->maximal_.height);
+    if (_size.width  > implement::limit)
+        _size.width  = 0;
+    if (_size.height > implement::limit)
+        _size.height = 0;
 
     if (_size == size())
         return;
+    if (!onSizing(_size))
+        return;
+    if (impl_->father_ && !impl_->father_->onChildSizing(this, _size))
+        return;
 
     impl_->rect_.size(_size);
-    doIfAsWindow(this, size, _size.width, _size.height);
-    onSize(_size);
 
-    if (visible())
-        readapt(father());
-    readapt(this);
+    onSize();
+    if (impl_->father_)
+        impl_->father_->onChildSize(this);
 
+    window().client_size(_size);
     repaint();
 }
 
@@ -374,15 +441,34 @@ void widget::visible(bool visible)
     if (impl_->visible_ == visible)
         return;
 
-    impl_->visible_ = visible;
-    doIfAsWindow(this, visible, visible);
-
     if (visible)
-        onShown();
-    else
-        onHidden();
+    {
+        if (!onShowing())
+            return;
+        if (impl_->father_ && !impl_->father_->onChildShowing(this))
+            return;
 
-    readapt(father());
+        impl_->visible_ = true;
+
+        onShown();
+        if (father())
+            father()->onChildShown(this);
+    }
+    else
+    {
+        if (!onHiding())
+            return;
+        if (impl_->father_ && !impl_->father_->onChildHiding(this))
+            return;
+
+        impl_->visible_ = false;
+
+        onHidden();
+        if (father())
+            father()->onChildHidden(this);
+    }
+
+    window().visible(visible);
     repaint();
 }
 
@@ -396,23 +482,26 @@ void widget::hide(void)
     visible(false);
 }
 
-void widget::minimal_width(unsigned int minimal_width)
+void widget::minimal_width(unsigned int minwidth)
 {
-    impl_->minimal_.width = minimal_width;
+    if (minwidth > impl_->maximal_.width)
+        minwidth = impl_->maximal_.width;
+    impl_->minimal_.width = minwidth;
     width(width());
 }
 
-void widget::minimal_height(unsigned int minimal_height)
+void widget::minimal_height(unsigned int minheight)
 {
-    impl_->minimal_.height = minimal_height;
+    if (minheight > impl_->maximal_.height)
+        minheight = impl_->maximal_.height;
+    impl_->minimal_.height = minheight;
     height(height());
 }
 
 void widget::minimal_size(unsigned int minwidth, unsigned int minheight)
 {
-    impl_->minimal_.width  = minwidth;
-    impl_->minimal_.height = minheight;
-    size(width(), height());
+    minimal_width(minwidth);
+    minimal_height(minheight);
 }
 
 void widget::minimal_size(const Size& minsize)
@@ -420,23 +509,30 @@ void widget::minimal_size(const Size& minsize)
     minimal_size(minsize.width, minsize.height);
 }
 
-void widget::maximal_width(unsigned int maximal_width)
+void widget::maximal_width(unsigned int maxwidth)
 {
-    impl_->maximal_.width = maximal_width;
+    if (maxwidth < impl_->minimal_.width)
+        maxwidth = impl_->minimal_.width;
+    if (maxwidth > implement::limit)
+        maxwidth = implement::limit;
+    impl_->maximal_.width = maxwidth;
     width(width());
 }
 
-void widget::maximal_height(unsigned int maximal_height)
+void widget::maximal_height(unsigned int maxheight)
 {
-    impl_->maximal_.height = maximal_height;
+    if (maxheight < impl_->minimal_.height)
+        maxheight = impl_->minimal_.height;
+    if (maxheight > implement::limit)
+        maxheight = implement::limit;
+    impl_->maximal_.height = maxheight;
     height(height());
 }
 
 void widget::maximal_size(unsigned int maxwidth, unsigned int maxheight)
 {
-    impl_->maximal_.width  = maxwidth;
-    impl_->maximal_.height = maxheight;
-    size(width(), height());
+    maximal_width(maxwidth);
+    maximal_height(maxheight);
 }
 
 void widget::maximal_size(const Size& _maximal_size)
@@ -468,23 +564,6 @@ void widget::absolute_size(const Size& size)
     maximal_size(size);
 }
 
-void widget::pure(bool pure)
-{
-    impl_->pure_ = pure;
-}
-
-void widget::sendcmd(const char* cmdid)
-{
-    class widget* widget = this;
-
-    while (widget)
-        if (widget->onCommand(this, cmdid)
-            || widget->attribute<bool>("intercept.onCommand"))
-            break;
-        else
-            widget = widget->father();
-}
-
 void widget::repaint(void)
 {
     repaint(client_rect());
@@ -495,7 +574,7 @@ void widget::repaint(const Rect& rect)
     if (!visible() || rect.empty())
         return;
 
-    widget::Rect paint_rect = rect;
+    Rect    paint_rect = rect;
     widget* widget = this;
 
     while (widget->father())
@@ -508,12 +587,17 @@ void widget::repaint(const Rect& rect)
             return;
     }
 
-    doIfAsWindow(forefather(), repaint, paint_rect);
+    widget->window().repaint(paint_rect);
 }
 
 void widget::capture(bool capture)
 {
-    Window::capture(capture ? this : nullptr);
+    if (capture)
+        takisy::captured_widget__ = this;
+    else
+        takisy::captured_widget__ = nullptr;
+
+    forefather()->window().capture(capture);
 }
 
 bool widget::exists_attribute(const std::string& name) const
@@ -557,55 +641,124 @@ bool widget::as_window(void)
 
 bool widget::as_window(bool enable_alpha_channel)
 {
-    bool ret = Window::create(this, enable_alpha_channel);
+    if (father())
+        return false;
 
-    if (ret)
-        doIfAsWindow(this, showInTaskbar, false);
+    if (is_window())
+        return true;
 
-    return ret;
+    cross_platform_window::Handle handle = nullptr;
+#if defined(__WINNT__) || defined(__CYGWIN__)
+    DWORD style = WS_POPUP;
+    if (visible())
+        style |= WS_VISIBLE;
+
+    DWORD exstyle = WS_EX_TOOLWINDOW;
+    if (enable_alpha_channel)
+        exstyle |= WS_EX_LAYERED;
+
+    handle = CreateWindowEx(exstyle, takisy::class_name__,
+                            "takisy::gui::cross_platform_window::winnt::widget",
+                            style, x(), y(), width(), height(),
+                            GetDesktopWindow(), nullptr,
+                            GetModuleHandle(nullptr), nullptr);
+#endif
+
+    if (!handle)
+        return false;
+    else
+        return as_window(handle);
 }
 
-bool widget::as_topmost_window(void)
+bool widget::as_window(const cross_platform_window& cpw)
 {
-    return as_topmost_window(true);
+    return as_window(cpw.handle());
 }
 
-bool widget::as_topmost_window(bool enable_alpha_channel)
+bool widget::as_window(cross_platform_window::Handle handle)
 {
-    bool ret = as_window(enable_alpha_channel);
+    if (father())
+        return false;
 
-    if (ret)
-        doIfAsWindow(this, topmost, true);
+    if (is_window())
+        return true;
 
-    return ret;
+    if (handle)
+    {
+        if (takisy::all_windows__.find(handle) == takisy::all_windows__.end())
+        {
+            takisy::all_windows__[handle] = this;
+            cross_platform_window window(handle);
+            window.xy(xy() - window.client_offset());
+            window.client_size(size());
+            window.visible(visible());
+            window.repaint();
+        }
+    }
+    else
+    {
+        handle = takisy::handleFromLPWIDGET(this);
+        if (handle)
+        {
+            takisy::all_windows__.erase(handle);
+            cross_platform_window(handle).repaint();
+        }
+    }
+
+    return true;
 }
 
-void widget::onShown(void) {}
-void widget::onHidden(void) {}
-void widget::onMove(Point) {}
-void widget::onSize(Size) {}
-void widget::onPaint(graphics, Rect) {}
-void widget::onEndPaint(graphics, Rect) {}
-bool widget::onFocus(bool) { return false; }
-bool widget::onSetCursor(void) { return false; }
-bool widget::onKeyDown(sys::VirtualKey) { return false; }
-bool widget::onKeyPress(unsigned int) { return false; }
-bool widget::onKeyUp(sys::VirtualKey) { return false; }
-bool widget::onMouseDown(sys::MouseButton, int, Point) { return false; }
-bool widget::onClick(sys::MouseButton, int, Point) { return false; }
-bool widget::onCommand(widget*, const char*) { return false; }
-bool widget::onMouseUp(sys::MouseButton, Point) { return false; }
-bool widget::onMouseMove(Point) { return false; }
-bool widget::onMouseEnter(void) { return false; }
-bool widget::onMouseLeave(void) { return false; }
-bool widget::onMouseWheel(int, Point) { return false; }
+bool widget::is_window(void) const
+{
+    return !!takisy::handleFromLPWIDGET(this);
+}
+
+cross_platform_window widget::window(void) const
+{
+    return cross_platform_window(takisy::handleFromLPWIDGET(this));
+}
+
+bool widget::onAdding(widget*)                          { return true;  }
+void widget::onAdd(widget*)                             {               }
+bool widget::onRemoving(widget*)                        { return true;  }
+void widget::onRemove(widget*)                          {               }
+
+bool widget::onMoving(Point&)                           { return true;  }
+void widget::onMove(void)                               {               }
+bool widget::onSizing(Size&)                            { return true;  }
+void widget::onSize(void)                               {               }
+bool widget::onShowing(void)                            { return true;  }
+void widget::onShown(void)                              {               }
+bool widget::onHiding(void)                             { return true;  }
+void widget::onHidden(void)                             {               }
+
+bool widget::onChildMoving(widget*, Point&)             { return true;  }
+void widget::onChildMove(widget*)                       {               }
+bool widget::onChildSizing(widget*, Size&)              { return true;  }
+void widget::onChildSize(widget*)                       {               }
+bool widget::onChildShowing(widget*)                    { return true;  }
+void widget::onChildShown(widget*)                      {               }
+bool widget::onChildHiding(widget*)                     { return true;  }
+void widget::onChildHidden(widget*)                     {               }
+
+void widget::onPaint(graphics, Rect)                    {               }
+void widget::onEndPaint(graphics, Rect)                 {               }
+bool widget::onFocus(bool)                              { return false; }
+bool widget::onSetCursor(void)                          { return false; }
+bool widget::onKeyDown(sys::VirtualKey)                 { return false; }
+bool widget::onKeyPress(unsigned int)                   { return false; }
+bool widget::onKeyUp(sys::VirtualKey)                   { return false; }
+bool widget::onMouseDown(sys::MouseButton, int, Point)  { return false; }
+bool widget::onClick(sys::MouseButton, int, Point)      { return false; }
+bool widget::onMouseUp(sys::MouseButton, Point)         { return false; }
+bool widget::onMouseMove(Point)                         { return false; }
+bool widget::onMouseEnter(void)                         { return false; }
+bool widget::onMouseLeave(void)                         { return false; }
+bool widget::onMouseWheel(int, Point)                   { return false; }
 
 void* widget::attribute(const std::string& name) const
 {
-    if (exists_attribute(name))
-        return impl_->attributes_[name].data();
-
-    return nullptr;
+    return exists_attribute(name) ? impl_->attributes_[name].data() : nullptr;
 }
 
 void widget::attribute(const std::string& name,
@@ -618,12 +771,8 @@ void widget::attribute(const std::string& name,
 template <>
 char* widget::attribute<char*>(const std::string& name) const
 {
-    void* value = attribute(name);
-
-    if (value)
-        return reinterpret_cast<char*>(value);
-
-    return nullptr;
+    void*  value = attribute(name);
+    return value ? reinterpret_cast<char*>(value) : nullptr;
 }
 
 template <>

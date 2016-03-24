@@ -15,11 +15,10 @@ public:
 
 public:
     implement(void)
-        : color_(sys::default_interface_color()), state_(bsIdle)
+        : state_(bsIdle)
     {}
 
 private:
-    class color color_;
     ButtonState state_;
 };
 
@@ -32,20 +31,9 @@ button::~button(void)
     delete impl_;
 }
 
-color button::color(void) const
-{
-    return impl_->color_;
-}
-
-void button::color(const class color& color)
-{
-    impl_->color_ = color;
-    repaint();
-}
-
 void button::onPaint(graphics graphics, Rect rect)
 {
-    class color color = impl_->color_;
+    class color color = color_scheme()->main();
 
     switch (impl_->state_)
     {
@@ -162,7 +150,7 @@ brush_sptr text_button::foreground_brush(void) const
     return impl_->label_.foreground_brush();
 }
 
-widget::Size text_button::optimal_size(void) const
+Size text_button::optimal_size(void) const
 {
     return impl_->label_.optimal_size();
 }
@@ -197,7 +185,7 @@ void text_button::foreground_color(const class color& foreground_color)
     impl_->label_.foreground_color(foreground_color);
 }
 
-void text_button::onSize(Size size)
+void text_button::onSize(void)
 {
-    impl_->label_.size(size);
+    impl_->label_.size(size());
 }

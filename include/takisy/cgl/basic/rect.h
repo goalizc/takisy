@@ -19,7 +19,8 @@ public:
         : left(0), top(0), right(0), bottom(0)
     {}
 
-    inline t_rect(value_type left, value_type top, value_type right, value_type bottom)
+    inline t_rect(value_type left,  value_type top,
+                  value_type right, value_type bottom)
         : left(left), top(top), right(right), bottom(bottom)
     {}
 
@@ -309,7 +310,7 @@ public:
                          std::min(nthis.top,    nrect.top),
                          std::max(nthis.right,  nrect.right),
                          std::max(nthis.bottom, nrect.bottom));
-}
+    }
 
     inline self_type normalize(void) const
     {

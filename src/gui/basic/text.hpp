@@ -27,7 +27,7 @@ class text {
         std::wstring content;
     };
 
-    ENABLE_HANDLER(onCaretPositionChanged);
+    DECLARE_HANDLER(onCaretPositionChanged);
 
 public:
     struct line {
@@ -98,7 +98,7 @@ public:
         return fixed_brush_;
     }
 
-    margin margin(void) const {
+    Margin margin(void) const {
         return margin_;
     }
 
@@ -256,7 +256,6 @@ public:
         if (line_spacing == line_spacing_)
             return;
         line_spacing_ = line_spacing;
-        recalculate();
     }
 
     void word_spacing(unsigned int word_spacing) {
@@ -365,9 +364,9 @@ public:
 
     void select_similar(int caret) {
         bool mode = stralgo::iswspace(content_[caret]);
-        int i = caret - 1, j = caret + 1, text_size = content_.size();
+        int i = caret - 1, j = caret + 1, content_size = content_.size();
         while (i >= 0 && stralgo::iswspace(content_[i]) == mode) --i;
-        while (j < text_size && stralgo::iswspace(content_[j]) == mode) ++j;
+        while (j < content_size && stralgo::iswspace(content_[j]) == mode) ++j;
         select(i + 1, j);
     }
 
@@ -789,7 +788,7 @@ private:
     rect world_;
     size view_;
     bool fixed_brush_;
-    struct margin margin_;
+    Margin margin_;
     unsigned int indent_;
     Alignment alignment_;
     bool multiline_, word_wrap_;

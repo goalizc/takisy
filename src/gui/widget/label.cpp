@@ -68,7 +68,7 @@ const wchar_t* label::text(void) const
     return impl_->text_.content().c_str();
 }
 
-struct margin label::margin(void) const
+Margin label::margin(void) const
 {
     return impl_->text_.margin();
 }
@@ -138,7 +138,7 @@ Alignment label::alignment(void) const
     return impl_->text_.alignment();
 }
 
-widget::Size label::optimal_size(void) const
+Size label::optimal_size(void) const
 {
     return impl_->text_.world().size();
 }
@@ -164,7 +164,7 @@ void label::margin(int _margin)
     margin(_margin, _margin, _margin, _margin);
 }
 
-void label::margin(struct margin& _margin)
+void label::margin(const Margin& _margin)
 {
     margin(_margin.left, _margin.top, _margin.right, _margin.bottom);
 }
@@ -263,9 +263,9 @@ void label::alignment(Alignment alignment)
     impl_->update();
 }
 
-void label::onSize(Size size)
+void label::onSize(void)
 {
-    impl_->text_.view(size.width, size.height);
+    impl_->text_.view(width(), height());
     impl_->update();
 }
 

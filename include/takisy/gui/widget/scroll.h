@@ -6,9 +6,10 @@
 
 class scroll : public widget
 {
+protected:
     class implement;
 
-    ENABLE_HANDLER(onScroll);
+    DECLARE_HANDLER(onScroll);
 
 public:
     scroll(void);
@@ -23,7 +24,6 @@ public:
     double value(void) const;
     double step(void) const;
     double page(void) const;
-    color  color(void) const;
     bool   scrollable(void) const;
 
 public:
@@ -33,7 +33,6 @@ public:
     void value(double value);
     void step(double step);
     void page(double page);
-    void color(const class color& color);
 
 public:
     void step_down(void);
@@ -44,11 +43,9 @@ public:
     void end(void);
 
 public:
-    void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onSetCursor(void) override;
     bool onClick(sys::MouseButton button, int times, Point point) override;
     bool onMouseUp(sys::MouseButton button, Point point) override;
-    bool onMouseMove(Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
     bool onMouseWheel(int delta, Point point) override;
@@ -57,16 +54,26 @@ protected:
     class implement* impl_;
 };
 
-typedef scroll horizontal_scroll;
-
 class vertical_scroll : public scroll
 {
 public:
-    vertical_scroll(void);
-    vertical_scroll(double min, double max);
-    vertical_scroll(double min, double max, double value);
-    vertical_scroll(double min, double max, double value,
-                    double step, double page);
+    using scroll::scroll;
+
+public:
+    void onPaint(graphics graphics, Rect rect) override;
+    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onMouseMove(Point point) override;
+};
+
+class horizontal_scroll : public scroll
+{
+public:
+    using scroll::scroll;
+
+public:
+    void onPaint(graphics graphics, Rect rect) override;
+    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onMouseMove(Point point) override;
 };
 
 #endif // scroll_h_20151229

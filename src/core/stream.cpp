@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/stream.h>
 
@@ -23,25 +24,35 @@ unsigned long stream::plunder(const stream& src)
 
 std::shared_ptr<stream> stream::from_uri(const char* uri)
 {
-    stralgo::strings parts = stralgo::split(uri, "://", 1);
-    if (parts.size() != 2)
-        return nullptr;
+    stralgo::strings pair = stralgo::split(uri, "://", 1);
+    if (pair.size() != 2)
+    {
+        if (!os::path::isfile(uri))
+            return nullptr;
+        else
+        {
+            pair.resize(2);
+            pair[0] = "file"; pair[1] = uri;
+        }
+    }
+    else
+        stralgo::lower(pair[0]);
 
-    std::string protocol = stralgo::lower(parts[0]);
+    std::string protocol = stralgo::lower(pair[0]);
 
     if (protocol == "buffer")
         return std::shared_ptr<stream>
-                  (new buffer_stream(parts[1].c_str(), parts[1].size()));
+                  (new buffer_stream(pair[1].c_str(), pair[1].size()));
     else
     if (protocol == "file")
-        return std::shared_ptr<stream>(new file_stream(parts[1].c_str()));
+        return std::shared_ptr<stream>(new file_stream(pair[1].c_str()));
     else
     if (protocol == "pipe")
-        return std::shared_ptr<stream>(new pipe_stream(parts[1].c_str()));
+        return std::shared_ptr<stream>(new pipe_stream(pair[1].c_str()));
     else
     if (protocol == "tcp" || protocol == "udp")
     {
-        stralgo::strings ipport = stralgo::split(parts[1], ':', 1);
+        stralgo::strings ipport = stralgo::split(pair[1], ':', 1);
         if (ipport.size() != 2)
             return nullptr;
 
@@ -65,7 +76,7 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
     }
     else
     if (protocol == "http")
-        return std::shared_ptr<stream>(new http_stream(parts[1].c_str()));
+        return std::shared_ptr<stream>(new http_stream(pair[1].c_str()));
     else
         return nullptr;
 }
@@ -347,9 +358,9 @@ long pipe_stream::tell(void) const
 
 /// include socket headers
 
-#ifdef WINNT
+#if defined(__WINNT__)
 
-#include <winsock2.h>
+#include <Winsock2.h>
 
 static struct WSAFactory
 {
@@ -366,7 +377,7 @@ static struct WSAFactory
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define closesocket close
+#define closesocket ::close
 
 #endif
 

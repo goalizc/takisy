@@ -1,5 +1,5 @@
 #include <cstring>
-#include <takisy/core/file_system.h>
+#include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/ftp_client.h>
 
@@ -276,7 +276,7 @@ ftp_client::response ftp_client::size(const char* remotefile) const
 
 ftp_client::response ftp_client::put(const char* localfile) const
 {
-    return put(localfile, file_system::split(localfile).second.c_str());
+    return put(localfile, os::path::split(localfile).second.c_str());
 }
 
 ftp_client::response
@@ -322,7 +322,7 @@ ftp_client::response ftp_client::del(const char* remotefile) const
 
 ftp_client::response ftp_client::get(const char* remotefile) const
 {
-    return get(remotefile, file_system::split(remotefile).second.c_str());
+    return get(remotefile, os::path::split(remotefile).second.c_str());
 }
 
 ftp_client::response

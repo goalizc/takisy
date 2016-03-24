@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <takisy/cgl/basic/size.h>
+#include <takisy/cgl/font/font.h>
 
 struct stralgo
 {

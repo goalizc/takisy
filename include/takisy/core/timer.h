@@ -10,7 +10,7 @@ class timer
     class core;
     friend class core;
 
-    ENABLE_HANDLER(onTimer);
+    DECLARE_HANDLER(onTimer);
 
 public:
     timer(void);

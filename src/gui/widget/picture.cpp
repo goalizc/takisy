@@ -135,9 +135,9 @@ const class image& picture::image(void) const
     return impl_->image_;
 }
 
-widget::Size picture::optimal_size(void) const
+Size picture::optimal_size(void) const
 {
-    widget::Size optimal(0, 0);
+    Size optimal(0, 0);
 
     if (impl_->frame_index_ < impl_->image_.size())
     {

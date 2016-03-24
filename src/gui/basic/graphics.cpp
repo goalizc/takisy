@@ -1,4 +1,6 @@
+#include <takisy/core/sys.h>
 #include <takisy/core/algorithm.h>
+#include <takisy/algorithm/stralgo.h>
 #include <takisy/cgl/path/vertex_set.h>
 #include <takisy/cgl/path/builder/rectangle.h>
 #include <takisy/cgl/path/builder/ellipse.h>
@@ -376,6 +378,190 @@ void graphics::draw_path(const paths& paths, bool closed, const pen& pen)
 }
 
 void graphics::draw_text(const point& point,
+                         const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(point, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(const rect& rect,
+                         const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(rect, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(const point& p1, const point& p2,
+                         const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(p1, p2, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(const point& point, const size& size,
+                         const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(point, size,
+              stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(int x, int y, const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(x, y, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
+                         const char* string,
+                         const font& font, const color& color)
+{
+    draw_text(p1x, p1y, p2x, p2y,
+              stralgo::decode(string, sys::default_codec()).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(const point& point,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(point, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(const rect& rect,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(rect, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(const point& p1, const point& p2,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(p1, p2, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(const point& point, const size& size,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(point, size,
+              stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(int x, int y,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(x, y, stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
+                         const char* string,
+                         const font& font, const brush& brush)
+{
+    draw_text(p1x, p1y, p2x, p2y,
+              stralgo::decode(string, sys::default_codec()).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(const point& point,
+                         const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(point, stralgo::decode(string, codec).c_str(), font, color);
+}
+
+void graphics::draw_text(const rect& rect,
+                         const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(rect, stralgo::decode(string, codec).c_str(), font, color);
+}
+
+void graphics::draw_text(const point& p1, const point& p2,
+                         const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(p1, p2, stralgo::decode(string, codec).c_str(), font, color);
+}
+
+void graphics::draw_text(const point& point, const size& size,
+                         const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(point, size, stralgo::decode(string, codec).c_str(), font, color);
+}
+
+void graphics::draw_text(int x, int y, const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(x, y, stralgo::decode(string, codec).c_str(), font, color);
+}
+
+void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
+                         const char* string, const char* codec,
+                         const font& font, const color& color)
+{
+    draw_text(p1x, p1y, p2x, p2y, stralgo::decode(string, codec).c_str(),
+              font, color);
+}
+
+void graphics::draw_text(const point& point,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(point, stralgo::decode(string, codec).c_str(), font, brush);
+}
+
+void graphics::draw_text(const rect& rect,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(rect, stralgo::decode(string, codec).c_str(), font, brush);
+}
+
+void graphics::draw_text(const point& p1, const point& p2,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(p1, p2, stralgo::decode(string, codec).c_str(), font, brush);
+}
+
+void graphics::draw_text(const point& point, const size& size,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(point, size, stralgo::decode(string, codec).c_str(), font, brush);
+}
+
+void graphics::draw_text(int x, int y,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(x, y, stralgo::decode(string, codec).c_str(), font, brush);
+}
+
+void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
+                         const char* string, const char* codec,
+                         const font& font, const brush& brush)
+{
+    draw_text(p1x, p1y, p2x, p2y, stralgo::decode(string, codec).c_str(),
+              font, brush);
+}
+
+void graphics::draw_text(const point& point,
                          const wchar_t* string, const font& font,
                          const color& color)
 {
@@ -429,8 +615,7 @@ void graphics::draw_text(const rect& rect,
                          const brush& brush)
 {
     draw_text(rect.left, rect.top, rect.right, rect.bottom,
-              string, font,
-              brush);
+              string, font, brush);
 }
 
 void graphics::draw_text(const point& p1, const point& p2,
@@ -445,8 +630,7 @@ void graphics::draw_text(const point& point, const size& size,
                          const brush& brush)
 {
     draw_text(point.x, point.y, point.x + size.width, point.y + size.height,
-              string, font,
-              brush);
+              string, font, brush);
 }
 
 void graphics::draw_text(int x, int y,
@@ -480,7 +664,7 @@ void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
                 if (static_cast<int>(x + bitmap->left + bitmap->width) >= p2x)
                     if (!next_line())
                         return;
-                x = bitmap->render(*impl_, x, y, p2x, p2y, brush(x, y));
+                x = bitmap->render(*this, x, y, p2x, p2y, brush);
             }
             break;
         }

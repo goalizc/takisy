@@ -3,6 +3,7 @@
 
 #include <takisy/gui/basic/define.h>
 #include <takisy/gui/widget/widget.h>
+#include <takisy/gui/widget/scroll.h>
 
 class text_edit : public widget
 {
@@ -21,7 +22,7 @@ public:
     const char*    selected_text(const char* codec) const;
     const wchar_t* selected_text(void) const;
     unsigned int   caret(void) const;
-    struct margin  margin(void) const;
+    Margin  margin(void) const;
     int            margin_left(void) const;
     int            margin_top(void) const;
     int            margin_right(void) const;
@@ -45,13 +46,17 @@ public:
     unsigned int   blink_interval(void) const;
 
 public:
+    vertical_scroll& vertical_scroll(void);
+    horizontal_scroll& horizontal_scroll(void);
+
+public:
     void text(const char* text);
     void text(const char* text, const char* codec);
     void text(const wchar_t* text);
     void select(unsigned int offset, unsigned int count);
     void caret(unsigned int caret_position);
     void margin(int margin);
-    void margin(struct margin& margin);
+    void margin(const Margin& margin);
     void margin(int left, int top, int right, int bottom);
     void margin_left(int left);
     void margin_top(int top);
@@ -72,13 +77,11 @@ public:
     void foreground_color(const color& foreground_color);
     void foreground_brush(const brush_sptr& foreground_brush);
     void fixed_brush(bool fixed);
-    void scroll_color(const color& color);
-    void scroll_visible(bool visible);
     void max_length(unsigned int max_length);
     void blink_interval(unsigned int blink_interval);
 
 public:
-    void onSize(Size size) override;
+    void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
     bool onFocus(bool focus) override;
     bool onSetCursor(void) override;

@@ -25,12 +25,12 @@ public:
 public:
     bool load_uri(const char* uri);
     bool load_uri(const char* uri, const char* suffix);
-    bool load_file(const char* file_path);
-    bool load_file(const char* file_path, const char* suffix);
+    bool load_file(const char* filepath);
+    bool load_file(const char* filepath, const char* suffix);
     bool load_stream(const stream& stream);
     bool load_stream(const stream& stream, const char* suffix);
     bool dump_uri(const char* uri, const char* suffix) const;
-    bool dump_file(const char* file_path) const;
+    bool dump_file(const char* filepath) const;
     bool dump_stream(stream& stream, const char* suffix) const;
 
 public:

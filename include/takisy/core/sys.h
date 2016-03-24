@@ -87,11 +87,9 @@ public:
     static unsigned int screen_height(void);
     static rect         work_area(void);
 
-    static color        default_interface_color(void);
     static const char*  default_codec(void);
 
 public:
-    static void default_interface_color(const color& color);
     static void default_codec(const char* codec);
 };
 

@@ -4,19 +4,13 @@
 #include <string>
 #include <vector>
 #include <takisy/core/sys.h>
-#include <takisy/cgl/basic/point.h>
-#include <takisy/cgl/basic/size.h>
-#include <takisy/cgl/basic/rect.h>
+#include <takisy/gui/cross_platform_window.h>
+#include <takisy/gui/basic/color_scheme.h>
 #include <takisy/gui/basic/graphics.h>
 
 class widget
 {
     class implement;
-
-public:
-    typedef point Point;
-    typedef sizeu Size;
-    typedef rect  Rect;
 
 public:
     widget(void);
@@ -35,6 +29,7 @@ public:
     std::vector<widget*> children(void) const;
     template <typename ReturnType>
     ReturnType   attribute(const std::string& name) const;
+    class color_scheme* color_scheme(void);
 
     int          x(void) const;
     int          y(void) const;
@@ -69,9 +64,10 @@ public:
 public:
     bool father(widget* father);
     bool add(widget* widget);
-    void remove(widget* widget);
+    bool remove(widget* widget);
     template <typename ValueType>
     void attribute(const std::string& name, const ValueType& value);
+    class color_scheme* color_scheme(const class color_scheme* color_scheme);
 
     void x(int x);
     void y(int y);
@@ -103,8 +99,6 @@ public:
     void absolute_size(const Size& size);
 
 public:
-    void pure(bool pure);
-    void sendcmd(const char* cmdid);
     void repaint(void);
     void repaint(const Rect& rect);
     void capture(bool capture);
@@ -119,14 +113,35 @@ public:
 public:
     bool as_window(void);
     bool as_window(bool enable_alpha_channel);
-    bool as_topmost_window(void);
-    bool as_topmost_window(bool enable_alpha_channel);
+    bool as_window(const cross_platform_window& cpw);
+    bool as_window(cross_platform_window::Handle handle);
+    bool is_window(void) const;
+    cross_platform_window window(void) const;
 
 public:
+    virtual bool onAdding(widget* widget);
+    virtual void onAdd(widget* widget);
+    virtual bool onRemoving(widget* widget);
+    virtual void onRemove(widget* widget);
+
+    virtual bool onMoving(Point& point);
+    virtual void onMove(void);
+    virtual bool onSizing(Size& size);
+    virtual void onSize(void);
+    virtual bool onShowing(void);
     virtual void onShown(void);
+    virtual bool onHiding(void);
     virtual void onHidden(void);
-    virtual void onMove(Point point);
-    virtual void onSize(Size size);
+
+    virtual bool onChildMoving(widget* child, Point& point);
+    virtual void onChildMove(widget* child);
+    virtual bool onChildSizing(widget* child, Size& size);
+    virtual void onChildSize(widget* child);
+    virtual bool onChildShowing(widget* child);
+    virtual void onChildShown(widget* child);
+    virtual bool onChildHiding(widget* child);
+    virtual void onChildHidden(widget* child);
+
     virtual void onPaint(graphics graphics, Rect rect);
     virtual void onEndPaint(graphics graphics, Rect rect);
     virtual bool onFocus(bool focus);
@@ -136,7 +151,6 @@ public:
     virtual bool onKeyUp(sys::VirtualKey vkey);
     virtual bool onMouseDown(sys::MouseButton button, int times, Point point);
     virtual bool onClick(sys::MouseButton button, int times, Point point);
-    virtual bool onCommand(widget* widget, const char* cmdid);
     virtual bool onMouseUp(sys::MouseButton button, Point point);
     virtual bool onMouseMove(Point point);
     virtual bool onMouseEnter(void);
@@ -155,12 +169,8 @@ public:
 template <typename ReturnType>
 ReturnType widget::attribute(const std::string& name) const
 {
-    void* value = attribute(name);
-
-    if (value)
-        return *reinterpret_cast<ReturnType*>(value);
-
-    return ReturnType();
+    void*  value = attribute(name);
+    return value ? *reinterpret_cast<ReturnType*>(value) : ReturnType();
 }
 
 template <>

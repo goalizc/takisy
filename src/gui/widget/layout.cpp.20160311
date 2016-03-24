@@ -62,11 +62,11 @@ public:
     virtual void readapt(void) = 0;
 
 protected:
-    layout*      this_;
-    bool         readapting_;
-    Alignment    alignment_;
-    Margin       margin_;
-    unsigned int spacing_;
+    layout*       this_;
+    bool          readapting_;
+    Alignment     alignment_;
+    struct margin margin_;
+    unsigned int  spacing_;
 };
 
 layout::layout(void)
@@ -83,7 +83,7 @@ Alignment layout::alignment(void) const
     return impl_->alignment_;
 }
 
-Margin layout::margin(void) const
+struct margin layout::margin(void) const
 {
     return impl_->margin_;
 }
@@ -99,7 +99,7 @@ void layout::alignment(Alignment alignment)
     impl_->readapt_safe();
 }
 
-void layout::margin(const Margin& _margin)
+void layout::margin(const struct margin& _margin)
 {
     margin(_margin.left, _margin.top, _margin.right, _margin.bottom);
 }
@@ -122,28 +122,28 @@ void layout::margin(unsigned int left, unsigned int top,
 
 void layout::margin_left(unsigned int left)
 {
-    Margin _margin = margin();
+    struct margin _margin = margin();
     _margin.left = left;
     margin(_margin);
 }
 
 void layout::margin_top(unsigned int top)
 {
-    Margin _margin = margin();
+    struct margin _margin = margin();
     _margin.top = top;
     margin(_margin);
 }
 
 void layout::margin_right(unsigned int right)
 {
-    Margin _margin = margin();
+    struct margin _margin = margin();
     _margin.right = right;
     margin(_margin);
 }
 
 void layout::margin_bottom(unsigned int bottom)
 {
-    Margin _margin = margin();
+    struct margin _margin = margin();
     _margin.bottom = bottom;
     margin(_margin);
 }
@@ -166,19 +166,21 @@ void layout::onRemove(widget* widget)
         impl_->readapt_safe();
 }
 
-void layout::onSize(void)
+void layout::onSize(Size)
 {
     impl_->readapt_safe();
 }
 
-bool layout::onChildMoving(widget* child, Point& point)
+void layout::onChildMove(widget* child)
 {
-    return false;
+    if (child->visible())
+        impl_->readapt_safe();
 }
 
-bool layout::onChildSizing(widget* child, Size& size)
+void layout::onChildSize(widget* child)
 {
-    return false;
+    if (child->visible())
+        impl_->readapt_safe();
 }
 
 void layout::onChildShown(widget* child)
@@ -445,6 +447,67 @@ public:
     void readapt(void) override;
 
 private:
+    unsigned int column_width(unsigned int col, int limit) const
+    {
+        std::vector<widget*> widgets;
+        widget* widget = nullptr;
+
+        for (unsigned int i = 0; widget = item(col, i), i < row_; ++i)
+            if (widget && widget->visible())
+                widgets.push_back(widget);
+
+        bool  exists_maxminimal = false;
+        unsigned int maxminimal = limit;
+        for (class widget* widget : widgets)
+            if ((int)widget->minimal_width() > limit
+                  && widget->minimal_width() > maxminimal)
+                exists_maxminimal = true, maxminimal = widget->minimal_width();
+        if (exists_maxminimal)
+            return maxminimal;
+
+        bool  exists_maxmaximal = false;
+        unsigned int maxmaximal = 16;
+        for (class widget* widget : widgets)
+            if ((int)widget->maximal_width() < limit
+                  && widget->maximal_width() > maxmaximal)
+                exists_maxmaximal = true, maxmaximal = widget->maximal_width();
+        if (exists_maxmaximal)
+            return maxmaximal;
+
+        return limit;
+    }
+
+    unsigned int row_height(unsigned int row, int limit) const
+    {
+        std::vector<widget*> widgets;
+        widget* widget = nullptr;
+
+        for (unsigned int i = 0; widget = item(i, row), i < column_; ++i)
+            if (widget && widget->visible())
+                widgets.push_back(widget);
+
+        bool  exists_maxminimal = false;
+        unsigned int maxminimal = limit;
+        for (class widget* widget : widgets)
+            if ((int)widget->minimal_height() > limit
+                  && widget->minimal_height() > maxminimal)
+                exists_maxminimal = true, maxminimal = widget->minimal_height();
+        if (exists_maxminimal)
+            return maxminimal;
+
+        bool  exists_maxmaximal = false;
+        unsigned int maxmaximal = 16;
+        for (class widget* widget : widgets)
+            if ((int)widget->maximal_height() < limit
+                  && widget->maximal_height() > maxmaximal)
+                exists_maxmaximal = true, maxmaximal = widget->maximal_height();
+        if (exists_maxmaximal)
+            return maxmaximal;
+
+        return limit;
+    }
+
+private:
     unsigned int column_, row_;
     std::vector<widget*> items_;
 };
@@ -458,111 +521,108 @@ void grid_layout::implement::readapt(void)
     {
         int available = this_->width() - margin_.left - margin_.right
                         - spacing_ * (column_ - 1);
-        int remind  = column_;
-        int average = available / remind;
-        int offset  = margin_.left;
+        int limit  = available / (int)column_;
+        int offset = margin_.left;
+
+        std::vector<unsigned int> colwidth;
+        for (unsigned int i = 0; i < column_; ++i)
+        {
+            unsigned int w = column_width(i, limit);
+            colwidth.push_back(w);
+        }
+
+        int sum = std::accumulate(colwidth.begin(), colwidth.end(), 0);
+        if (sum < available)
+        {
+            int left = available - sum, remind = column_;
+            int average, i = 0;
+
+            while (--remind != 0)
+                colwidth[i++] += (average = left / remind), left -= average;
+        }
 
         for (unsigned int i = 0; i < column_; ++i)
         {
-            unsigned int colwidth = 0;
-            unsigned int width = average < 0 ? 0 : average;
+            unsigned int width  = colwidth[i];
+            widget*      widget = nullptr;
 
-            for (unsigned int j = 0; j < row_; ++j)
+            for (unsigned int j = 0; widget = item(i, j), j < row_; ++j)
             {
-                widget* w = item(i, j);
-                if (!w)
-                    continue;
-
-                w->width(width);
-
-                if (colwidth < w->width())
-                    colwidth = w->width();
-            }
-
-            for (unsigned int j = 0; j < row_; ++j)
-            {
-                widget* w = item(i, j);
-                if (!w)
-                    continue;
-
-                switch (get_alignment(w) & aHorizontal)
+                if (widget && widget->visible())
                 {
-                default:
-                case aLeft:
-                    w->x(offset);
-                    break;
-                case aCenter:
-                    w->x(offset + (colwidth - w->width()) / 2);
-                    break;
-                case aRight:
-                    w->x(offset + colwidth - w->width());
-                    break;
+                    widget->width(width);
+
+                    switch (get_alignment(widget) & aHorizontal)
+                    {
+                    default:
+                    case aLeft:
+                        widget->x(offset);
+                        break;
+                    case aCenter:
+                        widget->x(offset + (width - widget->width()) / 2);
+                        break;
+                    case aRight:
+                        widget->x(offset + width - widget->width());
+                        break;
+                    }
                 }
             }
 
-            if (--remind != 0)
-            {
-                available -= colwidth;
-                average    = available / remind;
-            }
-
-            offset += colwidth + spacing_;
+            offset += width + spacing_;
         }
     }
+
+    fflush(stdout);
 
     if (true)
     {
         int available = this_->height() - margin_.top - margin_.bottom
                         - spacing_ * (row_ - 1);
-        int remind  = row_;
-        int average = available / remind;
-        int offset  = margin_.top;
+        int limit  = available / (int)row_;
+        int offset = margin_.top;
+
+        std::vector<unsigned int> rowheight;
+        for (unsigned int i = 0;i < row_; ++i)
+            rowheight.push_back(row_height(i, limit));
+
+        int sum = std::accumulate(rowheight.begin(), rowheight.end(), 0);
+        if (sum < available)
+        {
+            int left = available - sum, remind = row_;
+            int average, i = 0;
+
+            while (--remind != 0)
+                rowheight[i++] += (average = left / remind), left -= average;
+        }
 
         for (unsigned int i = 0; i < row_; ++i)
         {
-            unsigned int rowheight = 0;
-            unsigned int height = average < 0 ? 0 : average;
+            unsigned int height = rowheight[i];
+            widget*      widget = nullptr;
 
-            for (unsigned int j = 0; j < column_; ++j)
+            for (unsigned int j = 0; widget = item(j, i), j < column_; ++j)
             {
-                widget* w = item(j, i);
-                if (!w)
-                    continue;
-
-                w->height(height);
-
-                if (rowheight < w->height())
-                    rowheight = w->height();
-            }
-
-            for (unsigned int j = 0; j < column_; ++j)
-            {
-                widget* w = item(j, i);
-                if (!w)
-                    continue;
-
-                switch (get_alignment(w) & aVertical)
+                if (widget && widget->visible())
                 {
-                default:
-                case aTop:
-                    w->y(offset);
-                    break;
-                case aCenter:
-                    w->y(offset + (rowheight - w->height()) / 2);
-                    break;
-                case aBottom:
-                    w->y(offset + rowheight - w->height());
-                    break;
+                    widget->height(height);
+
+                    switch (get_alignment(widget) & aVertical)
+                    {
+                    default:
+                    case aTop:
+                        widget->y(offset);
+                        break;
+                    case aCenter:
+                        widget->y(offset + (height - widget->height()) / 2);
+                        break;
+                    case aBottom:
+                        widget->y(offset + height - widget->height());
+                        break;
+                    }
                 }
             }
 
-            if (--remind != 0)
-            {
-                available -= rowheight;
-                average    = available / remind;
-            }
-
-            offset += rowheight + spacing_;
+            offset += height + spacing_;
         }
     }
 }
@@ -583,20 +643,29 @@ widget* grid_layout::item(unsigned int col, unsigned int row, widget* item)
     return impl_->item(col, row, item);
 }
 
-bool grid_layout::onAdding(widget* widget)
+void grid_layout::onAdd(widget* widget)
 {
     for (class widget*& item : impl_->items_)
+    {
         if (!item)
-            return item = widget, true;
+        {
+            item = widget;
+            layout::onAdd(widget);
+            return;
+        }
+    }
 
-    return false;
+    remove(widget);
 }
 
-bool grid_layout::onRemoving(widget* widget)
+void grid_layout::onRemove(widget* widget)
 {
     for (class widget*& item : impl_->items_)
+    {
         if (item == widget)
+        {
             item = nullptr;
-
-    return true;
+            layout::onRemove(widget);
+        }
+    }
 }

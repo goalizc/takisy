@@ -1,22 +1,23 @@
-#include <cstdarg>
-#include <cstring>
+#include <wchar.h>
+#include <stdarg.h>
+#include <string.h>
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 
 const char* stralgo::format(const char* format, ...)
 {
-    static constexpr long long kBufferCoutf        = 64;
+    static constexpr long long kBufferCount        = 64;
     static constexpr long long kOriginalBufferSize = 16;
     static struct buffer_t {
         long long size = kOriginalBufferSize;
         char*     data = new char [kOriginalBufferSize];
-    } buffers[kBufferCoutf];
+    } buffers[kBufferCount];
     static long long index = 0;
 
     va_list ap;
     va_start(ap, format);
 
-    struct buffer_t& buffer = buffers[++index %= kBufferCoutf];
+    struct buffer_t& buffer = buffers[++index %= kBufferCount];
     int length = vsnprintf(buffer.data, buffer.size, format, ap);
     if (buffer.size <= length)
     {

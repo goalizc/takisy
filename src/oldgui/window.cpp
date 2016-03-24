@@ -118,7 +118,7 @@ public:
                 .cbWndExtra    = 0,
                 .hInstance     = GetModuleHandle(nullptr),
                 .hIcon         = LoadIcon(nullptr, IDI_APPLICATION),
-                .hCursor       = nullptr,
+                .hCursor       = LoadCursor(nullptr, IDC_ARROW),
                 .hbrBackground = HBRUSH(COLOR_WINDOW),
                 .lpszMenuName  = nullptr,
                 .lpszClassName = sClassName,

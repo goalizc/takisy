@@ -4,7 +4,6 @@
 #include <takisy/core/sys.h>
 
 static std::string __sDefaultCodec = "utf-8";
-static color       __sDefaultInterfaceColor = color::sea_green();
 
 unsigned long long sys::rdtsc(void)
 {
@@ -40,19 +39,9 @@ rect sys::work_area(void)
     return RECT;
 }
 
-color sys::default_interface_color(void)
-{
-    return __sDefaultInterfaceColor;
-}
-
 const char* sys::default_codec(void)
 {
     return __sDefaultCodec.c_str();
-}
-
-void sys::default_interface_color(const color& color)
-{
-    __sDefaultInterfaceColor = color;
 }
 
 void sys::default_codec(const char* _codec)

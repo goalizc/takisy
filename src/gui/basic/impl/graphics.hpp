@@ -9,6 +9,7 @@
 class graphics::implement
 {
     friend class Window;
+    friend class cross_platform_window;
     friend class graphics;
 
     typedef canvas_bgra8 canvas_type;

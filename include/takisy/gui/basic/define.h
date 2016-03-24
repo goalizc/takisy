@@ -1,6 +1,14 @@
 #ifndef define_h_20160303
 #define define_h_20160303
 
+#include <takisy/cgl/basic/point.h>
+#include <takisy/cgl/basic/size.h>
+#include <takisy/cgl/basic/rect.h>
+
+typedef point Point;
+typedef sizeu Size;
+typedef rect  Rect;
+
 enum Alignment
 {
     // for compare operation
@@ -23,7 +31,7 @@ enum Alignment
     aPostpose    = aRightBottom,
 };
 
-struct margin
+struct Margin
 {
     int left, top, right, bottom;
 };

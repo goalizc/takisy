@@ -20,8 +20,8 @@ public:
         : width(width), height(height)
     {}
 
-    template <typename TT, typename T3>
-    inline t_size(const t_point<TT>& lt, const t_point<T3>& rb)
+    template <typename TT, typename TTT>
+    inline t_size(const t_point<TT>& lt, const t_point<TTT>& rb)
         : width(rb.x - lt.x), height(rb.y - lt.y)
     {}
 
@@ -64,23 +64,66 @@ public:
     }
 
 public:
+    inline value_type area(void) const
+    {
+        return width * height;
+    }
+
+public:
     inline void expand(value_type dx, value_type dy)
     {
         width  += dx;
         height += dy;
     }
 
+    template <typename TT>
+    inline void expand(const t_size<TT>& dsize)
+    {
+        width  += dsize.width;
+        height += dsize.height;
+    }
+
 public:
+    template <typename TT>
+    inline self_type operator+(const t_size<TT>& size) const
+    {
+        return self_type(width + size.width, height + size.height);
+    }
+
+    template <typename TT>
+    inline self_type operator-(const t_size<TT>& size) const
+    {
+        return self_type(width - size.width, height - size.height);
+    }
+
     template <typename NumbericType>
-    inline self_type operator*(NumbericType ratio)
+    inline self_type operator*(NumbericType ratio) const
     {
         return self_type(width * ratio, height * ratio);
     }
 
     template <typename NumbericType>
-    inline self_type operator/(NumbericType ratio)
+    inline self_type operator/(NumbericType ratio) const
     {
         return self_type(width / ratio, height / ratio);
+    }
+
+    template <typename TT>
+    inline self_type& operator+=(const t_size<TT>& size)
+    {
+        width  += size.width;
+        height += size.height;
+
+        return *this;
+    }
+
+    template <typename TT>
+    inline self_type& operator-=(const t_size<TT>& size)
+    {
+        width  -= size.width;
+        height -= size.height;
+
+        return *this;
     }
 
     template <typename NumbericType>

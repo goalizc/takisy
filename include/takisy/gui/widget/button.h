@@ -8,17 +8,11 @@ class button : public widget
 {
     class implement;
 
-    ENABLE_HANDLER(onClick);
+    DECLARE_HANDLER(onClick);
 
 public:
     button(void);
    ~button(void);
-
-public:
-    color color(void) const;
-
-public:
-    void color(const class color& color);
 
 public:
     void onPaint(graphics graphics, Rect rect) override;
@@ -59,7 +53,7 @@ public:
     void foreground_color(const class color& foreground_color);
 
 public:
-    void onSize(Size size) override;
+    void onSize(void) override;
 
 private:
     class implement* impl_;

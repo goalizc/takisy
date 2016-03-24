@@ -7,7 +7,6 @@
 #include <takisy/gui/widget/scroll.h>
 #include <takisy/gui/widget/text_edit.h>
 #include "../basic/text.hpp"
-#include "../basic/window.h"
 
 class text_edit::implement
 {
@@ -60,7 +59,7 @@ public:
 public:
     inline bool outside_caret(void) const
     {
-        widget::Point caret = text_.caret_point() + text_.offset();
+        Point caret = text_.caret_point() + text_.offset();
 
         return caret.x < 0
             || caret.x > text_.view().width
@@ -88,8 +87,8 @@ private:
     bool readonly_;
     brush_sptr background_brush_;
     text_edit* this_;
-    vertical_scroll vscroll_;
-    horizontal_scroll hscroll_;
+    class vertical_scroll vscroll_;
+    class horizontal_scroll hscroll_;
     bool focused_;
     bool caret_visible_;
     unsigned int blink_interval_;
@@ -119,14 +118,14 @@ text_edit::text_edit(const wchar_t* _text)
     impl_->text_.onCaretPositionChanged(
         [this](class text& text)
         {
-            Window* window = Window::find(forefather());
-            if (window)
-            {
-                point cp = text.caret_point() + text.offset();
-                cp = cp + screen_xy() - forefather()->xy();
-                cp.y += text.font()->emheight();
-                window->setCompositionWindow(cp.x, cp.y);
-            }
+            // Window* window = Window::find(forefather());
+            // if (window)
+            // {
+            //     point cp = text.caret_point() + text.offset();
+            //     cp = cp + screen_xy() - forefather()->xy();
+            //     cp.y += text.font()->emheight();
+            //     window->setCompositionWindow(cp.x, cp.y);
+            // }
         });
 }
 
@@ -161,7 +160,7 @@ unsigned int text_edit::caret(void) const
     return impl_->text_.caret();
 }
 
-struct margin text_edit::margin(void) const
+Margin text_edit::margin(void) const
 {
     return impl_->text_.margin();
 }
@@ -246,7 +245,7 @@ bool text_edit::fixed_brush(void) const
     return impl_->text_.fixed_brush();
 }
 
-widget::Point text_edit::offset(void) const
+Point text_edit::offset(void) const
 {
     return -impl_->text_.offset();
 }
@@ -269,6 +268,16 @@ unsigned int text_edit::max_length(void) const
 unsigned int text_edit::blink_interval(void) const
 {
     return impl_->blink_interval_;
+}
+
+vertical_scroll& text_edit::vertical_scroll(void)
+{
+    return impl_->vscroll_;
+}
+
+horizontal_scroll& text_edit::horizontal_scroll(void)
+{
+    return impl_->hscroll_;
 }
 
 void text_edit::text(const char* _text)
@@ -304,7 +313,7 @@ void text_edit::margin(int _margin)
     margin(_margin, _margin, _margin, _margin);
 }
 
-void text_edit::margin(struct margin& _margin)
+void text_edit::margin(const Margin& _margin)
 {
     margin(_margin.left, _margin.top, _margin.right, _margin.bottom);
 }
@@ -426,18 +435,6 @@ void text_edit::fixed_brush(bool fixed)
     repaint();
 }
 
-void text_edit::scroll_color(const color& color)
-{
-    impl_->vscroll_.color(color);
-    impl_->hscroll_.color(color);
-}
-
-void text_edit::scroll_visible(bool visible)
-{
-    impl_->vscroll_.visible(visible);
-    impl_->hscroll_.visible(visible);
-}
-
 void text_edit::max_length(unsigned int max_length)
 {
     impl_->text_.max_length(max_length);
@@ -451,11 +448,11 @@ void text_edit::blink_interval(unsigned int blink_interval)
     impl_->blink_interval_ = blink_interval;
 }
 
-void text_edit::onSize(Size size)
+void text_edit::onSize(void)
 {
-    impl_->vscroll_.rect(size.width - 7, 0, 7, size.height - 7);
-    impl_->hscroll_.rect(0, size.height - 7, size.width - 7, 7);
-    impl_->text_.view(size.width, size.height);
+    impl_->vscroll_.rect(width() - 7, 0, 7, height() - 7);
+    impl_->hscroll_.rect(0, height() - 7, width() - 7, 7);
+    impl_->text_.view(width(), height());
     impl_->update();
 }
 
@@ -475,8 +472,7 @@ void text_edit::onPaint(graphics graphics, Rect rect)
 
     if (impl_->caret_visible_)
     {
-        widget::Point caret = impl_->text_.caret_point()
-                            + impl_->text_.offset();
+        Point caret = impl_->text_.caret_point() + impl_->text_.offset();
 
         graphics.draw_line(caret.x, caret.y,
                            caret.x, caret.y + impl_->text_.font()->emheight(),
@@ -521,7 +517,7 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
     case sys::vkUp:
     case sys::vkDown:
         {
-            widget::Point point = impl_->text_.caret_point();
+            Point point = impl_->text_.caret_point();
             if (vkey == sys::vkUp)
                 point.y -= impl_->text_.line_height();
             else

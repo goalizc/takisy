@@ -1,0 +1,116 @@
+########################################################################
+# 目录定义
+########################################################################
+inc_dir         = /cygdrive/z/takisy/include
+src_dir         = /cygdrive/z/takisy/src
+lib_dir         = /cygdrive/z/takisy/lib
+bin_dir         =
+
+########################################################################
+# 输出
+########################################################################
+# app, static, shared
+target_type     = static
+target          = takisy_cygwin
+
+########################################################################
+# 外部库定义
+########################################################################
+ext_inc_dir     =  /usr/include/freetype2
+ext_lib_dir     =
+ext_lib         =
+
+########################################################################
+# 编译相关
+########################################################################
+cc              = gcc
+cxx             = g++
+ar              = ar
+strip           = strip
+rm              = rm -rf
+mkdir           = mkdir -p
+
+ccflags         =
+cxxflags        = -g -std=gnu++11 -Wall -Werror
+ldflags         =
+
+########################################################################
+# 相关目录
+########################################################################
+inc_dir        := $(addprefix -I,$(inc_dir))
+ext_inc_dir    := $(addprefix -I,$(ext_inc_dir))
+ext_lib_dir    := $(addprefix -L,$(ext_lib_dir))
+ext_lib        := $(addprefix -l,$(ext_lib))
+
+########################################################################
+# 相关文件
+########################################################################
+srcs = $(shell find $(src_dir) -type f -name "*.cpp")
+objs = $(srcs:%.cpp=%_cygwin.o)
+dpds = $(srcs:%.cpp=%_cygwin.d)
+
+########################################################################
+# 规则定义
+########################################################################
+ifeq ($(target_type),app)
+target := $(bin_dir)/$(target)
+else
+ifeq ($(target_type),static)
+target := $(lib_dir)/lib$(target).a
+else
+ifeq ($(target_type),shared)
+target := $(bin_dir)/lib$(target).dll
+endif # shared
+endif # static
+endif # app
+
+all: prebuild $(target) postbuild
+
+$(patsubst %.cpp,%_cygwin.o,$(srcs)): %_cygwin.o: %.cpp
+	@echo 'CPP_O   $@'
+	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -c "$<" -o $@
+
+-include $(dpds)
+
+$(patsubst %.cpp,%_cygwin.d,$(srcs)): %_cygwin.d: %.cpp
+	@echo 'CPP_D   $@'
+	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -MM "$<" | \
+	sed 's/^$(notdir $(basename $@))_cygwin.o/$(subst /,\/,$(basename $@))_cygwin.o $(subst /,\/,$(basename $@))_cygwin.d/' > $@
+
+$(target): $(objs)
+ifeq ($(target_type),app)
+	@echo 'CPP     $@'
+	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) $(ldflags) -o $@
+	@$(strip) $@:
+else
+ifeq ($(target_type),static)
+	@echo 'AR      $@'
+	@$(ar) rcs $@ $^
+else
+ifeq ($(target_type),shared)
+	@echo 'CPP_SO  $@'
+	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) -shared -o $@
+endif # shared
+endif # static
+endif # app
+
+clean:
+	@$(rm) $(dpds) $(objs) $(target)
+
+rebuild: clean
+	@make
+
+# Add PREBUILD event code here and add this target to target 'all'.
+prebuild:
+
+# Add POSTBUILD event code here and add this target to target 'all'.
+postbuild:
+
+help:
+	@echo 'Usage: make [target]'
+	@echo 'Targets:'
+	@echo ' *all                default target, same as "make"'
+	@echo '  clean              clean this project'
+	@echo '  rebuild            clean this project and then build it'
+	@echo '  prebuild           do prebuild event'
+	@echo '  postbuild          do postbuild event'
