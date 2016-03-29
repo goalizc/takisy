@@ -165,7 +165,7 @@ void ini::value::operator=(long long number)
 
 void ini::value::operator=(double number)
 {
-    value_ = stralgo::format("%.15g", number);
+    value_ = stralgo::format("%g", number);
 }
 
 void ini::value::operator=(const char* string)

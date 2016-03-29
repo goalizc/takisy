@@ -39,15 +39,15 @@ label::label(void)
     : label("")
 {}
 
-label::label(const char* text)
+label::label(const std::string& text)
     : label(text, sys::default_codec())
 {}
 
-label::label(const char* text, const char* codec)
-    : label(stralgo::decode(text, codec).c_str())
+label::label(const std::string& text, const std::string& codec)
+    : label(stralgo::decode(text, codec))
 {}
 
-label::label(const wchar_t* _text)
+label::label(const std::wstring& _text)
     : impl_(new implement(this))
 {
     text(_text);
@@ -58,14 +58,14 @@ label::~label(void)
     delete impl_;
 }
 
-const char* label::text(const char* codec) const
+std::string label::text(const std::string& codec) const
 {
-    return stralgo::encode(impl_->text_.content().c_str(), codec).c_str();
+    return stralgo::encode(impl_->text_.content(), codec);
 }
 
-const wchar_t* label::text(void) const
+std::wstring label::text(void) const
 {
-    return impl_->text_.content().c_str();
+    return impl_->text_.content();
 }
 
 Margin label::margin(void) const
@@ -143,17 +143,17 @@ Size label::optimal_size(void) const
     return impl_->text_.world().size();
 }
 
-void label::text(const char* _text)
+void label::text(const std::string& _text)
 {
     text(_text, sys::default_codec());
 }
 
-void label::text(const char* _text, const char* codec)
+void label::text(const std::string& _text, const std::string& codec)
 {
-    text(stralgo::decode(_text, codec).c_str());
+    text(stralgo::decode(_text, codec));
 }
 
-void label::text(const wchar_t* text)
+void label::text(const std::wstring& text)
 {
     impl_->text_.content(text);
     impl_->update();

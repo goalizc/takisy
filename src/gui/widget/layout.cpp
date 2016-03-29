@@ -173,12 +173,12 @@ void layout::onSize(void)
 
 bool layout::onChildMoving(widget* child, Point& point)
 {
-    return false;
+    return impl_->readapting_;
 }
 
 bool layout::onChildSizing(widget* child, Size& size)
 {
-    return false;
+    return impl_->readapting_;
 }
 
 void layout::onChildShown(widget* child)

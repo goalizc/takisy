@@ -4,26 +4,23 @@
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 
-const char* stralgo::format(const char* format, ...)
+std::string stralgo::format(const std::string& format, ...)
 {
-    static constexpr long long kBufferCount        = 64;
     static constexpr long long kOriginalBufferSize = 16;
     static struct buffer_t {
         long long size = kOriginalBufferSize;
         char*     data = new char [kOriginalBufferSize];
-    } buffers[kBufferCount];
-    static long long index = 0;
+    } buffer;
 
     va_list ap;
     va_start(ap, format);
 
-    struct buffer_t& buffer = buffers[++index %= kBufferCount];
-    int length = vsnprintf(buffer.data, buffer.size, format, ap);
+    int length = vsnprintf(buffer.data, buffer.size, format.c_str(), ap);
     if (buffer.size <= length)
     {
         delete [] buffer.data;
         buffer.data = new char [(buffer.size = length + 1)];
-        vsnprintf(buffer.data, buffer.size, format, ap);
+        vsnprintf(buffer.data, buffer.size, format.c_str(), ap);
     }
 
     va_end(ap);
@@ -31,13 +28,13 @@ const char* stralgo::format(const char* format, ...)
     return buffer.data;
 }
 
-int stralgo::unformat(const char* buffer, const char* format, ...)
+int stralgo::unformat(const std::string& buffer, const std::string& format, ...)
 {
     va_list ap;
     int count;
 
     va_start(ap, format);
-    count = vsscanf(buffer, format, ap);
+    count = vsscanf(buffer.c_str(), format.c_str(), ap);
     va_end(ap);
 
     return count;
@@ -143,26 +140,29 @@ stralgo::strings stralgo::codecs(void)
     return { "gbk", "utf-8" };
 }
 
-std::wstring stralgo::decode(const std::string& text,  const char* codec)
+std::wstring stralgo::decode(const std::string& text,
+                             const std::string& codec)
 {
-    if (strcmp(codec, "utf-8") == 0)
+    if (codec == "utf-8")
         return __utf82unicode(text);
     else
-    // if (strcmp(codec, "gbk") == 0)
+    // if (codec == "gbk")
         return __gbk2unicode(text);
 }
 
-std::string stralgo::encode(const std::wstring& text, const char* codec)
+std::string stralgo::encode(const std::wstring& text,
+                            const std::string& codec)
 {
-    if (strcmp(codec, "utf-8") == 0)
+    if (codec == "utf-8")
         return __unicode2utf8(text);
     else
-    // if (strcmp(codec, "gbk") == 0)
+    // if (codec == "gbk")
         return __unicode2gbk(text);
 }
 
 std::string stralgo::convert(const std::string& text,
-                             const char* text_codec, const char* ret_codec)
+                             const std::string& text_codec,
+                             const std::string& convert_codec)
 {
-    return encode(decode(text, text_codec), ret_codec);
+    return encode(decode(text, text_codec), convert_codec);
 }

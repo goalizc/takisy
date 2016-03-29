@@ -371,8 +371,14 @@ void widget::xy(Point _xy)
     if (impl_->father_)
         impl_->father_->onChildMove(this);
 
-    window().xy(_xy - window().client_offset());
-    repaint();
+    cross_platform_window::Handle handle = takisy::handleFromLPWIDGET(this);
+    if (handle)
+    {
+        cross_platform_window window(handle);
+        window.xy(_xy - window.client_offset());
+    }
+    else
+        repaint();
 }
 
 void widget::width(unsigned int width)

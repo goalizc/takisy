@@ -1,6 +1,7 @@
 #ifndef check_h_20160309
 #define check_h_20160309
 
+#include <string>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/widget.h>
 
@@ -31,7 +32,6 @@ public:
 
 public:
     void onSize(void) override;
-    bool onChildSizing(widget* child, Size& size) override;
     void onPaint(graphics graphics, Rect rect) override;
     bool onClick(sys::MouseButton button, int times, Point point) override;
 
@@ -44,28 +44,28 @@ class text_check : public check
     class implement;
 
 public:
-    text_check(const char* text);
-    text_check(const char* text, bool checked);
-    text_check(const char* text, const char* codec);
-    text_check(const char* text, const char* codec, bool checked);
-    text_check(const wchar_t* text);
-    text_check(const wchar_t* text, bool checked);
+    text_check(const std::string& text);
+    text_check(const std::string& text, bool checked);
+    text_check(const std::string& text, const std::string& codec);
+    text_check(const std::string& text, const std::string& codec, bool checked);
+    text_check(const std::wstring& text);
+    text_check(const std::wstring& text, bool checked);
    ~text_check(void);
 
 private:
     using check::content;
 
 public:
-    bool           word_wrap(void) const;
-    const char*    text(const char* codec) const;
-    const wchar_t* text(void) const;
-    const font&    font(void) const;
+    bool         word_wrap(void) const;
+    std::string  text(const std::string& codec) const;
+    std::wstring text(void) const;
+    const font&  font(void) const;
 
 public:
     void word_wrap(bool word_wrap);
-    void text(const char* text);
-    void text(const char* text, const char* codec);
-    void text(const wchar_t* text);
+    void text(const std::string& text);
+    void text(const std::string& text, const std::string& codec);
+    void text(const std::wstring& text);
     void font(const class font& font);
 
 private:

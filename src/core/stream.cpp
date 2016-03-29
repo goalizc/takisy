@@ -25,15 +25,10 @@ unsigned long stream::plunder(const stream& src)
 std::shared_ptr<stream> stream::from_uri(const char* uri)
 {
     stralgo::strings pair = stralgo::split(uri, "://", 1);
-    if (pair.size() != 2)
+    if (pair.size() == 1)
     {
-        if (!os::path::isfile(uri))
-            return nullptr;
-        else
-        {
-            pair.resize(2);
-            pair[0] = "file"; pair[1] = uri;
-        }
+        pair.resize(2);
+        pair[0] = "file"; pair[1] = uri;
     }
     else
         stralgo::lower(pair[0]);
@@ -715,7 +710,8 @@ public:
         set_if_not_exist(headers, "Connection", "Keep-Alive");
         std::string request_message =
             stralgo::format("%s\n%s\n%s",
-               stralgo::format("%s %s HTTP/1.0", method.c_str(), path.c_str()),
+               stralgo::format("%s %s HTTP/1.0",
+                               method.c_str(), path.c_str()).c_str(),
                headers2string(headers).c_str(),
                data.c_str());
 

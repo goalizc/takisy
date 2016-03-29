@@ -6,7 +6,13 @@
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/scroll.h>
 #include <takisy/gui/widget/text_edit.h>
+#include <takisy/gui/cross_platform_window.h>
 #include "../basic/text.hpp"
+
+namespace takisy
+{
+    cross_platform_window::Handle handleFromLPWIDGET(const widget* widget);
+}
 
 class text_edit::implement
 {
@@ -17,9 +23,9 @@ public:
 
 public:
     implement(text_edit* _this)
-        : readonly_(false), this_(_this)
-        , focused_(false), caret_visible_(false), blink_interval_(500)
-        , caret_timer_(100)
+        : this_(_this), border_color_(color::black(0))
+        , readonly_(false), focused_(false), caret_visible_(false)
+        , blink_interval_(500), caret_timer_(100)
     {
         text_.margin(3);
 
@@ -83,14 +89,13 @@ public:
     }
 
 private:
-    class text text_;
-    bool readonly_;
-    brush_sptr background_brush_;
     text_edit* this_;
+    class text text_;
+    color border_color_;
+    brush_sptr background_brush_;
     class vertical_scroll vscroll_;
     class horizontal_scroll hscroll_;
-    bool focused_;
-    bool caret_visible_;
+    bool readonly_, focused_, caret_visible_;
     unsigned int blink_interval_;
     timer caret_timer_;
 };
@@ -99,15 +104,15 @@ text_edit::text_edit(void)
     : text_edit(L"")
 {}
 
-text_edit::text_edit(const char* text)
+text_edit::text_edit(const std::string& text)
     : text_edit(text, sys::default_codec())
 {}
 
-text_edit::text_edit(const char* text, const char* codec)
-    : text_edit(stralgo::decode(text, codec).c_str())
+text_edit::text_edit(const std::string& text, const std::string& codec)
+    : text_edit(stralgo::decode(text, codec))
 {}
 
-text_edit::text_edit(const wchar_t* _text)
+text_edit::text_edit(const std::wstring& _text)
     : impl_(new implement(this))
 {
     attribute("intercept.onClick", true);
@@ -118,14 +123,29 @@ text_edit::text_edit(const wchar_t* _text)
     impl_->text_.onCaretPositionChanged(
         [this](class text& text)
         {
-            // Window* window = Window::find(forefather());
-            // if (window)
-            // {
-            //     point cp = text.caret_point() + text.offset();
-            //     cp = cp + screen_xy() - forefather()->xy();
-            //     cp.y += text.font()->emheight();
-            //     window->setCompositionWindow(cp.x, cp.y);
-            // }
+            cross_platform_window::Handle handle =
+                    takisy::handleFromLPWIDGET(forefather());
+            if (handle)
+            {
+                Point point = window_xy()
+                            + impl_->text_.caret_point()
+                            + impl_->text_.offset();
+
+            #if defined(__WINNT__) || defined(__CYGWIN__)
+                HIMC himc = ImmGetContext(handle);
+
+                LOGFONT lf;
+                if (ImmGetCompositionFont(himc, &lf))
+                    point.y -= lf.lfHeight;
+
+                COMPOSITIONFORM cf;
+                cf.dwStyle = CFS_POINT;
+                cf.ptCurrentPos.x = point.x;
+                cf.ptCurrentPos.y = point.y + impl_->text_.font()->emheight();
+
+                ImmSetCompositionWindow(himc, &cf);
+            #endif
+            }
         });
 }
 
@@ -134,25 +154,24 @@ text_edit::~text_edit(void)
     delete impl_;
 }
 
-const char* text_edit::text(const char* codec) const
+std::string text_edit::text(const std::string& codec) const
 {
-    return stralgo::encode(impl_->text_.content().c_str(), codec).c_str();
+    return stralgo::encode(impl_->text_.content(), codec);
 }
 
-const wchar_t* text_edit::text(void) const
+std::wstring text_edit::text(void) const
 {
-    return impl_->text_.content().c_str();
+    return impl_->text_.content();
 }
 
-const char* text_edit::selected_text(const char* codec) const
+std::string text_edit::selected_text(const std::string& codec) const
 {
-    return stralgo::encode(impl_->text_.selected_content().c_str(),
-                           codec).c_str();
+    return stralgo::encode(impl_->text_.selected_content(), codec);
 }
 
-const wchar_t* text_edit::selected_text(void) const
+std::wstring text_edit::selected_text(void) const
 {
-    return impl_->text_.selected_content().c_str();
+    return impl_->text_.selected_content();
 }
 
 unsigned int text_edit::caret(void) const
@@ -225,6 +244,11 @@ const class font& text_edit::font(void) const
     return *impl_->text_.font();
 }
 
+color text_edit::border_color(void) const
+{
+    return impl_->border_color_;
+}
+
 brush_sptr text_edit::selection_brush(void) const
 {
     return impl_->text_.selection_brush();
@@ -280,17 +304,17 @@ horizontal_scroll& text_edit::horizontal_scroll(void)
     return impl_->hscroll_;
 }
 
-void text_edit::text(const char* _text)
+void text_edit::text(const std::string& _text)
 {
     text(_text, sys::default_codec());
 }
 
-void text_edit::text(const char* _text, const char* codec)
+void text_edit::text(const std::string& _text, const std::string& codec)
 {
-    text(stralgo::decode(_text, codec).c_str());
+    text(stralgo::decode(_text, codec));
 }
 
-void text_edit::text(const wchar_t* text)
+void text_edit::text(const std::wstring& text)
 {
     impl_->text_.content(text);
     impl_->update();
@@ -396,36 +420,42 @@ void text_edit::font(const class font& font)
     impl_->update();
 }
 
-void text_edit::selection_color(const color& selection_color)
+void text_edit::border_color(const color& color)
 {
-    selection_brush(make_color_brush_sptr(selection_color));
-}
-
-void text_edit::selection_brush(const brush_sptr& selection_brush)
-{
-    impl_->text_.selection_brush(selection_brush);
+    impl_->border_color_ = color;
     repaint();
 }
 
-void text_edit::background_color(const color& background_color)
+void text_edit::selection_color(const color& color)
 {
-    background_brush(make_color_brush_sptr(background_color));
+    selection_brush(make_color_brush_sptr(color));
 }
 
-void text_edit::background_brush(const brush_sptr& background_brush)
+void text_edit::selection_brush(const brush_sptr& brush)
 {
-    impl_->background_brush_ = background_brush;
+    impl_->text_.selection_brush(brush);
     repaint();
 }
 
-void text_edit::foreground_color(const color& foreground_color)
+void text_edit::background_color(const color& color)
 {
-    foreground_brush(make_color_brush_sptr(foreground_color));
+    background_brush(make_color_brush_sptr(color));
 }
 
-void text_edit::foreground_brush(const brush_sptr& foreground_brush)
+void text_edit::background_brush(const brush_sptr& brush)
 {
-    impl_->text_.writing_brush(foreground_brush);
+    impl_->background_brush_ = brush;
+    repaint();
+}
+
+void text_edit::foreground_color(const color& color)
+{
+    foreground_brush(make_color_brush_sptr(color));
+}
+
+void text_edit::foreground_brush(const brush_sptr& brush)
+{
+    impl_->text_.writing_brush(brush);
     repaint();
 }
 
@@ -479,9 +509,12 @@ void text_edit::onPaint(graphics graphics, Rect rect)
                            make_lambda_brush(
                                 [&graphics](int x, int y) -> color
                                 {
-                                    return ~graphics.pixel(x, y);
+                                    return ~graphics.pixel(x, y).opaque();
                                 }));
     }
+
+    if (impl_->border_color_.a > 0)
+        graphics.draw_rectangle(client_rect().expand(-1), impl_->border_color_);
 }
 
 bool text_edit::onFocus(bool focus)
@@ -596,7 +629,7 @@ bool text_edit::onKeyPress(unsigned int chr)
             }
             break;
         case 'v':
-            if (!clip_text.empty() && impl_->text_.typewrite(clip_text.c_str()))
+            if (!clip_text.empty() && impl_->text_.typewrite(clip_text))
                 impl_->update();
             break;
         }

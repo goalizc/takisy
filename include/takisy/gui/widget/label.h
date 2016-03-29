@@ -1,6 +1,7 @@
 #ifndef label_h_20151208
 #define label_h_20151208
 
+#include <string>
 #include <takisy/gui/basic/define.h>
 #include <takisy/gui/widget/widget.h>
 
@@ -10,34 +11,34 @@ class label : public widget
 
 public:
     label(void);
-    label(const char* text);
-    label(const char* text, const char* codec);
-    label(const wchar_t* text);
+    label(const std::string& text);
+    label(const std::string& text, const std::string& codec);
+    label(const std::wstring& text);
    ~label(void);
 
 public:
-    const char*    text(const char* codec) const;
-    const wchar_t* text(void) const;
-    Margin         margin(void) const;
-    int            margin_left(void) const;
-    int            margin_top(void) const;
-    int            margin_right(void) const;
-    int            margin_bottom(void) const;
-    unsigned int   indent(void) const;
-    bool           word_wrap(void) const;
-    unsigned int   line_spacing(void) const;
-    unsigned int   word_spacing(void) const;
-    const font&    font(void) const;
-    brush_sptr     background_brush(void) const;
-    brush_sptr     foreground_brush(void) const;
-    bool           fixed_brush(void) const;
-    Alignment      alignment(void) const;
-    Size           optimal_size(void) const override;
+    std::string  text(const std::string& codec) const;
+    std::wstring text(void) const;
+    Margin       margin(void) const;
+    int          margin_left(void) const;
+    int          margin_top(void) const;
+    int          margin_right(void) const;
+    int          margin_bottom(void) const;
+    unsigned int indent(void) const;
+    bool         word_wrap(void) const;
+    unsigned int line_spacing(void) const;
+    unsigned int word_spacing(void) const;
+    const font&  font(void) const;
+    brush_sptr   background_brush(void) const;
+    brush_sptr   foreground_brush(void) const;
+    bool         fixed_brush(void) const;
+    Alignment    alignment(void) const;
+    Size         optimal_size(void) const override;
 
 public:
-    void text(const char* text);
-    void text(const char* text, const char* codec);
-    void text(const wchar_t* text);
+    void text(const std::string& text);
+    void text(const std::string& text, const std::string& codec);
+    void text(const std::wstring& text);
     void margin(int margin);
     void margin(const Margin& margin);
     void margin(int left, int top, int right, int bottom);

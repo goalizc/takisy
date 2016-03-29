@@ -99,15 +99,15 @@ text_button::text_button(void)
     : text_button(L"")
 {}
 
-text_button::text_button(const char* caption)
+text_button::text_button(const std::string& caption)
     : text_button(caption, sys::default_codec())
 {}
 
-text_button::text_button(const char* caption, const char* codec)
-    : text_button(stralgo::decode(caption, codec).c_str())
+text_button::text_button(const std::string& caption, const std::string& codec)
+    : text_button(stralgo::decode(caption, codec))
 {}
 
-text_button::text_button(const wchar_t* caption)
+text_button::text_button(const std::wstring& caption)
     : button(), impl_(new implement)
 {
     impl_->label_.xy(0, 0);
@@ -125,12 +125,12 @@ text_button::~text_button(void)
     delete impl_;
 }
 
-const char* text_button::caption(const char* codec) const
+std::string text_button::caption(const std::string& codec) const
 {
-    return stralgo::encode(impl_->label_.text(), codec).c_str();
+    return stralgo::encode(impl_->label_.text(), codec);
 }
 
-const wchar_t* text_button::caption(void) const
+std::wstring text_button::caption(void) const
 {
     return impl_->label_.text();
 }
@@ -155,17 +155,17 @@ Size text_button::optimal_size(void) const
     return impl_->label_.optimal_size();
 }
 
-void text_button::caption(const char* caption)
+void text_button::caption(const std::string& caption)
 {
-    impl_->label_.text(stralgo::decode(caption, sys::default_codec()).c_str());
+    impl_->label_.text(stralgo::decode(caption, sys::default_codec()));
 }
 
-void text_button::caption(const char* caption, const char* codec)
+void text_button::caption(const std::string& caption, const std::string& codec)
 {
-    impl_->label_.text(stralgo::decode(caption, codec).c_str());
+    impl_->label_.text(stralgo::decode(caption, codec));
 }
 
-void text_button::caption(const wchar_t* caption)
+void text_button::caption(const std::wstring& caption)
 {
     impl_->label_.text(caption);
 }

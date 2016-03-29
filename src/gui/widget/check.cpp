@@ -4,8 +4,6 @@
 #include <takisy/gui/widget/label.h>
 #include <takisy/gui/widget/check.h>
 
-#
-
 class check::implement
 {
     friend class check;
@@ -90,11 +88,6 @@ void check::onSize(void)
     }
 }
 
-bool check::onChildSizing(widget* child, Size& size)
-{
-    return false;
-}
-
 void check::onPaint(graphics graphics, Rect rect)
 {
     int   base = implement::box_size, bases1 = base - 1, bases3 = base - 3;
@@ -122,7 +115,7 @@ class text_check::implement
     friend class text_check;
 
 public:
-    implement(const wchar_t* text)
+    implement(const std::wstring& text)
         : label_(text)
     {
         label_.show();
@@ -132,27 +125,28 @@ private:
     label label_;
 };
 
-text_check::text_check(const char* text)
+text_check::text_check(const std::string& text)
     : text_check(text, sys::default_codec())
 {}
 
-text_check::text_check(const char* text, bool checked)
+text_check::text_check(const std::string& text, bool checked)
     : text_check(text, sys::default_codec(), checked)
 {}
 
-text_check::text_check(const char* text, const char* codec)
-    : text_check(stralgo::decode(text, codec).c_str())
+text_check::text_check(const std::string& text, const std::string& codec)
+    : text_check(stralgo::decode(text, codec))
 {}
 
-text_check::text_check(const char* text, const char* codec, bool checked)
-    : text_check(stralgo::decode(text, codec).c_str(), checked)
+text_check::text_check(const std::string& text, const std::string& codec,
+                       bool checked)
+    : text_check(stralgo::decode(text, codec), checked)
 {}
 
-text_check::text_check(const wchar_t* text)
+text_check::text_check(const std::wstring& text)
     : text_check(text, false)
 {}
 
-text_check::text_check(const wchar_t* text, bool checked)
+text_check::text_check(const std::wstring& text, bool checked)
     : check(nullptr, checked), impl_(new implement(text))
 {
     content(&impl_->label_);
@@ -168,12 +162,12 @@ bool text_check::word_wrap(void) const
     return impl_->label_.word_wrap();
 }
 
-const char* text_check::text(const char* codec) const
+std::string text_check::text(const std::string& codec) const
 {
     return const_cast<const label&>(impl_->label_).text(codec);
 }
 
-const wchar_t* text_check::text(void) const
+std::wstring text_check::text(void) const
 {
     return impl_->label_.text();
 }
@@ -190,21 +184,21 @@ void text_check::word_wrap(bool word_wrap)
     onSize();
 }
 
-void text_check::text(const char* text)
+void text_check::text(const std::string& text)
 {
     impl_->label_.text(text);
 
     onSize();
 }
 
-void text_check::text(const char* text, const char* codec)
+void text_check::text(const std::string& text, const std::string& codec)
 {
     impl_->label_.text(text, codec);
 
     onSize();
 }
 
-void text_check::text(const wchar_t* text)
+void text_check::text(const std::wstring& text)
 {
     impl_->label_.text(text);
 

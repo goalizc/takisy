@@ -33,14 +33,18 @@ struct stralgo
         __wrap__(toupper,  char, char); __wrap__(towupper,  wchar_t, wchar_t);
     #undef __wrap__
 
-    static const char* format(const char* format, ...);
-    static int       unformat(const char* buffer, const char* format, ...);
+    static std::string format(const std::string& format, ...);
+    static int       unformat(const std::string& buffer,
+                              const std::string& format, ...);
 
     static strings      codecs(void);
-    static std::wstring decode(const std::string&  text, const char* codec);
-    static std::string  encode(const std::wstring& text, const char* codec);
-    static std::string  convert(const std::string& text,
-                                const char* text_codec, const char* ret_codec);
+    static std::wstring decode(
+        const std::string& text, const std::string& codec);
+    static std::string  encode(
+        const std::wstring& text, const std::string& codec);
+    static std::string  convert(
+        const std::string& text,
+        const std::string& text_codec, const std::string& convert_codec);
 
     template <typename CharType>
     static std::vector<std::basic_string<CharType>>

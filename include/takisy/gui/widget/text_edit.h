@@ -1,6 +1,7 @@
 #ifndef text_edit_h_20151228
 #define text_edit_h_20151228
 
+#include <string>
 #include <takisy/gui/basic/define.h>
 #include <takisy/gui/widget/widget.h>
 #include <takisy/gui/widget/scroll.h>
@@ -11,48 +12,49 @@ class text_edit : public widget
 
 public:
     text_edit(void);
-    text_edit(const char* text);
-    text_edit(const char* text, const char* codec);
-    text_edit(const wchar_t* text);
+    text_edit(const std::string& text);
+    text_edit(const std::string& text, const std::string& codec);
+    text_edit(const std::wstring& text);
    ~text_edit(void);
 
 public:
-    const char*    text(const char* codec) const;
-    const wchar_t* text(void) const;
-    const char*    selected_text(const char* codec) const;
-    const wchar_t* selected_text(void) const;
-    unsigned int   caret(void) const;
-    Margin  margin(void) const;
-    int            margin_left(void) const;
-    int            margin_top(void) const;
-    int            margin_right(void) const;
-    int            margin_bottom(void) const;
-    unsigned int   indent(void) const;
-    Alignment      alignment(void) const;
-    bool           readonly(void) const;
-    bool           multiline(void) const;
-    bool           word_wrap(void) const;
-    unsigned int   line_spacing(void) const;
-    unsigned int   word_spacing(void) const;
-    const font&    font(void) const;
-    brush_sptr     selection_brush(void) const;
-    brush_sptr     background_brush(void) const;
-    brush_sptr     foreground_brush(void) const;
-    bool           fixed_brush(void) const;
-    Point          offset(void) const;
-    int            offset_x(void) const;
-    int            offset_y(void) const;
-    unsigned int   max_length(void) const;
-    unsigned int   blink_interval(void) const;
+    std::string  text(const std::string& codec) const;
+    std::wstring text(void) const;
+    std::string  selected_text(const std::string& codec) const;
+    std::wstring selected_text(void) const;
+    unsigned int caret(void) const;
+    Margin       margin(void) const;
+    int          margin_left(void) const;
+    int          margin_top(void) const;
+    int          margin_right(void) const;
+    int          margin_bottom(void) const;
+    unsigned int indent(void) const;
+    Alignment    alignment(void) const;
+    bool         readonly(void) const;
+    bool         multiline(void) const;
+    bool         word_wrap(void) const;
+    unsigned int line_spacing(void) const;
+    unsigned int word_spacing(void) const;
+    const font&  font(void) const;
+    color        border_color(void) const;
+    brush_sptr   selection_brush(void) const;
+    brush_sptr   background_brush(void) const;
+    brush_sptr   foreground_brush(void) const;
+    bool         fixed_brush(void) const;
+    Point        offset(void) const;
+    int          offset_x(void) const;
+    int          offset_y(void) const;
+    unsigned int max_length(void) const;
+    unsigned int blink_interval(void) const;
 
 public:
     vertical_scroll& vertical_scroll(void);
     horizontal_scroll& horizontal_scroll(void);
 
 public:
-    void text(const char* text);
-    void text(const char* text, const char* codec);
-    void text(const wchar_t* text);
+    void text(const std::string& text);
+    void text(const std::string& text, const std::string& codec);
+    void text(const std::wstring& text);
     void select(unsigned int offset, unsigned int count);
     void caret(unsigned int caret_position);
     void margin(int margin);
@@ -70,12 +72,13 @@ public:
     void line_spacing(unsigned int line_spacing);
     void word_spacing(unsigned int word_spacing);
     void font(const class font& font);
-    void selection_color(const color& selection_color);
-    void selection_brush(const brush_sptr& selection_brush);
-    void background_color(const color& background_color);
-    void background_brush(const brush_sptr& background_brush);
-    void foreground_color(const color& foreground_color);
-    void foreground_brush(const brush_sptr& foreground_brush);
+    void border_color(const color& color);
+    void selection_color(const color& color);
+    void selection_brush(const brush_sptr& brush);
+    void background_color(const color& color);
+    void background_brush(const brush_sptr& brush);
+    void foreground_color(const color& color);
+    void foreground_brush(const brush_sptr& brush);
     void fixed_brush(bool fixed);
     void max_length(unsigned int max_length);
     void blink_interval(unsigned int blink_interval);

@@ -312,7 +312,7 @@ public:
 
     bool dump(std::string& content, int level, int indent) const override
     {
-       content += nspace(level, indent) + stralgo::format("%.15g", value);
+       content += nspace(level, indent) + stralgo::format("%g", value);
 
         return true;
     }

@@ -76,13 +76,7 @@ public:
 
     inline void pixel(int x, int y, color color, unsigned char coverage)
     {
-        if (prect_.outside(x, y))
-            return;
-
-        if (mask_)
-            color *= mask_->pixel(x, y).a();
-
-        canvas_->pixel(x + poffset_.x, y + poffset_.y, color, coverage);
+        return pixel(x, y, color * coverage);
     }
 
     template <typename Path>

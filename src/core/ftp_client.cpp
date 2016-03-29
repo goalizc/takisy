@@ -17,9 +17,9 @@ public:
     }
 
 public:
-    inline void print(const char* msg) const
+    inline void print(const std::string& message) const
     {
-        printf("%s\n", msg);
+        printf("%s\n", message.c_str());
         fflush(stdout);
     }
 
@@ -43,7 +43,7 @@ public:
         }
 
         if (debug_)
-            print(line.c_str());
+            print(line);
 
         return line;
     }
@@ -81,15 +81,13 @@ public:
         return rsp;
     }
 
-    inline response sendcmd(const char* cmd)
+    inline response sendcmd(std::string cmd)
     {
         if (debug_)
             print(cmd);
 
-        cmd = stralgo::format("%s\r\n", cmd);
-
-        unsigned int cmdlength = strlen(cmd);
-        if (tcp_.write(cmd, cmdlength) != cmdlength)
+        cmd += "\r\n";
+        if (tcp_.write(cmd.data(), cmd.size()) != cmd.size())
             return response();
 
         return get_response();
@@ -102,13 +100,13 @@ public:
             return tcp_stream(-1);
 
         unsigned int u8[6] = {0};
-        if (stralgo::unformat(rsp.detail.c_str(), "%*[^(](%d,%d,%d,%d,%d,%d)",
+        if (stralgo::unformat(rsp.detail, "%*[^(](%d,%d,%d,%d,%d,%d)",
                               &u8[0], &u8[1], &u8[2], &u8[3],
                               &u8[4], &u8[5]) != 6)
             return tcp_stream(-1);
 
         return tcp_stream(
-            stralgo::format("%d.%d.%d.%d", u8[0], u8[1], u8[2], u8[3]),
+            stralgo::format("%d.%d.%d.%d", u8[0], u8[1], u8[2], u8[3]).c_str(),
             u8[4] << 8 | u8[5]);
     }
 

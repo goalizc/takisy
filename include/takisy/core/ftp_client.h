@@ -67,7 +67,7 @@ template <typename... Args>
 ftp_client::response
     ftp_client::sendcmd(const char* cmdformat, const Args&... args) const
 {
-    return sendcmd(stralgo::format(cmdformat, args...));
+    return sendcmd(stralgo::format(cmdformat, args...).c_str());
 }
 
 #endif // ftp_client_h_20150826

@@ -57,13 +57,13 @@ image::image(void)
 image::image(const char* uri)
     : image()
 {
-    load_stream(*stream::from_uri(uri));
+    load_uri(uri);
 }
 
 image::image(const char* uri, const char* suffix)
     : image()
 {
-    load_stream(*stream::from_uri(uri), suffix);
+    load_uri(uri, suffix);
 }
 
 image::image(const image& _image)
@@ -114,12 +114,22 @@ format* image::deregister_format(const char* suffix)
 
 bool image::load_uri(const char* uri)
 {
-    return load_stream(*stream::from_uri(uri));
+    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
+
+    if (!stream_ptr)
+        return false;
+
+    return load_stream(*stream_ptr);
 }
 
 bool image::load_uri(const char* uri, const char* suffix)
 {
-    return load_stream(*stream::from_uri(uri), suffix);
+    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
+
+    if (!stream_ptr)
+        return false;
+
+    return load_stream(*stream_ptr, suffix);
 }
 
 bool image::load_file(const char* filepath)

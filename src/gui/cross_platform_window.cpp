@@ -225,7 +225,6 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
 {
     struct window_information
     {
-        graphics graphics;
         std::pair<bool, Point> move;
         LPWIDGET focus, enter, cursor;
         struct Click {
@@ -275,11 +274,12 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             HDC     cdc = CreateCompatibleDC(hdc);
             HBITMAP bmp = CreateCompatibleBitmap(hdc, cr.width(), cr.height());
             windows_device_context wdc(cdc);
-
             SelectObject(cdc, bmp);
-            wndinfo.graphics.impl_->initialize(&wdc, cr);
-            onWidgetPaint(widget, wndinfo.graphics, cr);
-            wndinfo.graphics.impl_->paint();
+
+            graphics graphics;
+            graphics.impl_->initialize(&wdc, cr);
+            onWidgetPaint(widget, graphics, cr);
+            graphics.impl_->paint();
 
             SIZE          size  = { cr.width(), cr.height() };
             POINT         point = { 0, 0 };
@@ -425,10 +425,10 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
         break;
     }
 
-    return DefWindowProc(hwnd, msg, wparam, lparam);
-
     #undef onEventStop
     #undef onEvent
+
+    return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 
 LRESULT CALLBACK cross_platform_window::implement::windowProc
@@ -591,7 +591,7 @@ std::wstring cross_platform_window::caption(void) const
 
 std::string cross_platform_window::caption(const std::string& codec) const
 {
-    return stralgo::encode(caption(), codec.c_str());
+    return stralgo::encode(caption(), codec);
 }
 
 int cross_platform_window::x(void) const
@@ -700,7 +700,7 @@ void cross_platform_window::caption(const std::string& _caption)
 void cross_platform_window::caption(const std::string& _caption,
                                     const std::string& codec)
 {
-    caption(stralgo::decode(_caption.c_str(), codec.c_str()).c_str());
+    caption(stralgo::decode(_caption, codec));
 }
 
 void cross_platform_window::caption(const std::wstring& caption)
