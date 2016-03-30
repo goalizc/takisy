@@ -100,6 +100,8 @@ std::wstring __utf82unicode(const std::string& utf8)
             uchr |= (utf8[i++] & 0x3f) <<  6;
             uchr |=  utf8[i++] & 0x3f;
         }
+        else
+            break;
 
         result += uchr;
     }

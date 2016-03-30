@@ -143,6 +143,7 @@ void scroll::page(double page)
     if (impl_->page_ != page)
     {
         impl_->page_ = page;
+        value(value());
         repaint();
     }
 }

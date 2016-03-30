@@ -595,8 +595,6 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
 
 bool text_edit::onKeyPress(unsigned int chr)
 {
-    static std::wstring clip_text;
-
     if (sys::key_pressed(sys::vkControl))
     {
         chr += 'a' - 1;
@@ -615,13 +613,25 @@ bool text_edit::onKeyPress(unsigned int chr)
             if (!impl_->readonly_ && impl_->text_.undo())
                 impl_->update();
             break;
+    #if defined(__WINNT__) || defined(__CYGWIN__)
         case 'c':
         case 'x':
+            if (OpenClipboard(nullptr))
             {
-                std::wstring selected_text = impl_->text_.selected_content();
+                const text_edit* constthis = const_cast<const text_edit*>(this);
+                std::string selected_text  = constthis->selected_text("gbk");
                 if (!selected_text.empty())
-                    clip_text = selected_text;
-                if (chr == 'x')
+                {
+                    EmptyClipboard();
+                    HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT,
+                                               selected_text.size() + 1);
+                    strncpy(reinterpret_cast<char*>(GlobalLock(data)),
+                            selected_text.c_str(), selected_text.size());
+                    GlobalUnlock(data);
+                    SetClipboardData(CF_TEXT, data);
+                    CloseClipboard();
+                }
+                if (!impl_->readonly_ && chr == 'x')
                 {
                     impl_->text_.erase(0);
                     impl_->update();
@@ -629,13 +639,25 @@ bool text_edit::onKeyPress(unsigned int chr)
             }
             break;
         case 'v':
-            if (!clip_text.empty() && impl_->text_.typewrite(clip_text))
-                impl_->update();
+            if (!impl_->readonly_ && OpenClipboard(nullptr))
+            {
+                if (IsClipboardFormatAvailable(CF_TEXT))
+                {
+                    HANDLE data = GetClipboardData(CF_TEXT);
+                    std::wstring text = stralgo::decode(
+                            reinterpret_cast<char*>(GlobalLock(data)), "gbk");
+                    if (impl_->text_.typewrite(text))
+                        impl_->update();
+                    GlobalUnlock(data);
+                }
+                CloseClipboard();
+            }
             break;
+    #endif
         }
     }
     else
-    if (chr == 8 && !impl_->readonly_) // backspace
+    if (!impl_->readonly_ && chr == 8) // backspace
     {
         impl_->text_.erase(-1);
         impl_->update();

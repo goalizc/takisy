@@ -358,11 +358,12 @@ void widget::xy(int x, int y)
 
 void widget::xy(Point _xy)
 {
-    if (_xy == xy())
-        return;
     if (!onMoving(_xy))
         return;
     if (impl_->father_ && !impl_->father_->onChildMoving(this, _xy))
+        return;
+
+    if (_xy == xy())
         return;
 
     impl_->rect_ = impl_->rect_.move(_xy);
@@ -398,6 +399,11 @@ void widget::size(unsigned int width, unsigned int height)
 
 void widget::size(Size _size)
 {
+    if (!onSizing(_size))
+        return;
+    if (impl_->father_ && !impl_->father_->onChildSizing(this, _size))
+        return;
+
     _size.width  = algorithm::clamp(_size.width,
             impl_->minimal_.width, impl_->maximal_.width);
     _size.height = algorithm::clamp(_size.height,
@@ -408,10 +414,6 @@ void widget::size(Size _size)
         _size.height = 0;
 
     if (_size == size())
-        return;
-    if (!onSizing(_size))
-        return;
-    if (impl_->father_ && !impl_->father_->onChildSizing(this, _size))
         return;
 
     impl_->rect_.size(_size);

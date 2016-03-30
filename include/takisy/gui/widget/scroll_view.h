@@ -19,7 +19,12 @@ public:
 
 public:
     void onSize(void) override;
+    bool onChildMoving(widget* child, Point& point) override;
     void onChildSize(widget* child) override;
+    bool onSetCursor(void) override;
+    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onMouseUp(sys::MouseButton button, Point point) override;
+    bool onMouseMove(Point point) override;
     bool onMouseWheel(int delta, Point point) override;
 
 private:
