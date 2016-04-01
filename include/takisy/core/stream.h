@@ -16,9 +16,10 @@ public:
     virtual ~stream(void) {}
 
 public:
-    virtual bool working(void) const = 0;
     virtual bool seek(long offset, SeekType seek_type) const = 0;
-    virtual long tell(void) const = 0;
+    virtual long tell(void) const = 0; // -1: invalid position
+    virtual bool readable(void) const = 0;
+    virtual bool writable(void) const = 0;
     virtual unsigned int read(void* buffer, unsigned int size) const = 0;
     virtual unsigned int write(const void* buffer, unsigned int size) = 0;
 
@@ -56,9 +57,10 @@ public:
     buffer_stream& operator=(const buffer_stream& bs);
 
 public:
-    virtual bool working(void) const override;
     virtual bool seek(long offset, SeekType seek_type) const override;
     virtual long tell(void) const override;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
     virtual unsigned int read(void* buffer, unsigned int size) const override;
     virtual unsigned int write(const void* buffer, unsigned int size) override;
 
@@ -83,9 +85,10 @@ public:
     void close(void);
 
 public:
-    virtual bool working(void) const override;
     virtual bool seek(long offset, SeekType seek_type) const override;
     virtual long tell(void) const override;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
     virtual unsigned int read(void* buffer, unsigned int size) const override;
     virtual unsigned int write(const void* buffer, unsigned int size) override;
 
@@ -109,13 +112,12 @@ public:
     void close(void);
 
 public:
-    virtual bool working(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
-
-private:
     virtual bool seek(long, SeekType) const override final;
     virtual long tell(void) const override final;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
+    virtual unsigned int read(void* buffer, unsigned int size) const override;
+    virtual unsigned int write(const void* buffer, unsigned int size) override;
 
 private:
     class implement* impl_;
@@ -137,13 +139,12 @@ public:
     void close(void);
 
 public:
-    virtual bool working(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
-
-private:
     virtual bool seek(long, SeekType) const override final;
     virtual long tell(void) const override final;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
+    virtual unsigned int read(void* buffer, unsigned int size) const override;
+    virtual unsigned int write(const void* buffer, unsigned int size) override;
 
 private:
     class implement* impl_;
@@ -174,13 +175,12 @@ public:
     struct endpoint read_endpoint(void) const;
 
 public:
-    virtual bool working(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
-
-private:
     virtual bool seek(long, SeekType) const override final;
     virtual long tell(void) const override final;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
+    virtual unsigned int read(void* buffer, unsigned int size) const override;
+    virtual unsigned int write(const void* buffer, unsigned int size) override;
 
 private:
     class implement* impl_;
@@ -212,17 +212,16 @@ public:
     const char* header(const char* key) const;
 
 public:
-    virtual bool working(void) const override;
+    virtual bool seek(long, SeekType) const override final;
     virtual long tell(void) const override;
+    virtual bool readable(void) const override;
+    virtual bool writable(void) const override;
     virtual unsigned int read(void* buffer, unsigned int size) const override;
+    virtual unsigned int write(const void*, unsigned int) override final;
 
 public:
     static std::string encode_query(const dict& query);
     static dict        decode_query(const std::string& query);
-
-private:
-    virtual bool seek(long, SeekType) const override final;
-    virtual unsigned int write(const void*, unsigned int) override final;
 
 private:
     class implement* impl_;

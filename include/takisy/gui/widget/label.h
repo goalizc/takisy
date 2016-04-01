@@ -17,7 +17,6 @@ public:
    ~label(void);
 
 public:
-    std::string  text(const std::string& codec) const;
     std::wstring text(void) const;
     Margin       margin(void) const;
     int          margin_left(void) const;

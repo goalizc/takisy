@@ -58,11 +58,6 @@ label::~label(void)
     delete impl_;
 }
 
-std::string label::text(const std::string& codec) const
-{
-    return stralgo::encode(impl_->text_.content(), codec);
-}
-
 std::wstring label::text(void) const
 {
     return impl_->text_.content();

@@ -162,11 +162,6 @@ bool text_check::word_wrap(void) const
     return impl_->label_.word_wrap();
 }
 
-std::string text_check::text(const std::string& codec) const
-{
-    return const_cast<const label&>(impl_->label_).text(codec);
-}
-
 std::wstring text_check::text(void) const
 {
     return impl_->label_.text();

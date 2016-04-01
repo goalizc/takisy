@@ -154,19 +154,9 @@ text_edit::~text_edit(void)
     delete impl_;
 }
 
-std::string text_edit::text(const std::string& codec) const
-{
-    return stralgo::encode(impl_->text_.content(), codec);
-}
-
 std::wstring text_edit::text(void) const
 {
     return impl_->text_.content();
-}
-
-std::string text_edit::selected_text(const std::string& codec) const
-{
-    return stralgo::encode(impl_->text_.selected_content(), codec);
 }
 
 std::wstring text_edit::selected_text(void) const
@@ -618,15 +608,14 @@ bool text_edit::onKeyPress(unsigned int chr)
         case 'x':
             if (OpenClipboard(nullptr))
             {
-                const text_edit* constthis = const_cast<const text_edit*>(this);
-                std::string selected_text  = constthis->selected_text("gbk");
-                if (!selected_text.empty())
+                std::string text = stralgo::encode(selected_text(), "gbk");
+                if (!text.empty())
                 {
                     EmptyClipboard();
                     HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT,
-                                               selected_text.size() + 1);
+                                               text.size() + 1);
                     strncpy(reinterpret_cast<char*>(GlobalLock(data)),
-                            selected_text.c_str(), selected_text.size());
+                            text.c_str(), text.size());
                     GlobalUnlock(data);
                     SetClipboardData(CF_TEXT, data);
                     CloseClipboard();

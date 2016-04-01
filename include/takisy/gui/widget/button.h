@@ -38,7 +38,6 @@ public:
    ~text_button(void);
 
 public:
-    std::string  caption(const std::string& codec) const;
     std::wstring caption(void) const;
     unsigned int margin(void) const;
     const font&  font(void) const;

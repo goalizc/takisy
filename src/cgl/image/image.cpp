@@ -155,7 +155,7 @@ bool image::load_stream(const stream& stream)
         { stretchy_buffer<char> skip_data(n);
           reinterpret_cast<class stream*>(user)->read(skip_data.data(), n); };
     callback.eof  = [](void* user) -> int
-        { return reinterpret_cast<class stream*>(user)->working(); };
+        { return reinterpret_cast<class stream*>(user)->readable(); };
 
     stbi_uc* data = stbi_load_from_callbacks(&callback,
                                              &const_cast<class stream&>(stream),

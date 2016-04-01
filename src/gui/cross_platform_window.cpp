@@ -344,7 +344,8 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             ci.pretime = GetTickCount();
 
             if (!onEvent(ht_widget, onMouseDown, button, ci.times, ht_point)
-                && button == sys::mbLButton)
+                && button == sys::mbLButton
+                && (GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_LAYERED))
             {
                 wndinfo.move = std::make_pair(true, cursor_point());
                 SetCapture(hwnd);

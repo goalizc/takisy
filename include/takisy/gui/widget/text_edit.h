@@ -18,9 +18,7 @@ public:
    ~text_edit(void);
 
 public:
-    std::string  text(const std::string& codec) const;
     std::wstring text(void) const;
-    std::string  selected_text(const std::string& codec) const;
     std::wstring selected_text(void) const;
     unsigned int caret(void) const;
     Margin       margin(void) const;

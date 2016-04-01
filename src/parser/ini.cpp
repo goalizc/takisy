@@ -43,7 +43,7 @@ bool ini::load(const stream& stream)
 {
     std::string section_name = "default";
 
-    while (stream.working())
+    while (stream.readable())
     {
         std::string line;
         char ch;

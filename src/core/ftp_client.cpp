@@ -65,7 +65,7 @@ public:
             while (true)
             {
                 line = readline(tcp_);
-                if (!tcp_.working())
+                if (!tcp_.readable())
                     return rsp;
 
                 if (status == line.substr(0, 3) && line[3] == ' ')
@@ -157,7 +157,7 @@ ftp_client::response ftp_client::sendcmd(const char* cmd) const
 
 ftp_client::response ftp_client::login(void) const
 {
-    return login("anonymous", "pswd@ftpclient");
+    return login("anonymous", "pswd@ftp_client");
 }
 
 ftp_client::response
@@ -222,7 +222,7 @@ ftp_client::response ftp_client::list(const char* path, stream& ostream) const
     response rsp;
 
     tcp_stream tcp = impl_->create_tcp_stream_from_pasv();
-    if (!tcp.working())
+    if (!tcp.readable())
     {
         rsp.status[0] = 0;
         rsp.detail    = "Create list data connection failed.";
@@ -288,15 +288,15 @@ ftp_client::response
 {
     response rsp;
 
-    if (!istream.working())
+    if (!istream.readable())
     {
         rsp.status[0] = 0;
-        rsp.detail    = "Invalidate input stream.";
+        rsp.detail    = "Invalid input stream.";
         return rsp;
     }
 
     tcp_stream tcp = impl_->create_tcp_stream_from_pasv();
-    if (!tcp.working())
+    if (!tcp.writable())
     {
         rsp.status[0] = 0;
         rsp.detail    = "Create stor data connection failed.";
@@ -336,10 +336,10 @@ ftp_client::response
 {
     response rsp;
 
-    if (!ostream.working())
+    if (!ostream.writable())
     {
         rsp.status[0] = 0;
-        rsp.detail    = "Invalidate output stream.";
+        rsp.detail    = "Invalid output stream.";
         return rsp;
     }
 
@@ -350,7 +350,7 @@ ftp_client::response
     unsigned long total = atol(rsp.detail.c_str());
 
     tcp_stream tcp = impl_->create_tcp_stream_from_pasv();
-    if (!tcp.working())
+    if (!tcp.readable())
     {
         rsp.status[0] = 0;
         rsp.detail    = "Create retr data connection failed.";

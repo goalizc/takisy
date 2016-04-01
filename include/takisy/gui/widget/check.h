@@ -57,7 +57,6 @@ private:
 
 public:
     bool         word_wrap(void) const;
-    std::string  text(const std::string& codec) const;
     std::wstring text(void) const;
     const font&  font(void) const;
 

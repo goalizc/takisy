@@ -1,5 +1,5 @@
 #include <stdexcept>
-#include <takisy/core/os.h>
+#include <takisy/core/ftp_client.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/stream.h>
 
@@ -30,11 +30,8 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
         pair.resize(2);
         pair[0] = "file"; pair[1] = uri;
     }
-    else
-        stralgo::lower(pair[0]);
 
-    std::string protocol = stralgo::lower(pair[0]);
-
+    std::string protocol = stralgo::lowerc(pair[0]);
     if (protocol == "buffer")
         return std::shared_ptr<stream>
                   (new buffer_stream(pair[1].c_str(), pair[1].size()));
@@ -68,6 +65,51 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
 
             return std::shared_ptr<stream>(udp_stream);
         }
+    }
+    else
+    if (protocol == "ftp")
+    {
+        stralgo::strings ap = stralgo::split(pair[1], '/', 1);
+        if (ap.size() != 2)
+            return nullptr;
+
+        stralgo::strings up_hp = stralgo::split(ap[0], '@');
+        std::string up, hp;
+        if (up_hp.size() == 1)
+            hp = up_hp[0];
+        else
+        if (up_hp.size() == 2)
+            up = up_hp[0], hp = up_hp[1];
+        else
+            return nullptr;
+
+        stralgo::strings host_port = stralgo::split(hp, ':');
+        std::string host;
+        unsigned short port;
+        if (host_port.size() == 1)
+            host = host_port[0], port = 21;
+        else
+        if (host_port.size() == 2)
+            host = host_port[0], port = atol(host_port[1].c_str());
+        else
+            return nullptr;
+
+        ftp_client ftp(host.c_str(), port);
+        if (!up.empty())
+        {
+            stralgo::strings user_password = stralgo::split(up, ':');
+
+            if (user_password.size() != 2
+                || ftp.login(user_password[0].c_str(),
+                             user_password[1].c_str()).status[0] != '2')
+                return nullptr;
+        }
+
+        std::shared_ptr<stream> shared_ptr(new buffer_stream);
+        if (ftp.get(ap[1].c_str(), *shared_ptr).status[0] != '2')
+            return nullptr;
+
+        return shared_ptr;
     }
     else
     if (protocol == "http")
@@ -134,11 +176,6 @@ buffer_stream& buffer_stream::operator=(const buffer_stream& bs)
     return *this;
 }
 
-bool buffer_stream::working(void) const
-{
-    return impl_->tell_ < impl_->buffer_.size();
-}
-
 bool buffer_stream::seek(long offset, SeekType seek_type) const
 {
     int tell = -1;
@@ -161,6 +198,16 @@ long buffer_stream::tell(void) const
     return impl_->tell_;
 }
 
+bool buffer_stream::readable(void) const
+{
+    return impl_->tell_ < impl_->buffer_.size();
+}
+
+bool buffer_stream::writable(void) const
+{
+    return true;
+}
+
 unsigned int buffer_stream::read(void* buffer, unsigned int size) const
 {
     if (size > impl_->buffer_.size() - impl_->tell_)
@@ -169,7 +216,9 @@ unsigned int buffer_stream::read(void* buffer, unsigned int size) const
     unsigned char* buffer_uc = reinterpret_cast<unsigned char*>(buffer);
 
     for (unsigned int i = 0; i < size; ++i)
-        buffer_uc[i] = impl_->buffer_[impl_->tell_++];
+        buffer_uc[i] = impl_->buffer_[impl_->tell_ + i];
+
+    impl_->tell_ += size;
 
     return size;
 }
@@ -234,11 +283,6 @@ void file_stream::close(void)
     impl_->file_ = nullptr;
 }
 
-bool file_stream::working(void) const
-{
-    return impl_->file_ && !feof(impl_->file_);
-}
-
 bool file_stream::seek(long offset, SeekType seek_type) const
 {
     switch (seek_type)
@@ -253,6 +297,18 @@ bool file_stream::seek(long offset, SeekType seek_type) const
 long file_stream::tell(void) const
 {
     return ftell(impl_->file_);
+}
+
+// TODO:
+bool file_stream::readable(void) const
+{
+    return impl_->file_ && !feof(impl_->file_);
+}
+
+// TODO:
+bool file_stream::writable(void) const
+{
+    return true;
 }
 
 unsigned int file_stream::read(void* buffer, unsigned int size) const
@@ -326,9 +382,26 @@ void pipe_stream::close(void)
     impl_->pipe_ = nullptr;
 }
 
-bool pipe_stream::working(void) const
+bool pipe_stream::seek(long, SeekType) const
+{
+    return false;
+}
+
+long pipe_stream::tell(void) const
+{
+    return -1;
+}
+
+// TODO:
+bool pipe_stream::readable(void) const
 {
     return impl_->pipe_ && !feof(impl_->pipe_);
+}
+
+// TODO:
+bool pipe_stream::writable(void) const
+{
+    return impl_->pipe_;
 }
 
 unsigned int pipe_stream::read(void* buffer, unsigned int size) const
@@ -341,19 +414,9 @@ unsigned int pipe_stream::write(const void* buffer, unsigned int size)
     return fwrite(buffer, 1, size, impl_->pipe_);
 }
 
-bool pipe_stream::seek(long, SeekType) const
-{
-    throw std::runtime_error("pipe_stream::seek is unused member function.");
-}
-
-long pipe_stream::tell(void) const
-{
-    throw std::runtime_error("pipe_stream::tell is unused member function.");
-}
-
 /// include socket headers
 
-#if defined(__WINNT__)
+#if defined(__WINNT__) || defined(__CYGWIN__)
 
 #include <Winsock2.h>
 
@@ -456,7 +519,22 @@ void tcp_stream::close(void)
     impl_->fd_ = -1;
 }
 
-bool tcp_stream::working(void) const
+bool tcp_stream::seek(long offset, SeekType seek_type) const
+{
+    return false;
+}
+
+long tcp_stream::tell(void) const
+{
+    return -1;
+}
+
+bool tcp_stream::readable(void) const
+{
+    return impl_->fd_ != -1;
+}
+
+bool tcp_stream::writable(void) const
 {
     return impl_->fd_ != -1;
 }
@@ -500,16 +578,6 @@ unsigned int tcp_stream::write(const void* buffer, unsigned int size)
     }
 
     return written_length;
-}
-
-bool tcp_stream::seek(long offset, SeekType seek_type) const
-{
-    throw std::runtime_error("tcp_stream::seek is unused member function.");
-}
-
-long tcp_stream::tell(void) const
-{
-    throw std::runtime_error("tcp_stream::tell is unused member function.");
 }
 
 /////////////////////////////////////////
@@ -608,7 +676,22 @@ struct udp_stream::endpoint udp_stream::read_endpoint(void) const
     };
 }
 
-bool udp_stream::working(void) const
+bool udp_stream::seek(long, SeekType) const
+{
+    return false;
+}
+
+long udp_stream::tell(void) const
+{
+    return -1;
+}
+
+bool udp_stream::readable(void) const
+{
+    return impl_->fd_ != -1;
+}
+
+bool udp_stream::writable(void) const
 {
     return impl_->fd_ != -1;
 }
@@ -644,16 +727,6 @@ unsigned int udp_stream::write(const void* buffer, unsigned int size)
     return written_length;
 }
 
-bool udp_stream::seek(long, SeekType) const
-{
-    throw std::runtime_error("udp_stream::seek is unused member function.");
-}
-
-long udp_stream::tell(void) const
-{
-    throw std::runtime_error("udp_stream::tell is unused member function.");
-}
-
 /////////////////////////////////////////
 //
 //  ### HTTP Stream
@@ -667,7 +740,7 @@ class http_stream::implement
 public:
     implement(std::string url, std::string method, http_stream::dict headers,
               const std::string& data)
-        : tcp_stream_(nullptr), tell_(0)
+        : tcp_stream_(nullptr), content_length_(-1), tell_(0)
     {
         // 去除 http:// 前缀
         std::string prefix = "http://";
@@ -678,26 +751,26 @@ public:
             return;
 
         // 分隔服务器地址和url路径
-        std::string address, path = "/";
+        std::string ap, path = "/";
         std::string::size_type sep1_pos = url.find('/');
         if (sep1_pos != std::string::npos)
-            address = url.substr(0, sep1_pos), path = url.substr(sep1_pos);
+            ap = url.substr(0, sep1_pos), path = url.substr(sep1_pos);
         else
-            address = url;
-        if (address.empty())
+            ap = url;
+        if (ap.empty())
             return;
 
         // 分隔服务器域名和端口
         std::string host;
         unsigned short port = 80;
-        std::string::size_type sep2_pos = address.find(':');
+        std::string::size_type sep2_pos = ap.find(':');
         if (sep2_pos != std::string::npos)
         {
-            host = address.substr(0, sep2_pos);
-            port = atoi(address.substr(sep2_pos + 1).c_str());
+            host = ap.substr(0, sep2_pos);
+            port = atoi(ap.substr(sep2_pos + 1).c_str());
         }
         else
-            host = address;
+            host = ap;
         if (host.empty())
             return;
 
@@ -706,7 +779,7 @@ public:
             method = "GET";
         set_if_not_exist(headers, "Host",       host);
         set_if_not_exist(headers, "Accept",     "*/*");
-        set_if_not_exist(headers, "User-Agent", "stream.http_stream");
+        set_if_not_exist(headers, "User-Agent", "takisy.stream.http");
         set_if_not_exist(headers, "Connection", "Keep-Alive");
         std::string request_message =
             stralgo::format("%s\n%s\n%s",
@@ -775,11 +848,14 @@ private:
         if (tcp_stream_)
             delete tcp_stream_;
         headers_.clear();
+        content_length_ = -1;
         tell_ = 0;
 
         // 建立到服务器的连接
         tcp_stream_ = new tcp_stream(host.c_str(), port);
-        if (!tcp_stream_ || !tcp_stream_->working())
+        if (   !tcp_stream_
+            || !tcp_stream_->readable()
+            || !tcp_stream_->writable())
             return false;
         else
             host_ = host, port_ = port;
@@ -820,17 +896,21 @@ private:
             }
         }
 
+        // 获取http正文长度
+        if (headers_.find("content-length") != headers_.end())
+            content_length_ = atoll(headers_["content-length"].c_str());
+
         return true;
     }
 
 private:
-    std::string        host_;
-    unsigned short     port_;
-    std::string        request_;
-    tcp_stream*        tcp_stream_;
-    stralgo::strings   status_;
-    http_stream::dict  headers_;
-    unsigned long long tell_;
+    std::string       host_;
+    unsigned short    port_;
+    std::string       request_;
+    tcp_stream*       tcp_stream_;
+    stralgo::strings  status_;
+    http_stream::dict headers_;
+    long long         content_length_, tell_;
 };
 
 http_stream::http_stream(const char* url)
@@ -896,9 +976,24 @@ const char* http_stream::header(const char* key) const
     return impl_->headers_[lower_key].c_str();
 }
 
-bool http_stream::working(void) const
+bool http_stream::readable(void) const
 {
-    return impl_->tcp_stream_ && impl_->tcp_stream_->working();
+    if (impl_->content_length_ != -1)
+        return impl_->tcp_stream_
+            && impl_->tcp_stream_->readable()
+            && impl_->tell_ < impl_->content_length_;
+    else
+        return impl_->tcp_stream_ && impl_->tcp_stream_->readable();
+}
+
+bool http_stream::writable(void) const
+{
+    return false;
+}
+
+bool http_stream::seek(long offset, SeekType seek_type) const
+{
+    return false;
 }
 
 long http_stream::tell(void) const
@@ -908,14 +1003,13 @@ long http_stream::tell(void) const
 
 unsigned int http_stream::read(void* buffer, unsigned int size) const
 {
-    if (!working())
+    if (!readable())
         return 0;
 
-    const char* content_length_s = header("content-length");
-    if (content_length_s)
+    if (impl_->content_length_ != -1)
     {
-        unsigned long long content_length = atoi(content_length_s);
-        unsigned long long left_length = content_length - impl_->tell_;
+        unsigned long long left_length = impl_->content_length_ - impl_->tell_;
+
         if (left_length < size)
             size = left_length;
     }
@@ -929,6 +1023,11 @@ unsigned int http_stream::read(void* buffer, unsigned int size) const
     }
 
     return length;
+}
+
+unsigned int http_stream::write(const void* buffer, unsigned int size)
+{
+    return 0;
 }
 
 std::string http_stream::encode_query(const dict& query)
@@ -962,14 +1061,4 @@ http_stream::dict http_stream::decode_query(const std::string& query)
     }
 
     return result;
-}
-
-bool http_stream::seek(long offset, SeekType seek_type) const
-{
-    throw std::runtime_error("http_stream::seek is unused member function.");
-}
-
-unsigned int http_stream::write(const void* buffer, unsigned int size)
-{
-    throw std::runtime_error("http_stream::write is unused member function.");
 }

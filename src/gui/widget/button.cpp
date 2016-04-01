@@ -125,11 +125,6 @@ text_button::~text_button(void)
     delete impl_;
 }
 
-std::string text_button::caption(const std::string& codec) const
-{
-    return stralgo::encode(impl_->label_.text(), codec);
-}
-
 std::wstring text_button::caption(void) const
 {
     return impl_->label_.text();
