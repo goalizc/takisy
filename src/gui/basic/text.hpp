@@ -19,7 +19,6 @@
 
 class text {
     static const unsigned int xxdo_limit = 16;
-    static const unsigned int right_spacing = 32;
 
     struct action {
         enum Type { atInsert, atErase, } type;
@@ -548,6 +547,9 @@ public:
                 if (y >= drawing_area.bottom)
                     goto End;
                 if (y + (int)font_height > drawing_area.top) {
+                    unsigned int line_height = font_height;
+                    if (caret + line.words >= sel_end)
+                        line_height = font_->emheight();
                     x += line_offset(line);
                     for (unsigned int i = caret; i < caret + line.words; ++i) {
                         if (x >= drawing_area.right)
@@ -558,7 +560,7 @@ public:
                                 if (sel_start <= i && i < sel_end)
                                     graphics.fill_rectangle(x, y,
                                             x + bitmap->advance + word_spacing_,
-                                            y + font_height, *selbrush_);
+                                            y + line_height, *selbrush_);
                             } else
                                 bitmap->render(graphics, x, y,
                                                drawing_area.left,
@@ -728,7 +730,7 @@ private:
             world_.right = x;
         push_line(content_.size() - line_start, x - line_beginning);
 
-        world_.right += margin_.right + (!word_wrap_ ? right_spacing : 0);
+        world_.right += margin_.right;
         world_.bottom = world_.top + margin_.top
                       + line_count() * line_height() - line_spacing_
                       + margin_.bottom;
@@ -762,8 +764,6 @@ private:
         mv.top    = margin_.top;
         mv.right  = view_.width  - margin_.right;
         mv.bottom = view_.height - margin_.bottom - font_->emheight();
-        if (!word_wrap_ && mv.width() > (int)right_spacing * 2)
-            mv.right -= right_spacing;
 
         point caret = caret_point() + offset;
              if (caret.x < mv.left)   offset.x += mv.left   - caret.x;

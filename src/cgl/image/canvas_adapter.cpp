@@ -8,7 +8,7 @@ canvas_adapter& canvas_adapter::operator=(const canvas_adapter& ca)
         resize(ca.width(), ca.height());
 
         if (flag() == ca.flag())
-            memory::_memcpy(buffer(), ca.buffer(), height() * row_bytes());
+            memory::std::memcpy(buffer(), ca.buffer(), height() * row_bytes());
         else
             for (unsigned int y = 0; y < height(); ++y)
             for (unsigned int x = 0; x < width(); ++x)

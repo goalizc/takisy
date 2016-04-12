@@ -297,7 +297,7 @@ public:
         stretchy_buffer<stretchy_buffer<unsigned char>, true> rows(ihdr.height);
         stretchy_buffer<unsigned char> prerow(row_bytes);
 
-        memory::_memset(prerow.data(), 0, prerow.size());
+        memory::std::memset(prerow.data(), 0, prerow.size());
         refilter(rawdata.data(), prerow.data(), row_bytes, alignment, rows[0]);
         for (unsigned int y = 1; y < ihdr.height; ++y)
             refilter(rawdata.data() + y * (1 + row_bytes),

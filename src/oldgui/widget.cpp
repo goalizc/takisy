@@ -8,7 +8,7 @@
 
 namespace global
 {
-    extern std::list<OldWindow*>   windowWithWidgets;
+    extern std::list<Window*>   windowWithWidgets;
     extern std::map<HWND, Widget*> capturedWidget;
 }
 
@@ -382,21 +382,21 @@ void Widget::repaint(Rect rect)
     if (rect.empty())
         return;
 
-    for (OldWindow* window : global::windowWithWidgets)
+    for (Window* window : global::windowWithWidgets)
         if (window->existsWidget(this))
             window->repaint(rect.offset(global_xy()));
 }
 
 void Widget::set_capture(void)
 {
-    OldWindow* window = global::windowWithWidgets.front();
+    Window* window = global::windowWithWidgets.front();
     global::capturedWidget[window->hwnd()] = this;
     window->setCapture();
 }
 
 void Widget::release_capture(void)
 {
-    OldWindow* window = global::windowWithWidgets.front();
+    Window* window = global::windowWithWidgets.front();
     window->releaseCapture();
     global::capturedWidget[window->hwnd()] = nullptr;
 }

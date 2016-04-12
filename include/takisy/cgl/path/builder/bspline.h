@@ -1,7 +1,6 @@
 #ifndef bspline_h_20140516
 #define bspline_h_20140516
 
-#include <takisy/core/memory.h>
 #include <takisy/cgl/path/path.h>
 
 class bspline

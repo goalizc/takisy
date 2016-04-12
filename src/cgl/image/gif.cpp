@@ -186,6 +186,9 @@ class gif::implement
                     break;
                 else
                 {
+                    if (code_table.c_next >= ccount)
+                        return false;
+
                     if (code < code_table.c_next)
                     {
                         cs = code_table.segments[code];

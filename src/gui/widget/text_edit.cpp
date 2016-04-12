@@ -1,5 +1,6 @@
 #include <ctime>
 #include <takisy/core/sys.h>
+#include <takisy/core/macro.h>
 #include <takisy/core/codec.h>
 #include <takisy/core/timer.h>
 #include <takisy/algorithm/stralgo.h>
@@ -131,7 +132,7 @@ text_edit::text_edit(const std::wstring& _text)
                             + impl_->text_.caret_point()
                             + impl_->text_.offset();
 
-            #if defined(__WINNT__) || defined(__CYGWIN__)
+            #ifdef OS_WIN
                 HIMC himc = ImmGetContext(handle);
 
                 LOGFONT lf;
@@ -603,7 +604,7 @@ bool text_edit::onKeyPress(unsigned int chr)
             if (!impl_->readonly_ && impl_->text_.undo())
                 impl_->update();
             break;
-    #if defined(__WINNT__) || defined(__CYGWIN__)
+    #ifdef OS_WIN
         case 'c':
         case 'x':
             if (OpenClipboard(nullptr))

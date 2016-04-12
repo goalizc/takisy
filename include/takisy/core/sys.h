@@ -81,16 +81,9 @@ public:
 
 public:
     static unsigned long long rdtsc(void);
-    static bool key_pressed(VirtualKey virtual_key);
-
-    static unsigned int screen_width(void);
-    static unsigned int screen_height(void);
-    static rect         work_area(void);
-
-    static const char*  default_codec(void);
-
-public:
-    static void default_codec(const char* codec);
+    static bool               key_pressed(VirtualKey virtual_key);
+    static const char*        default_codec(void);
+    static void               default_codec(const char* codec);
 };
 
 #endif //sys_h_20131122

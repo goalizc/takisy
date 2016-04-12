@@ -70,9 +70,26 @@ struct stralgo
     }
 
     template <typename CharType>
-    static std::vector<std::basic_string<CharType>>
+    static inline std::vector<std::basic_string<CharType>>
         split(const std::basic_string<CharType>& str,
               const std::basic_string<CharType>& token,
+              bool compress_token = true)
+    {
+        return split(str, token, -1, compress_token);
+    }
+
+    template <typename CharType>
+    static inline std::vector<std::basic_string<CharType>>
+        split(const std::basic_string<CharType>& str, const CharType* token,
+              int max_split, bool compress_token = true)
+    {
+        return split(str, std::basic_string<CharType>(token),
+                     max_split, compress_token);
+    }
+
+    template <typename CharType>
+    static inline std::vector<std::basic_string<CharType>>
+        split(const std::basic_string<CharType>& str, const CharType* token,
               bool compress_token = true)
     {
         return split(str, token, -1, compress_token);
@@ -92,8 +109,7 @@ struct stralgo
         split(const std::basic_string<CharType>& str, CharType token,
               bool compress_token = true)
     {
-        return split(str, std::basic_string<CharType>(1, token),
-                     compress_token);
+        return split(str, token, -1, compress_token);
     }
 
     template <typename CharType>
@@ -107,12 +123,11 @@ struct stralgo
     }
 
     template <typename CharType>
-    static std::vector<std::basic_string<CharType>>
+    static inline std::vector<std::basic_string<CharType>>
         split(const CharType* str, const CharType* token,
               bool compress_token = true)
     {
-        return split(std::basic_string<CharType>(str),
-                     std::basic_string<CharType>(token), -1, compress_token);
+        return split(str, token, -1, compress_token);
     }
 
     template <typename CharType>
@@ -130,8 +145,7 @@ struct stralgo
         split(const CharType* str, CharType token,
               bool compress_token = true)
     {
-        return split(std::basic_string<CharType>(str),
-                     std::basic_string<CharType>(1, token), compress_token);
+        return split(str, token, -1, compress_token);
     }
 
     static inline std::string& lower(std::string& str)

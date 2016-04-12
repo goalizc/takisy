@@ -323,6 +323,67 @@ public:
 
         return rect;
     }
+
+public:
+    template <typename TT>
+    inline self_type operator+(const t_point<TT>& _offset)
+    {
+        return offset(_offset);
+    }
+
+    template <typename TT>
+    inline self_type operator-(const t_point<TT>& _offset)
+    {
+        return offset(-_offset);
+    }
+
+    template <typename TT>
+    inline self_type operator+(const t_size<TT>& size)
+    {
+        return self_type(left, top, right + size.width, bottom + size.height);
+    }
+
+    template <typename TT>
+    inline self_type operator-(const t_size<TT>& size)
+    {
+        return self_type(left, top, right - size.width, bottom - size.height);
+    }
+
+    template <typename TT>
+    inline self_type operator+=(const t_point<TT>& offset)
+    {
+        left  += offset.x; top    += offset.y;
+        right += offset.x; bottom += offset.y;
+
+        return *this;
+    }
+
+    template <typename TT>
+    inline self_type operator-=(const t_point<TT>& offset)
+    {
+        left  -= offset.x; top    -= offset.y;
+        right -= offset.x; bottom -= offset.y;
+
+        return *this;
+    }
+
+    template <typename TT>
+    inline self_type operator+=(const t_size<TT>& size)
+    {
+        right  += size.width;
+        bottom += size.height;
+
+        return *this;
+    }
+
+    template <typename TT>
+    inline self_type operator-=(const t_size<TT>& size)
+    {
+        right  -= size.width;
+        bottom -= size.height;
+
+        return *this;
+    }
 };
 
 typedef t_rect<int>          rect;

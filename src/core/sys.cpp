@@ -1,9 +1,13 @@
 #include <string>
-#include <Windows.h>
+#include <takisy/core/macro.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/sys.h>
 
-static std::string __sDefaultCodec = "utf-8";
+#ifdef OS_WIN
+#include <Windows.h>
+#endif
+
+static std::string default_codec__ = "utf-8";
 
 unsigned long long sys::rdtsc(void)
 {
@@ -16,37 +20,21 @@ unsigned long long sys::rdtsc(void)
 
 bool sys::key_pressed(VirtualKey virtual_key)
 {
+#ifdef OS_WIN
     return 0x0100 & GetKeyState(virtual_key);
-}
-
-unsigned int sys::screen_width(void)
-{
-    return GetSystemMetrics(SM_CXSCREEN);
-}
-
-unsigned int sys::screen_height(void)
-{
-    return GetSystemMetrics(SM_CYSCREEN);
-}
-
-rect sys::work_area(void)
-{
-    RECT RECT;
-
-    if (!SystemParametersInfo(SPI_GETWORKAREA, 0, &RECT, 0))
-        return rect(0, 0, screen_width(), screen_height());
-
-    return RECT;
+#else
+    return false;
+#endif
 }
 
 const char* sys::default_codec(void)
 {
-    return __sDefaultCodec.c_str();
+    return default_codec__.c_str();
 }
 
 void sys::default_codec(const char* _codec)
 {
     for (const std::string& codec : stralgo::codecs())
         if (codec == _codec)
-            __sDefaultCodec = _codec;
+            default_codec__ = _codec;
 }

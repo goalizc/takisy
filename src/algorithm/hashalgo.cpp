@@ -89,21 +89,21 @@ std::string hashalgo::md5::hexdigest(void) const
     return hexdigest;
 }
 
-hashalgo::smart_ptr hashalgo::get(const char* name)
+hashalgo::shared_ptr hashalgo::get(const char* name)
 {
     return get(name, nullptr);
 }
 
-hashalgo::smart_ptr hashalgo::get(const char* name, const char* data)
+hashalgo::shared_ptr hashalgo::get(const char* name, const char* data)
 {
     return get(name, data, strlen(data));
 }
 
-hashalgo::smart_ptr
+hashalgo::shared_ptr
     hashalgo::get(const char* name, const void* data, unsigned int size)
 {
     if (strcmp(name, "md5") == 0)
-        return smart_ptr(new md5(data, size));
+        return shared_ptr(new md5(data, size));
 
     return nullptr;
 }

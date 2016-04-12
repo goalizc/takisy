@@ -13,16 +13,16 @@
 
 namespace global
 {
-    std::list<OldWindow*>   windowWithWidgets;
+    std::list<Window*>      windowWithWidgets;
     std::map<HWND, Widget*> capturedWidget;
     std::map<HWND, Widget*> focusedWidget;
 }
 
-OldWindow::EventListener::~EventListener(void) {}
+Window::EventListener::~EventListener(void) {}
 
-class OldWindow::Implement
+class Window::Implement
 {
-    friend class OldWindow;
+    friend class Window;
 
     class Container : public Widget
     {
@@ -139,13 +139,13 @@ public:
                                        WPARAM wparam,
                                        LPARAM lparam)
     {
-        static std::map<HWND, OldWindow*> windows;
+        static std::map<HWND, Window*> windows;
         static std::map<HWND, unsigned char> last_char;
 
         switch (msg)
         {
         case WM_CREATE:
-            windows[hwnd] = reinterpret_cast<OldWindow*>(
+            windows[hwnd] = reinterpret_cast<Window*>(
                     reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams);
             break;
 
@@ -180,7 +180,7 @@ public:
             global::windowWithWidgets.remove(windows[hwnd]);
             windows.erase(hwnd);
             if (windows.empty())
-                OldWindow::quit();
+                Window::quit();
             break;
 
         default:
@@ -189,7 +189,7 @@ public:
 
         if (windows.find(hwnd) != windows.end())
         {
-            OldWindow* window = windows[hwnd];
+            Window* window = windows[hwnd];
 
             auto& listeners = window->impl_->event_listeners_;
             if (listeners.find(msg) != listeners.end())
@@ -217,10 +217,10 @@ public:
     }
 
     static void onWidgetEvent(const std::vector<Widget*>& widgets,
-                              OldWindow& window,
-                              UINT       msg,
-                              WPARAM     wparam,
-                              LPARAM     lparam)
+                              Window& window,
+                              UINT    msg,
+                              WPARAM  wparam,
+                              LPARAM  lparam)
     {
         class util
         {
@@ -530,10 +530,10 @@ private:
     std::map<UINT, std::vector<EventListenerPtr>> event_listeners_;
 };
 
-const char   OldWindow::Implement::sClassName[]   = "takisy::oldgui::OldWindow";
-unsigned int OldWindow::Implement::sRegisterTimes = 0;
+const char   Window::Implement::sClassName[]   = "takisy::oldgui::Window";
+unsigned int Window::Implement::sRegisterTimes = 0;
 
-CREATESTRUCT OldWindow::defaultCreateStruct(void)
+CREATESTRUCT Window::defaultCreateStruct(void)
 {
     return CREATESTRUCT {
         .lpCreateParams = nullptr,
@@ -546,49 +546,49 @@ CREATESTRUCT OldWindow::defaultCreateStruct(void)
         .x              = 0,
         .style          = WS_OVERLAPPEDWINDOW,
         .lpszName       = "takisy.oldgui",
-        .lpszClass      = OldWindow::Implement::sClassName,
+        .lpszClass      = Window::Implement::sClassName,
         .dwExStyle      = WS_EX_APPWINDOW,
     };
 }
 
-OldWindow::OldWindow(void)
+Window::Window(void)
     : impl_(new Implement)
 {}
 
-OldWindow::OldWindow(HWND hwnd)
+Window::Window(HWND hwnd)
     : impl_(new Implement)
 {
     attach(hwnd);
 }
 
-OldWindow::OldWindow(const OldWindow& window)
+Window::Window(const Window& window)
     : impl_(new Implement)
 {
     operator=(window);
 }
 
-OldWindow::OldWindow(const std::string& caption)
-    : OldWindow(caption, false)
+Window::Window(const std::string& caption)
+    : Window(caption, false)
 {}
 
-OldWindow::OldWindow(const std::string& caption, bool alpha_window)
-    : OldWindow(caption, 400, 300, alpha_window)
+Window::Window(const std::string& caption, bool alpha_window)
+    : Window(caption, 400, 300, alpha_window)
 {}
 
-OldWindow::OldWindow(const std::string& caption, int width, int height)
-    : OldWindow(caption, width, height, false)
+Window::Window(const std::string& caption, int width, int height)
+    : Window(caption, width, height, false)
 {}
 
-OldWindow::OldWindow(const std::string& caption,
+Window::Window(const std::string& caption,
                int width, int height, bool alpha_window)
-    : OldWindow(caption, 0, 0, width, height, alpha_window)
+    : Window(caption, 0, 0, width, height, alpha_window)
 {}
 
-OldWindow::OldWindow(const std::string& caption, int x, int y, int width, int height)
-    : OldWindow(caption, x, y, width, height, false)
+Window::Window(const std::string& caption, int x, int y, int width, int height)
+    : Window(caption, x, y, width, height, false)
 {}
 
-OldWindow::OldWindow(const std::string& caption,
+Window::Window(const std::string& caption,
                int x, int y, int width, int height, bool alpha_window)
     : impl_(new Implement)
 {
@@ -603,23 +603,23 @@ OldWindow::OldWindow(const std::string& caption,
     create(create_struct, alpha_window);
 }
 
-OldWindow::OldWindow(const CREATESTRUCT& create_struct)
-    : OldWindow(create_struct, false)
+Window::Window(const CREATESTRUCT& create_struct)
+    : Window(create_struct, false)
 {}
 
-OldWindow::OldWindow(const CREATESTRUCT& create_struct, bool alpha_window)
+Window::Window(const CREATESTRUCT& create_struct, bool alpha_window)
     : impl_(new Implement)
 {
     create(create_struct, alpha_window);
 }
 
-OldWindow::~OldWindow(void)
+Window::~Window(void)
 {
     destroy();
     delete impl_;
 }
 
-OldWindow& OldWindow::operator=(const OldWindow& window)
+Window& Window::operator=(const Window& window)
 {
     if (this != &window)
         attach(window.hwnd());
@@ -627,12 +627,12 @@ OldWindow& OldWindow::operator=(const OldWindow& window)
     return *this;
 }
 
-void OldWindow::create(const CREATESTRUCT& create_struct)
+void Window::create(const CREATESTRUCT& create_struct)
 {
     return create(create_struct, false);
 }
 
-void OldWindow::create(const CREATESTRUCT& create_struct, bool alpha_window)
+void Window::create(const CREATESTRUCT& create_struct, bool alpha_window)
 {
     if (hwnd())
         throw takisy::oldgui::Exception("HWND is not null.");
@@ -661,7 +661,7 @@ void OldWindow::create(const CREATESTRUCT& create_struct, bool alpha_window)
     impl_->created_ = true;
 }
 
-void OldWindow::destroy(void)
+void Window::destroy(void)
 {
     if (hwnd() && impl_->created_)
     {
@@ -677,17 +677,17 @@ void OldWindow::destroy(void)
     }
 }
 
-void OldWindow::listen(UINT msg, std::shared_ptr<EventListener> listener)
+void Window::listen(UINT msg, std::shared_ptr<EventListener> listener)
 {
     impl_->register_event(msg, listener);
 }
 
-void OldWindow::forget(UINT msg)
+void Window::forget(UINT msg)
 {
     impl_->deregister_event(msg);
 }
 
-void OldWindow::attach(HWND _hwnd)
+void Window::attach(HWND _hwnd)
 {
     if (hwnd())
         throw takisy::oldgui::Exception("HWND is not null.");
@@ -695,13 +695,13 @@ void OldWindow::attach(HWND _hwnd)
     assert((impl_->hdc_ = GetDC(hwnd())));
 }
 
-void OldWindow::detach(void)
+void Window::detach(void)
 {
     impl_->hdc_  = nullptr;
     impl_->hwnd_ = nullptr;
 }
 
-void OldWindow::addWidget(Widget* widget)
+void Window::addWidget(Widget* widget)
 {
     if (impl_->container_.children().empty())
         global::windowWithWidgets.push_back(this);
@@ -709,12 +709,12 @@ void OldWindow::addWidget(Widget* widget)
     impl_->container_.add(widget);
 }
 
-bool OldWindow::existsWidget(Widget* widget)
+bool Window::existsWidget(Widget* widget)
 {
     return widget == &impl_->container_ || impl_->container_.exists(widget);
 }
 
-void OldWindow::removeWidget(Widget* widget)
+void Window::removeWidget(Widget* widget)
 {
     impl_->container_.remove(widget);
 
@@ -724,7 +724,7 @@ void OldWindow::removeWidget(Widget* widget)
                           global::windowWithWidgets.end(), this));
 }
 
-std::string OldWindow::caption(void) const
+std::string Window::caption(void) const
 {
     char caption[256] = {0};
 
@@ -733,77 +733,77 @@ std::string OldWindow::caption(void) const
     return caption;
 }
 
-OldWindow OldWindow::parent(void) const
+Window Window::parent(void) const
 {
-    return OldWindow(GetParent(hwnd()));
+    return Window(GetParent(hwnd()));
 }
 
-OldWindow OldWindow::forefather(void) const
+Window Window::forefather(void) const
 {
-    OldWindow&& parent_window = parent();
+    Window&& parent_window = parent();
     if (!parent_window.hwnd())
-        return OldWindow(hwnd());
+        return Window(hwnd());
     while (parent_window.parent().hwnd())
         parent_window = parent_window.parent();
     return parent_window;
 }
 
-DWORD OldWindow::style(void) const
+DWORD Window::style(void) const
 {
     return GetWindowLong(hwnd(), GWL_STYLE);
 }
 
-DWORD OldWindow::exstyle(void) const
+DWORD Window::exstyle(void) const
 {
     return GetWindowLong(hwnd(), GWL_EXSTYLE);
 }
 
-bool OldWindow::sizeBox(void) const
+bool Window::sizeBox(void) const
 {
     return style() & WS_SIZEBOX;
 }
 
-bool OldWindow::minimizeBox(void) const
+bool Window::minimizeBox(void) const
 {
     return style() & WS_MINIMIZEBOX;
 }
 
-bool OldWindow::maximizeBox(void) const
+bool Window::maximizeBox(void) const
 {
     return style() & WS_MAXIMIZEBOX;
 }
 
-bool OldWindow::living(void) const
+bool Window::living(void) const
 {
     return IsWindow(hwnd());
 }
 
-bool OldWindow::visible(void) const
+bool Window::visible(void) const
 {
     return IsWindowVisible(hwnd());
 }
 
-bool OldWindow::minimized(void) const
+bool Window::minimized(void) const
 {
     return IsIconic(hwnd());
 }
 
-bool OldWindow::maximized(void) const
+bool Window::maximized(void) const
 {
     return IsZoomed(hwnd());
 }
 
-HWND OldWindow::hwnd(void) const
+HWND Window::hwnd(void) const
 {
     return impl_->hwnd_;
 }
 
-HDC OldWindow::hdc(void) const
+HDC Window::hdc(void) const
 {
     return impl_->hdc_;
 }
 
-Rect OldWindow::rect(void) const
+Rect Window::rect(void) const
 {
     if (hwnd())
     {
@@ -815,37 +815,37 @@ Rect OldWindow::rect(void) const
         return Rect(0, 0, 0, 0);
 }
 
-Point OldWindow::xy(void) const
+Point Window::xy(void) const
 {
     return rect().left_top();
 }
 
-int OldWindow::x(void) const
+int Window::x(void) const
 {
     return xy().x;
 }
 
-int OldWindow::y(void) const
+int Window::y(void) const
 {
     return xy().y;
 }
 
-Size OldWindow::size(void) const
+Size Window::size(void) const
 {
     return rect().size();
 }
 
-unsigned int OldWindow::width(void) const
+unsigned int Window::width(void) const
 {
     return size().width;
 }
 
-unsigned int OldWindow::height(void) const
+unsigned int Window::height(void) const
 {
     return size().height;
 }
 
-Size OldWindow::clientSize(void) const
+Size Window::clientSize(void) const
 {
     if (hwnd())
     {
@@ -857,78 +857,78 @@ Size OldWindow::clientSize(void) const
         return Size(0, 0);
 }
 
-unsigned int OldWindow::clientWidth(void) const
+unsigned int Window::clientWidth(void) const
 {
     return clientSize().width;
 }
 
-unsigned int OldWindow::clientHeight(void) const
+unsigned int Window::clientHeight(void) const
 {
     return clientSize().height;
 }
 
-void OldWindow::caption(const std::string& caption)
+void Window::caption(const std::string& caption)
 {
     assert(SetWindowText(hwnd(), caption.c_str()));
 }
 
-void OldWindow::parent(HWND _hwnd)
+void Window::parent(HWND _hwnd)
 {
     assert(SetParent(hwnd(), _hwnd));
 }
 
-void OldWindow::parent(const OldWindow& parent)
+void Window::parent(const Window& parent)
 {
     assert(SetParent(hwnd(), parent.hwnd()));
 }
 
-void OldWindow::style(DWORD style)
+void Window::style(DWORD style)
 {
     SetLastError(0);
     SetWindowLong(hwnd(), GWL_STYLE, style);
     assert(GetLastError() == 0);
 }
 
-void OldWindow::exstyle(DWORD exstyle)
+void Window::exstyle(DWORD exstyle)
 {
     SetLastError(0);
     SetWindowLong(hwnd(), GWL_EXSTYLE, exstyle);
     assert(GetLastError() == 0);
 }
 
-void OldWindow::sizeBox(bool effective)
+void Window::sizeBox(bool effective)
 {
     effective ? style(style() | WS_SIZEBOX) : style(style() & ~WS_SIZEBOX);
 }
 
-void OldWindow::minimizeBox(bool effective)
+void Window::minimizeBox(bool effective)
 {
     effective ? style(style() |  WS_MINIMIZEBOX)
               : style(style() & ~WS_MINIMIZEBOX);
 }
 
-void OldWindow::maximizeBox(bool effective)
+void Window::maximizeBox(bool effective)
 {
     effective ? style(style() |  WS_MAXIMIZEBOX)
               : style(style() & ~WS_MAXIMIZEBOX);
 }
 
-void OldWindow::repaint(void)
+void Window::repaint(void)
 {
     repaint(0, 0, clientWidth(), clientHeight());
 }
 
-void OldWindow::repaint(const Rect& rect)
+void Window::repaint(const Rect& rect)
 {
     repaint(rect.left_top(), rect.size());
 }
 
-void OldWindow::repaint(const Point& xy, const Size& size)
+void Window::repaint(const Point& xy, const Size& size)
 {
     repaint(xy.x, xy.y, size.width, size.height);
 }
 
-void OldWindow::repaint(int x, int y, unsigned int width, unsigned int height)
+void Window::repaint(int x, int y, unsigned int width, unsigned int height)
 {
     RECT rect = {
         .left   = x,
@@ -940,82 +940,82 @@ void OldWindow::repaint(int x, int y, unsigned int width, unsigned int height)
     assert(InvalidateRect(hwnd(), &rect, FALSE));
 }
 
-void OldWindow::show(void)
+void Window::show(void)
 {
     ShowWindow(hwnd(), SW_SHOW);
 }
 
-void OldWindow::showMinimized(void)
+void Window::showMinimized(void)
 {
     ShowWindow(hwnd(), SW_MINIMIZE);
 }
 
-void OldWindow::showMaximized(void)
+void Window::showMaximized(void)
 {
     ShowWindow(hwnd(), SW_MAXIMIZE);
 }
 
-void OldWindow::showNormal(void)
+void Window::showNormal(void)
 {
     ShowWindow(hwnd(), SW_SHOWNORMAL);
 }
 
-void OldWindow::hide(void)
+void Window::hide(void)
 {
     ShowWindow(hwnd(), SW_HIDE);
 }
 
-void OldWindow::x(int x)
+void Window::x(int x)
 {
     xy(x, y());
 }
 
-void OldWindow::y(int y)
+void Window::y(int y)
 {
     xy(x(), y);
 }
 
-void OldWindow::xy(int x, int y)
+void Window::xy(int x, int y)
 {
     assert(SetWindowPos(hwnd(), nullptr, x, y, 0, 0, SWP_NOSIZE));
 }
 
-void OldWindow::xy(const Point& _xy)
+void Window::xy(const Point& _xy)
 {
     xy(_xy.x, _xy.y);
 }
 
-void OldWindow::width(unsigned int width)
+void Window::width(unsigned int width)
 {
     size(width, height());
 }
 
-void OldWindow::height(unsigned int height)
+void Window::height(unsigned int height)
 {
     size(width(), height);
 }
 
-void OldWindow::size(unsigned int width, unsigned int height)
+void Window::size(unsigned int width, unsigned int height)
 {
     assert(SetWindowPos(hwnd(), nullptr, 0, 0, width, height, SWP_NOMOVE));
 }
 
-void OldWindow::size(const Size& _size)
+void Window::size(const Size& _size)
 {
     size(_size.width, _size.height);
 }
 
-void OldWindow::clientWidth(unsigned int width)
+void Window::clientWidth(unsigned int width)
 {
     return clientSize(width, clientHeight());
 }
 
-void OldWindow::clientHeight(unsigned int height)
+void Window::clientHeight(unsigned int height)
 {
     return clientSize(clientWidth(), height);
 }
 
-void OldWindow::clientSize(unsigned int width, unsigned int height)
+void Window::clientSize(unsigned int width, unsigned int height)
 {
     Size window_size = size(), client_size = clientSize();
 
@@ -1023,32 +1023,32 @@ void OldWindow::clientSize(unsigned int width, unsigned int height)
          height + window_size.height - client_size.height);
 }
 
-void OldWindow::clientSize(const Size& size)
+void Window::clientSize(const Size& size)
 {
     clientSize(size.width, size.height);
 }
 
-void OldWindow::rect(int x, int y, unsigned int width, unsigned int height)
+void Window::rect(int x, int y, unsigned int width, unsigned int height)
 {
     assert(SetWindowPos(hwnd(), nullptr, x, y, width, height, SWP_NOZORDER));
 }
 
-void OldWindow::rect(const Point& xy, const Size& size)
+void Window::rect(const Point& xy, const Size& size)
 {
     rect(xy.x, xy.y, size.width, size.height);
 }
 
-void OldWindow::rect(const Rect& _rect)
+void Window::rect(const Rect& _rect)
 {
     rect(_rect.left_top(), _rect.size());
 }
 
-void OldWindow::background_color(Color color)
+void Window::background_color(Color color)
 {
     impl_->container_.set_background_color(color);
 }
 
-void OldWindow::opacity(double factor)
+void Window::opacity(double factor)
 {
     exstyle(exstyle() | WS_EX_LAYERED);
 
@@ -1064,47 +1064,47 @@ void OldWindow::opacity(double factor)
     }
 }
 
-void OldWindow::topmost(void)
+void Window::topmost(void)
 {
     SetWindowPos(hwnd(), HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 }
 
-HWND OldWindow::setCapture(void)
+HWND Window::setCapture(void)
 {
     return SetCapture(hwnd());
 }
 
-bool OldWindow::releaseCapture(void)
+bool Window::releaseCapture(void)
 {
     return ReleaseCapture();
 }
 
-LRESULT OldWindow::sendMessage(UINT msg, WPARAM wparam, LPARAM lparam)
+LRESULT Window::sendMessage(UINT msg, WPARAM wparam, LPARAM lparam)
 {
     return SendMessage(hwnd(), msg, wparam, lparam);
 }
 
-LRESULT OldWindow::postMessage(UINT msg, WPARAM wparam, LPARAM lparam)
+LRESULT Window::postMessage(UINT msg, WPARAM wparam, LPARAM lparam)
 {
     return PostMessage(hwnd(), msg, wparam, lparam);
 }
 
-int OldWindow::msgbox(const char* msg)
+int Window::msgbox(const char* msg)
 {
     return msgbox(msg, caption().c_str());
 }
 
-int OldWindow::msgbox(const char* msg, const char* caption)
+int Window::msgbox(const char* msg, const char* caption)
 {
     return msgbox(msg, caption, MB_OK);
 }
 
-int OldWindow::msgbox(const char* msg, const char* caption, UINT type)
+int Window::msgbox(const char* msg, const char* caption, UINT type)
 {
     return MessageBox(hwnd(), msg, caption, type);
 }
 
-int OldWindow::run(void)
+int Window::run(void)
 {
     MSG msg;
 
@@ -1117,7 +1117,7 @@ int OldWindow::run(void)
     return msg.wParam;
 }
 
-void OldWindow::quit(void)
+void Window::quit(void)
 {
     PostQuitMessage(0);
 }

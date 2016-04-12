@@ -1,26 +1,8 @@
 #include <stdexcept>
+#include <takisy/core/macro.h>
 #include <takisy/core/ftp_client.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/stream.h>
-
-unsigned long stream::plunder(const char* uri)
-{
-    return plunder(*from_uri(uri));
-}
-
-unsigned long stream::plunder(const stream& src)
-{
-    stretchy_buffer<unsigned char> buffer(512 * 1024);
-    unsigned long length = 0, readed_length = 0;
-
-    while ((readed_length = src.read(buffer.data(), buffer.size())))
-    {
-        length += readed_length;
-        write(buffer.data(), readed_length);
-    }
-
-    return length;
-}
 
 std::shared_ptr<stream> stream::from_uri(const char* uri)
 {
@@ -33,14 +15,38 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
 
     std::string protocol = stralgo::lowerc(pair[0]);
     if (protocol == "buffer")
-        return std::shared_ptr<stream>
-                  (new buffer_stream(pair[1].c_str(), pair[1].size()));
+    {
+        class stream* stream =
+                new buffer_stream(pair[1].c_str(), pair[1].size());
+
+        return std::shared_ptr<class stream>(stream);
+    }
     else
-    if (protocol == "file")
-        return std::shared_ptr<stream>(new file_stream(pair[1].c_str()));
-    else
-    if (protocol == "pipe")
-        return std::shared_ptr<stream>(new pipe_stream(pair[1].c_str()));
+    if (protocol == "file" || protocol == "pipe")
+    {
+        class stream* stream = nullptr;
+        pair = stralgo::split(pair[1], "@", 1);
+
+        if (protocol == "file")
+        {
+            if (pair.size() == 1)
+                stream = new file_stream(pair[0].c_str());
+            else
+            if (pair.size() == 2)
+                stream = new file_stream(pair[1].c_str(), pair[0].c_str());
+        }
+        else
+        if (protocol == "pipe")
+        {
+            if (pair.size() == 1)
+                stream = new pipe_stream(pair[0].c_str());
+            else
+            if (pair.size() == 2)
+                stream = new pipe_stream(pair[1].c_str(), pair[0].c_str());
+        }
+
+        return std::shared_ptr<class stream>(stream);
+    }
     else
     if (protocol == "tcp" || protocol == "udp")
     {
@@ -116,6 +122,46 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
         return std::shared_ptr<stream>(new http_stream(pair[1].c_str()));
     else
         return nullptr;
+}
+
+unsigned long stream::plunder(const char* uri)
+{
+    std::shared_ptr<class stream> stream = from_uri(uri);
+
+    if (!stream)
+        return 0;
+
+    return plunder(*stream);
+}
+
+unsigned long stream::plunder(const stream& src)
+{
+    stretchy_buffer<unsigned char> buffer(512 * 1024);
+    unsigned long length = 0, readed_length = 0;
+
+    while ((readed_length = src.read(buffer.data(), buffer.size())))
+    {
+        length += readed_length;
+        write(buffer.data(), readed_length);
+    }
+
+    return length;
+}
+
+std::string stream::readn(unsigned int n) const
+{
+    stretchy_buffer<char> buffer(n);
+    unsigned long length = read(buffer.data(), buffer.size());
+
+    return std::string(buffer.data(), length);
+}
+
+std::string stream::readall(void) const
+{
+    stretchy_buffer<unsigned char> buffer(0);
+    unsigned long length = buffer_stream(buffer).plunder(*this);
+
+    return std::string((char*)buffer.data(), length);
 }
 
 /////////////////////////////////////////
@@ -416,7 +462,7 @@ unsigned int pipe_stream::write(const void* buffer, unsigned int size)
 
 /// include socket headers
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
 
 #include <Winsock2.h>
 

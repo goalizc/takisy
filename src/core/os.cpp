@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
+#include <takisy/core/macro.h>
 #include <takisy/core/os.h>
 
 #define stat_default(default_return)           \
@@ -45,7 +46,7 @@ off_t os::path::getsize(const std::string& path)
 
 bool os::path::isabs(const std::string& path)
 {
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     return path[1] == ':';
 #else
     return path[0] == '/';
@@ -80,7 +81,7 @@ os::path::pair os::path::split(const std::string& path)
 
 os::path::pair os::path::splitdrive(const std::string& path)
 {
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     if (path[1] == ':')
         return pair { path.substr(0, 2), path.substr(2) };
     else

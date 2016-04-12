@@ -31,8 +31,8 @@ public:
         {
             frame_index_ = 0;
             timer_.restart();
+            this_->dynamic(image_.nframes() > 1);
             this_->repaint();
-            this_->dynamic(image_.size() > 1);
         }
 
         return success;
@@ -57,12 +57,6 @@ picture::picture(const char* uri)
     load_uri(uri);
 }
 
-picture::picture(const char* uri, const char* suffix)
-    : picture()
-{
-    load_uri(uri, suffix);
-}
-
 picture::picture(const stream& stream)
     : picture()
 {
@@ -82,32 +76,31 @@ picture::~picture(void)
 
 bool picture::load_uri(const char* uri)
 {
-    return impl_->load_image(impl_->image_.load_uri(uri));
-}
+    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
 
-bool picture::load_uri(const char* uri, const char* suffix)
-{
-    return impl_->load_image(impl_->image_.load_uri(uri, suffix));
-}
+    if (!stream_ptr)
+        return false;
 
-bool picture::load_file(const char* file_path)
-{
-    return impl_->load_image(impl_->image_.load_file(file_path));
-}
-
-bool picture::load_file(const char* file_path, const char* suffix)
-{
-    return impl_->load_image(impl_->image_.load_file(file_path, suffix));
+    return load_stream(*stream_ptr);
 }
 
 bool picture::load_stream(const stream& stream)
 {
-    return impl_->load_image(impl_->image_.load_stream(stream));
-}
+    buffer_stream bufstream;
+    bufstream.plunder(stream);
 
-bool picture::load_stream(const stream& stream, const char* suffix)
-{
-    return impl_->load_image(impl_->image_.load_stream(stream, suffix));
+    static const std::string gif87a_sig = "GIF87a";
+    static const std::string gif89a_sig = "GIF89a";
+    char gif_sig[7] = {0};
+    if (bufstream.read(gif_sig, 6) != 6)
+        return false;
+    else
+        bufstream.seek(0, stream::stBegin);
+
+    if (gif_sig == gif87a_sig || gif_sig == gif89a_sig)
+        return impl_->load_image(impl_->image_.load_stream(bufstream, "gif"));
+    else
+        return impl_->load_image(impl_->image_.load_stream(bufstream));
 }
 
 bool picture::scalable(void) const
@@ -139,7 +132,7 @@ Size picture::optimal_size(void) const
 {
     Size optimal(0, 0);
 
-    if (impl_->frame_index_ < impl_->image_.size())
+    if (impl_->frame_index_ < impl_->image_.nframes())
     {
         optimal.width  = impl_->image_.frame(impl_->frame_index_).width();
         optimal.height = impl_->image_.frame(impl_->frame_index_).height();
@@ -179,7 +172,7 @@ void picture::image(const class image& image)
 
 void picture::onPaint(graphics graphics, Rect rect)
 {
-    if (impl_->image_.size() == 0)
+    if (impl_->image_.nframes() == 0)
         return;
 
     unsigned int index = impl_->image_.seek(impl_->timer_.elapse());

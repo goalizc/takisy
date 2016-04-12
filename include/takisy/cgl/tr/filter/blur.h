@@ -53,7 +53,7 @@ private:
         stretchy_buffer<unsigned char> lut(256 * table_size);
 
         for (int i = 0; i < 256; i++)
-            memory::_memset(lut.data() + i * table_size, i, table_size);
+            memory::std::memset(lut.data() + i * table_size, i, table_size);
 
         for (unsigned int y = 0; y < c1.height(); y++)
         {

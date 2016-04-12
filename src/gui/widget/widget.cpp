@@ -2,13 +2,15 @@
 #include <memory>
 #include <algorithm>
 #include <stdexcept>
-#if defined(__WINNT__) || defined(__CYGWIN__)
-#include <Windows.h>
-#endif
+#include <takisy/core/macro.h>
 #include <takisy/core/algorithm.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/widget.h>
+
+#ifdef OS_WIN
+#include <Windows.h>
+#endif
 
 namespace takisy
 {
@@ -366,20 +368,25 @@ void widget::xy(Point _xy)
     if (_xy == xy())
         return;
 
-    impl_->rect_ = impl_->rect_.move(_xy);
+    cross_platform_window::Handle handle = takisy::handleFromLPWIDGET(this);
+    if (!handle)
+    {
+        repaint();
+        impl_->rect_ = impl_->rect_.move(_xy);
+        repaint();
+    }
+    else
+        impl_->rect_ = impl_->rect_.move(_xy);
 
     onMove();
     if (impl_->father_)
         impl_->father_->onChildMove(this);
 
-    cross_platform_window::Handle handle = takisy::handleFromLPWIDGET(this);
     if (handle)
     {
         cross_platform_window window(handle);
         window.xy(_xy - window.client_offset());
     }
-    else
-        repaint();
 }
 
 void widget::width(unsigned int width)
@@ -416,14 +423,15 @@ void widget::size(Size _size)
     if (_size == size())
         return;
 
+    repaint();
     impl_->rect_.size(_size);
+    repaint();
 
     onSize();
     if (impl_->father_)
         impl_->father_->onChildSize(this);
 
     window().client_size(_size);
-    repaint();
 }
 
 void widget::rect(int x, int y, unsigned int width, unsigned int height)
@@ -656,7 +664,7 @@ bool widget::as_window(bool enable_alpha_channel)
         return true;
 
     cross_platform_window::Handle handle = nullptr;
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     DWORD style = WS_POPUP;
     if (visible())
         style |= WS_VISIBLE;
@@ -695,12 +703,14 @@ bool widget::as_window(cross_platform_window::Handle handle)
     {
         if (takisy::all_windows__.find(handle) == takisy::all_windows__.end())
         {
-            takisy::all_windows__[handle] = this;
             cross_platform_window window(handle);
+
             window.xy(xy() - window.client_offset());
             window.client_size(size());
             window.visible(visible());
             window.repaint();
+
+            takisy::all_windows__[handle] = this;
         }
     }
     else
@@ -709,6 +719,7 @@ bool widget::as_window(cross_platform_window::Handle handle)
         if (handle)
         {
             takisy::all_windows__.erase(handle);
+
             cross_platform_window(handle).repaint();
         }
     }
@@ -726,43 +737,43 @@ cross_platform_window widget::window(void) const
     return cross_platform_window(takisy::handleFromLPWIDGET(this));
 }
 
-bool widget::onAdding(widget*)                          { return true;  }
-void widget::onAdd(widget*)                             {               }
-bool widget::onRemoving(widget*)                        { return true;  }
-void widget::onRemove(widget*)                          {               }
+bool widget::onAdding(widget*)                         { return true;  }
+void widget::onAdd(widget*)                            {               }
+bool widget::onRemoving(widget*)                       { return true;  }
+void widget::onRemove(widget*)                         {               }
 
-bool widget::onMoving(Point&)                           { return true;  }
-void widget::onMove(void)                               {               }
-bool widget::onSizing(Size&)                            { return true;  }
-void widget::onSize(void)                               {               }
-bool widget::onShowing(void)                            { return true;  }
-void widget::onShown(void)                              {               }
-bool widget::onHiding(void)                             { return true;  }
-void widget::onHidden(void)                             {               }
+bool widget::onMoving(Point&)                          { return true;  }
+void widget::onMove(void)                              {               }
+bool widget::onSizing(Size&)                           { return true;  }
+void widget::onSize(void)                              {               }
+bool widget::onShowing(void)                           { return true;  }
+void widget::onShown(void)                             {               }
+bool widget::onHiding(void)                            { return true;  }
+void widget::onHidden(void)                            {               }
 
-bool widget::onChildMoving(widget*, Point&)             { return true;  }
-void widget::onChildMove(widget*)                       {               }
-bool widget::onChildSizing(widget*, Size&)              { return true;  }
-void widget::onChildSize(widget*)                       {               }
-bool widget::onChildShowing(widget*)                    { return true;  }
-void widget::onChildShown(widget*)                      {               }
-bool widget::onChildHiding(widget*)                     { return true;  }
-void widget::onChildHidden(widget*)                     {               }
+bool widget::onChildMoving(widget*, Point&)            { return true;  }
+void widget::onChildMove(widget*)                      {               }
+bool widget::onChildSizing(widget*, Size&)             { return true;  }
+void widget::onChildSize(widget*)                      {               }
+bool widget::onChildShowing(widget*)                   { return true;  }
+void widget::onChildShown(widget*)                     {               }
+bool widget::onChildHiding(widget*)                    { return true;  }
+void widget::onChildHidden(widget*)                    {               }
 
-void widget::onPaint(graphics, Rect)                    {               }
-void widget::onEndPaint(graphics, Rect)                 {               }
-bool widget::onFocus(bool)                              { return false; }
-bool widget::onSetCursor(void)                          { return false; }
-bool widget::onKeyDown(sys::VirtualKey)                 { return false; }
-bool widget::onKeyPress(unsigned int)                   { return false; }
-bool widget::onKeyUp(sys::VirtualKey)                   { return false; }
-bool widget::onMouseDown(sys::MouseButton, int, Point)  { return false; }
-bool widget::onClick(sys::MouseButton, int, Point)      { return false; }
-bool widget::onMouseUp(sys::MouseButton, Point)         { return false; }
-bool widget::onMouseMove(Point)                         { return false; }
-bool widget::onMouseEnter(void)                         { return false; }
-bool widget::onMouseLeave(void)                         { return false; }
-bool widget::onMouseWheel(int, Point)                   { return false; }
+void widget::onPaint(graphics, Rect)                   {               }
+void widget::onEndPaint(graphics, Rect)                {               }
+bool widget::onFocus(bool)                             { return false; }
+bool widget::onSetCursor(void)                         { return false; }
+bool widget::onKeyDown(sys::VirtualKey)                { return false; }
+bool widget::onKeyPress(unsigned int)                  { return false; }
+bool widget::onKeyUp(sys::VirtualKey)                  { return false; }
+bool widget::onMouseDown(sys::MouseButton, int, Point) { return false; }
+bool widget::onClick(sys::MouseButton, int, Point)     { return false; }
+bool widget::onMouseUp(sys::MouseButton, Point)        { return false; }
+bool widget::onMouseMove(Point)                        { return false; }
+bool widget::onMouseEnter(void)                        { return false; }
+bool widget::onMouseLeave(void)                        { return false; }
+bool widget::onMouseWheel(int, Point)                  { return false; }
 
 void* widget::attribute(const std::string& name) const
 {

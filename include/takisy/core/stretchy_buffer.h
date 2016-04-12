@@ -292,8 +292,7 @@ public:
     }
 
 private:
-    inline void move(const element_type* from,
-                           element_type* to, unsigned int count)
+    inline void move(const element_type* from, element_type* to, int count)
     {
         if (from == to)
             return;
@@ -301,10 +300,10 @@ private:
         if (blNeedConstruct)
         {
             if (from > to)
-                for (unsigned int i = count - 1; i >= 0; --i)
+                for (int i = count - 1; i >= 0; --i)
                     to[i] = from[i];
             else
-                for (unsigned int i = 0; i < count; ++i)
+                for (int i = 0; i < count; ++i)
                     to[i] = from[i];
         }
         else

@@ -7,7 +7,7 @@
 
 class Graphics::Implement
 {
-    friend class OldWindow;
+    friend class Window;
     friend class Graphics;
 
     typedef canvas_bgra8 canvas_type;

@@ -8,7 +8,7 @@
 
 class Graphics
 {
-    friend class OldWindow;
+    friend class Window;
     class Implement;
 
 public:

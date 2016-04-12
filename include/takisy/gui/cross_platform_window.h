@@ -1,15 +1,16 @@
 #ifndef cross_platform_window_h_20160318
 #define cross_platform_window_h_20160318
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#include <string>
+#include <takisy/core/macro.h>
+#include <takisy/gui/basic/define.h>
+
+#ifdef OS_WIN
 #include <Windows.h>
 #define __SytemHandleType__ HWND
 #else
 #define __SytemHandleType__ void*
 #endif
-
-#include <string>
-#include <takisy/gui/basic/define.h>
 
 class cross_platform_window
 {
@@ -33,7 +34,6 @@ public:
 public:
     Handle        handle(void) const;
     std::wstring  caption(void) const;
-    std::string   caption(const std::string& codec) const;
     int           x(void) const;
     int           y(void) const;
     Point         xy(void) const;

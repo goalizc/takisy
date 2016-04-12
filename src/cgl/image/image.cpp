@@ -1,10 +1,10 @@
 #include <ctime>
 #include <cctype>
-#include <string>
 #include <map>
+#include <string>
 #include <takisy/core/os.h>
 #include <takisy/core/stretchy_buffer.h>
-#include <takisy/algorithm/stralgo.h>
+#define  STB_IMAGE_IMPLEMENTATION
 #include <third_party/stb/stb_image.h>
 #include <takisy/cgl/image/image.h>
 
@@ -237,7 +237,7 @@ canvas_adapter& image::new_frame(const canvas_adapter::pointer& canvas,
     return *impl_->frames_.back().canvas;
 }
 
-unsigned int image::size(void) const
+unsigned int image::nframes(void) const
 {
     return impl_->frames_.size();
 }

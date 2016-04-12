@@ -18,11 +18,11 @@ public:
     class sha512;
 
 public:
-    typedef std::shared_ptr<base> smart_ptr;
+    typedef std::shared_ptr<base> shared_ptr;
 
-    static smart_ptr get(const char* name);
-    static smart_ptr get(const char* name, const char* data);
-    static smart_ptr get(const char* name, const void* data, unsigned int size);
+    static shared_ptr get(const char* name);
+    static shared_ptr get(const char* name, const char* data);
+    static shared_ptr get(const char* name, const void* data, unsigned int size);
 };
 
 class hashalgo::base

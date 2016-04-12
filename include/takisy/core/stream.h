@@ -24,12 +24,16 @@ public:
     virtual unsigned int write(const void* buffer, unsigned int size) = 0;
 
 public:
-    // read all data from src/from_uri(uri) into *this
-    unsigned long plunder(const char* uri);
-    unsigned long plunder(const stream& src);
     static std::shared_ptr<stream> from_uri(const char* uri);
 
 public:
+    // read all data from from_uri(uri)/src into *this
+    unsigned long plunder(const char* uri);
+    unsigned long plunder(const stream& src);
+
+    std::string readn(unsigned int n) const;
+    std::string readall(void) const;
+
     template <typename ValueType>
     inline unsigned int read(ValueType& value) const
     {

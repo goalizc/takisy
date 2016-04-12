@@ -1,7 +1,9 @@
 #include <map>
 #include <string>
+#include <takisy/core/macro.h>
+#include <takisy/core/dynamic_linking_loader.h>
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     #include <Windows.h>
     #define dlopen  LoadLibrary
     #define dlclose FreeLibrary
@@ -11,8 +13,6 @@
     #define HMODULE void*
     #define dlopen(filename) dlopen(filename, RTLD_LAZY)
 #endif
-
-#include <takisy/core/dynamic_linking_loader.h>
 
 void* dynamic_linking_loader::dlsymbol(const char* filename, const char* symbol)
 {

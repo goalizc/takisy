@@ -7,7 +7,7 @@
 #include <takisy/oldgui/basic/define.h>
 #include <takisy/oldgui/widget/widget.h>
 
-class OldWindow
+class Window
 {
 private:
     class Implement;
@@ -15,7 +15,7 @@ private:
 public:
     struct EventParams
     {
-        OldWindow& window;
+        Window& window;
         UINT    msg;
         WPARAM  wparam;
         LPARAM  lparam;
@@ -32,23 +32,23 @@ public:
     static CREATESTRUCT defaultCreateStruct(void);
 
 public:
-    OldWindow(void);
-    OldWindow(HWND hwnd);
-    OldWindow(const OldWindow& wnd);
+    Window(void);
+    Window(HWND hwnd);
+    Window(const Window& wnd);
     explicit
-    OldWindow(const std::string& caption);
-    OldWindow(const std::string& caption, bool alpha_window);
-    OldWindow(const std::string& caption, int width, int height);
-    OldWindow(const std::string& caption, int width, int height,
+    Window(const std::string& caption);
+    Window(const std::string& caption, bool alpha_window);
+    Window(const std::string& caption, int width, int height);
+    Window(const std::string& caption, int width, int height,
            bool alpha_window);
-    OldWindow(const std::string& caption, int x, int y, int width, int height);
-    OldWindow(const std::string& caption, int x, int y, int width, int height,
+    Window(const std::string& caption, int x, int y, int width, int height);
+    Window(const std::string& caption, int x, int y, int width, int height,
            bool alpha_window);
-    OldWindow(const CREATESTRUCT& craete_struct);
-    OldWindow(const CREATESTRUCT& craete_struct, bool alpha_window);
-   ~OldWindow(void);
+    Window(const CREATESTRUCT& craete_struct);
+    Window(const CREATESTRUCT& craete_struct, bool alpha_window);
+   ~Window(void);
 
-    OldWindow& operator=(const OldWindow& wnd);
+    Window& operator=(const Window& wnd);
 
 public:
     void create(const CREATESTRUCT& craete_struct);
@@ -71,8 +71,8 @@ public:
 public:
     std::string caption(void) const;
 
-    OldWindow parent(void) const;
-    OldWindow forefather(void) const;
+    Window parent(void) const;
+    Window forefather(void) const;
 
     DWORD style(void) const;
     DWORD exstyle(void) const;
@@ -104,7 +104,7 @@ public:
     void caption(const std::string& caption);
 
     void parent(HWND hwnd);
-    void parent(const OldWindow& parent);
+    void parent(const Window& parent);
 
     void style(DWORD style);
     void exstyle(DWORD exstyle);
@@ -164,12 +164,12 @@ private:
 };
 
 template <typename Lambda>
-void OldWindow::listen(UINT msg, Lambda lambda)
+void Window::listen(UINT msg, Lambda lambda)
 {
-    class LambdaListener : public OldWindow::EventListener
+    class LambdaListener : public Window::EventListener
     {
     public: inline LambdaListener(Lambda lambda) : lambda_(lambda) {}
-    public: inline void onEvent(const OldWindow::EventParams& ep) override
+    public: inline void onEvent(const Window::EventParams& ep) override
         { lambda_(ep); }
     private: Lambda lambda_;
     };

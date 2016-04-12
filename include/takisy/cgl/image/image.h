@@ -46,7 +46,7 @@ public:
     canvas_adapter& new_frame(const PixelMatrix& pixel_matrix,
                               unsigned int interval);
 
-    unsigned int size(void) const;
+    unsigned int nframes(void) const;
     unsigned int duration(void) const;
     unsigned int seek(unsigned int timestamp) const;
 

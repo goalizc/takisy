@@ -63,20 +63,20 @@ public:
     }
 
 public:
-    inline void pixel(int x, int y, color color)
+    inline void unsafe_pixel(int x, int y, const color& color)
     {
-        if (prect_.outside(x, y))
-            return;
-
         if (mask_)
-            color *= mask_->pixel(x, y).a();
-
-        canvas_->pixel(x + poffset_.x, y + poffset_.y, color);
+            canvas_->pixel(x + poffset_.x,
+                           y + poffset_.y, color * mask_->pixel(x, y).a());
+        else
+            canvas_->pixel(x + poffset_.x,
+                           y + poffset_.y, color);
     }
 
-    inline void pixel(int x, int y, color color, unsigned char coverage)
+    inline void pixel(int x, int y, const color& color)
     {
-        return pixel(x, y, color * coverage);
+        if (prect_.inside(x, y))
+            unsafe_pixel(x, y, color);
     }
 
     template <typename Path>
@@ -91,8 +91,15 @@ public:
 
         for (int y = bbox.top; y < bbox.bottom; ++y)
         for (const raster::span& span : raster.fetch_scanline(y))
-        for (int x = span.x; x < span.x + int(span.length); ++x)
-            pixel(x, y, brush(x, y), span.coverage);
+        {
+            int begin = span.x, end = span.x + span.length;
+
+            if (begin <  prect_.left)  begin = prect_.left;
+            if (end   >  prect_.right) end   = prect_.right;
+
+            for (int x = begin; x < end; ++x)
+                unsafe_pixel(x, y, brush(x, y) * span.coverage);
+        }
     }
 
 private:

@@ -77,7 +77,7 @@ void graphics::pixel(int x, int y, const color& color)
 
 void graphics::pixel(int x, int y, const color& color, unsigned char coverage)
 {
-    impl_->pixel(x, y, color, coverage);
+    impl_->pixel(x, y, color * coverage);
 }
 
 void graphics::pixel(const point& point, const color& color)
@@ -88,7 +88,7 @@ void graphics::pixel(const point& point, const color& color)
 void graphics::pixel(const point& point, const color& color,
                      unsigned char coverage)
 {
-    impl_->pixel(point.x, point.y, color, coverage);
+    impl_->pixel(point.x, point.y, color * coverage);
 }
 
 void graphics::pixel(int x, int y, const brush& brush)
@@ -98,7 +98,7 @@ void graphics::pixel(int x, int y, const brush& brush)
 
 void graphics::pixel(int x, int y, const brush& brush, unsigned char coverage)
 {
-    impl_->pixel(x, y, brush(x, y), coverage);
+    impl_->pixel(x, y, brush(x, y) * coverage);
 }
 
 void graphics::pixel(const point& point, const brush& brush)
@@ -109,7 +109,7 @@ void graphics::pixel(const point& point, const brush& brush)
 void graphics::pixel(const point& point, const brush& brush,
                      unsigned char coverage)
 {
-    impl_->pixel(point.x, point.y, brush(point.x, point.y), coverage);
+    impl_->pixel(point.x, point.y, brush(point.x, point.y) * coverage);
 }
 
 void graphics::draw_line(const point& p1, const point& p2, const color& color)
@@ -730,7 +730,7 @@ void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
 
     for (unsigned int i = 0; i < height; ++i)
     for (unsigned int j = 0; j < width;  ++j)
-        impl_->pixel(x + j, y + i, canvas.pixel(cx + j, cy + i));
+        impl_->unsafe_pixel(x + j, y + i, canvas.pixel(cx + j, cy + i));
 }
 
 void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
@@ -805,9 +805,11 @@ void graphics::fill_rectangle(int p1x, int p1y, int p2x, int p2y,
 
 void graphics::fill_rectangle(const rect& rect, const brush& brush)
 {
-    ::rect r = rect.normalize();
+    ::rect r = rect.normalize().intersect(impl_->prect_);
 
-    fill_rectangle(r.left, r.top, r.right, r.bottom, brush);
+    for (int y = r.top; y < r.bottom; ++y)
+    for (int x = r.left; x < r.right; ++x)
+        impl_->unsafe_pixel(x, y, brush(x, y));
 }
 
 void graphics::fill_rectangle(const point& p1, const point& p2,
@@ -825,12 +827,7 @@ void graphics::fill_rectangle(const point& point, const size& size,
 void graphics::fill_rectangle(int p1x, int p1y, int p2x, int p2y,
                               const brush& brush)
 {
-    if (p1x > p2x) algorithm::swap(p1x, p2x);
-    if (p1y > p2y) algorithm::swap(p1y, p2y);
-
-    for (int y = p1y; y < p2y; ++y)
-    for (int x = p1x; x < p2x; ++x)
-        impl_->pixel(x, y, brush(x, y));
+    fill_rectangle(rect(p1x, p1y, p2x, p2y), brush);
 }
 
 void graphics::fill_rectangle(const rectf& rect, const brush& brush)

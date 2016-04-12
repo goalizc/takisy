@@ -3,6 +3,7 @@
 #ifndef graphics_implement_h_20131115
 #define graphics_implement_h_20131115
 
+#include <takisy/core/macro.h>
 #include <takisy/core/algorithm.h>
 #include <takisy/cgl/basic/raster.h>
 #include <takisy/cgl/font/tfont_simple.h>
@@ -323,7 +324,7 @@ bool graphics<Canvas>::save(const char* filename)
     return image.dump_file(filename);
 }
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
 
 #include <Windows.h>
 
@@ -356,15 +357,15 @@ void graphics<canvas_bgr8>::play(HDC dc,
 
     if (row_size % 4 != 0)
     {
-        unsigned int   fixed_row_size    = math::ceil(row_size / 4.0) * 4;
-        unsigned char* fixed_pixels_data =
-            memory::_malloc<unsigned char>(fixed_row_size * canvas_.height());
+        unsigned int   fix_row_size    = math::ceil(row_size / 4.0) * 4;
+        unsigned char* fix_pixels_data =
+            memory::std::malloc<unsigned char>(fix_row_size * canvas_.height());
 
         for (unsigned int y = 0; y < canvas_.height(); ++y)
-            memory::_memcpy(fixed_pixels_data + y * fixed_row_size,
-                                  pixels_data + y * row_size, row_size);
+            memory::std::memcpy(fix_pixels_data + y * fix_row_size,
+                                    pixels_data + y * row_size, row_size);
 
-        pixels_data = fixed_pixels_data;
+        pixels_data = fix_pixels_data;
         need_free   = true;
     }
 
@@ -374,7 +375,7 @@ void graphics<canvas_bgr8>::play(HDC dc,
             0, 0, 0, canvas_.height(), pixels_data, &bmi, DIB_RGB_COLORS);
 
     if (need_free)
-        memory::_free(pixels_data);
+        memory::std::free(pixels_data);
 }
 
 template <typename Canvas>

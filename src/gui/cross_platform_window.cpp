@@ -1,5 +1,6 @@
 #include <map>
 #include <takisy/core/sys.h>
+#include <takisy/core/macro.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/basic/graphics.h>
@@ -30,7 +31,7 @@ class cross_platform_window::implement
     public:
         cross_platform_window_initializer(void)
         {
-        #if defined(__WINNT__) || defined(__CYGWIN__)
+        #ifdef OS_WIN
             WNDCLASSEX cls = {
                 .cbSize        = sizeof(WNDCLASSEX),
                 .style         = CS_HREDRAW | CS_VREDRAW,
@@ -52,7 +53,7 @@ class cross_platform_window::implement
 
         ~cross_platform_window_initializer(void)
         {
-        #if defined(__WINNT__) || defined(__CYGWIN__)
+        #ifdef OS_WIN
             UnregisterClass(takisy::class_name__, GetModuleHandle(nullptr));
         #endif
         }
@@ -65,7 +66,7 @@ public:
 
 private:
     static void onWidgetPaint(LPWIDGET, graphics&, const Rect&);
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     static LRESULT CALLBACK widgetProc(HWND, LPWIDGET, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK windowProc(HWND, UINT, WPARAM, LPARAM);
 #else
@@ -87,7 +88,7 @@ private:
 
     static Point cursor_point(void)
     {
-    #if defined(__WINNT__) || defined(__CYGWIN__)
+    #ifdef OS_WIN
         POINT point;
 
         if (GetCursorPos(&point))
@@ -128,23 +129,18 @@ private:
     {
         if (takisy::captured_widget__)
         {
-            LPWIDGET bar = takisy::captured_widget__->father();
-            while (bar)
+            widget = takisy::captured_widget__;
+
+            while (widget)
             {
-                point -= bar->xy();
-                bar    = bar->father();
+                point  -= widget->xy();
+                widget  = widget->father();
             }
 
-            if (!takisy::captured_widget__->inside(point.x, point.y))
-            {
-                point -= takisy::captured_widget__->xy();
-                return takisy::captured_widget__;
-            }
-            else
-                widget = takisy::captured_widget__;
+            return takisy::captured_widget__;
         }
-
-        return hittest_nocapture(widget, point);
+        else
+            return hittest_nocapture(widget, point);
     }
 
 private:
@@ -177,7 +173,7 @@ void cross_platform_window::implement::onWidgetPaint
     widget->onEndPaint(graphics, rect);
 }
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
 
 class windows_device_context : public device_context
 {
@@ -344,8 +340,7 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             ci.pretime = GetTickCount();
 
             if (!onEvent(ht_widget, onMouseDown, button, ci.times, ht_point)
-                && button == sys::mbLButton
-                && (GetWindowLong(hwnd, GWL_EXSTYLE) & WS_EX_LAYERED))
+                && button == sys::mbLButton)
             {
                 wndinfo.move = std::make_pair(true, cursor_point());
                 SetCapture(hwnd);
@@ -450,32 +445,33 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
             static unsigned int border[] =
                  { None, L, R, T, T | L, T | R, B, B | L, B | R };
 
-            RECT& rect = *reinterpret_cast<RECT*>(lparam);
+            RECT& rect      = *reinterpret_cast<RECT*>(lparam);
+            Size  rect_size = Rect(rect).size();
+
             cross_platform_window window(hwnd);
             Size min = client->minimal_size(), ws = window.size();
             Size max = client->maximal_size(), cs = window.client_size();
-            Size rsz = Rect(rect).size();
 
             min.width  += ws.width  - cs.width;
             min.height += ws.height - cs.height;
             max.width  += ws.width  - cs.width;
             max.height += ws.height - cs.height;
 
-            if (rsz.width < min.width) {
+            if (rect_size.width < min.width) {
                 if (border[wparam] & L) rect.left = rect.right - min.width;
                 else
                 if (border[wparam] & R) rect.right = rect.left + min.width;
-            } else if (rsz.width > max.width) {
+            } else if (rect_size.width > max.width) {
                 if (border[wparam] & L) rect.left = rect.right - max.width;
                 else
                 if (border[wparam] & R) rect.right = rect.left + max.width;
             }
 
-            if (rsz.height < min.height) {
+            if (rect_size.height < min.height) {
                 if (border[wparam] & T) rect.top = rect.bottom - min.height;
                 else
                 if (border[wparam] & B) rect.bottom = rect.top + min.height;
-            } else if (rsz.height > max.height) {
+            } else if (rect_size.height > max.height) {
                 if (border[wparam] & T) rect.top = rect.bottom - max.height;
                 else
                 if (border[wparam] & B) rect.bottom = rect.top + max.height;
@@ -561,8 +557,7 @@ cross_platform_window&
 
 cross_platform_window::Handle cross_platform_window::create(void)
 {
-    return CreateWindowEx(0, takisy::class_name__,
-                          "Default Native Window",
+    return CreateWindowEx(0, takisy::class_name__, "Cross Platform Window",
                           WS_OVERLAPPEDWINDOW,
                           CW_USEDEFAULT, CW_USEDEFAULT,
                           CW_USEDEFAULT, CW_USEDEFAULT,
@@ -580,7 +575,7 @@ std::wstring cross_platform_window::caption(void) const
     if (!impl_->handle_)
         return std::wstring();
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     static wchar_t caption[1024];
     int length = GetWindowTextW(impl_->handle_, caption, 1024);
 
@@ -588,11 +583,6 @@ std::wstring cross_platform_window::caption(void) const
 #else
     return std::wstring();
 #endif
-}
-
-std::string cross_platform_window::caption(const std::string& codec) const
-{
-    return stralgo::encode(caption(), codec);
 }
 
 int cross_platform_window::x(void) const
@@ -630,7 +620,7 @@ Rect cross_platform_window::rect(void) const
     if (!impl_->handle_)
         return Rect();
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     RECT rect;
 
     if (GetWindowRect(impl_->handle_, &rect))
@@ -647,7 +637,7 @@ Point cross_platform_window::client_offset(void) const
     if (!impl_->handle_)
         return Point();
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     POINT offset = {0, 0};
 
     if (ClientToScreen(impl_->handle_, &offset))
@@ -664,7 +654,7 @@ Size cross_platform_window::client_size(void) const
     if (!impl_->handle_)
         return Size();
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     RECT rect;
 
     if (GetClientRect(impl_->handle_, &rect))
@@ -681,7 +671,7 @@ bool cross_platform_window::visible(void) const
     if (!impl_->handle_)
         return false;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     return IsWindowVisible(impl_->handle_);
 #else
     return false;
@@ -709,7 +699,7 @@ void cross_platform_window::caption(const std::wstring& caption)
     if (!impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     SetWindowTextW(impl_->handle_, caption.c_str());
 #endif
 }
@@ -772,7 +762,7 @@ void cross_platform_window::size(const Size& _size)
 void cross_platform_window::rect(int x, int y,
                                  unsigned int width, unsigned int height)
 {
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     SetWindowPos(handle(), nullptr, x, y, width, height, SWP_NOZORDER);
 #endif
 }
@@ -820,7 +810,7 @@ void cross_platform_window::visible(bool visible)
     if (!impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     ShowWindow(impl_->handle_, visible ? SW_SHOW : SW_HIDE);
 #endif
 }
@@ -840,7 +830,7 @@ void cross_platform_window::repaint(void)
     if (!impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     InvalidateRect(impl_->handle_, nullptr, TRUE);
 #endif
 }
@@ -850,7 +840,7 @@ void cross_platform_window::repaint(const Rect& rect)
     if (rect.empty() || !impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     RECT r;
 
     r.left   = rect.left;
@@ -867,7 +857,7 @@ void cross_platform_window::capture(bool capture)
     if (!impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     if (capture)
         SetCapture(impl_->handle_);
     else
@@ -880,14 +870,14 @@ void cross_platform_window::close(void)
     if (!impl_->handle_)
         return;
 
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     DestroyWindow(impl_->handle_);
 #endif
 }
 
 long cross_platform_window::exec(void)
 {
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     MSG msg;
 
     while (GetMessage(&msg, nullptr, 0, 0))
@@ -909,7 +899,7 @@ void cross_platform_window::quit(void)
 
 void cross_platform_window::quit(long quitcode)
 {
-#if defined(__WINNT__) || defined(__CYGWIN__)
+#ifdef OS_WIN
     PostQuitMessage(quitcode);
 #endif
 }
