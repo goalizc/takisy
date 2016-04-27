@@ -3,7 +3,6 @@
 
 #include <string>
 #include <sys/types.h>
-#include <takisy/core/enhancive_basic_string.h>
 
 class os
 {

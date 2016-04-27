@@ -31,7 +31,7 @@ class cross_platform_window::implement
     public:
         cross_platform_window_initializer(void)
         {
-        #ifdef OS_WIN
+        #ifdef __os_win__
             WNDCLASSEX cls = {
                 .cbSize        = sizeof(WNDCLASSEX),
                 .style         = CS_HREDRAW | CS_VREDRAW,
@@ -53,7 +53,7 @@ class cross_platform_window::implement
 
         ~cross_platform_window_initializer(void)
         {
-        #ifdef OS_WIN
+        #ifdef __os_win__
             UnregisterClass(takisy::class_name__, GetModuleHandle(nullptr));
         #endif
         }
@@ -66,7 +66,7 @@ public:
 
 private:
     static void onWidgetPaint(LPWIDGET, graphics&, const Rect&);
-#ifdef OS_WIN
+#ifdef __os_win__
     static LRESULT CALLBACK widgetProc(HWND, LPWIDGET, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK windowProc(HWND, UINT, WPARAM, LPARAM);
 #else
@@ -88,7 +88,7 @@ private:
 
     static Point cursor_point(void)
     {
-    #ifdef OS_WIN
+    #ifdef __os_win__
         POINT point;
 
         if (GetCursorPos(&point))
@@ -173,7 +173,7 @@ void cross_platform_window::implement::onWidgetPaint
     widget->onEndPaint(graphics, rect);
 }
 
-#ifdef OS_WIN
+#ifdef __os_win__
 
 class windows_device_context : public device_context
 {
@@ -222,7 +222,7 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
     struct window_information
     {
         std::pair<bool, Point> move;
-        LPWIDGET focus, enter, cursor;
+        LPWIDGET focus, enter;
         struct Click {
             unsigned int times;
             LPWIDGET widget;
@@ -234,7 +234,7 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
     public:
         window_information(void)
             : move(std::make_pair(false, Point(0, 0)))
-            , focus(nullptr), enter(nullptr), cursor(nullptr)
+            , focus(nullptr), enter(nullptr)
             , click({0, nullptr, Point(0, 0), sys::mbNone, 0})
         {}
     };
@@ -319,7 +319,8 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
 
             if (button == sys::mbLButton)
             {
-                LPWIDGET fw = onEventStop(wndinfo.focus, ht_widget, onFocus, 1);
+                LPWIDGET fw =
+                    onEventStop(wndinfo.focus, ht_widget, onFocus, true);
                 if (fw && wndinfo.focus != fw)
                 {
                     if (wndinfo.focus)
@@ -361,7 +362,7 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             Point    ht_point  = cursor_point();
             LPWIDGET ht_widget = hittest(widget, ht_point);
 
-            if (!onEventStop(wndinfo.cursor, ht_widget, onSetCursor))
+            if (!onEvent(ht_widget, onSetCursor))
                 cursor::set(cursor::ctArrow);
 
             LPWIDGET ew = onEventStop(wndinfo.enter, ht_widget, onMouseEnter);
@@ -575,7 +576,7 @@ std::wstring cross_platform_window::caption(void) const
     if (!impl_->handle_)
         return std::wstring();
 
-#ifdef OS_WIN
+#ifdef __os_win__
     static wchar_t caption[1024];
     int length = GetWindowTextW(impl_->handle_, caption, 1024);
 
@@ -620,7 +621,7 @@ Rect cross_platform_window::rect(void) const
     if (!impl_->handle_)
         return Rect();
 
-#ifdef OS_WIN
+#ifdef __os_win__
     RECT rect;
 
     if (GetWindowRect(impl_->handle_, &rect))
@@ -637,7 +638,7 @@ Point cross_platform_window::client_offset(void) const
     if (!impl_->handle_)
         return Point();
 
-#ifdef OS_WIN
+#ifdef __os_win__
     POINT offset = {0, 0};
 
     if (ClientToScreen(impl_->handle_, &offset))
@@ -654,7 +655,7 @@ Size cross_platform_window::client_size(void) const
     if (!impl_->handle_)
         return Size();
 
-#ifdef OS_WIN
+#ifdef __os_win__
     RECT rect;
 
     if (GetClientRect(impl_->handle_, &rect))
@@ -671,7 +672,7 @@ bool cross_platform_window::visible(void) const
     if (!impl_->handle_)
         return false;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     return IsWindowVisible(impl_->handle_);
 #else
     return false;
@@ -699,7 +700,7 @@ void cross_platform_window::caption(const std::wstring& caption)
     if (!impl_->handle_)
         return;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     SetWindowTextW(impl_->handle_, caption.c_str());
 #endif
 }
@@ -762,7 +763,7 @@ void cross_platform_window::size(const Size& _size)
 void cross_platform_window::rect(int x, int y,
                                  unsigned int width, unsigned int height)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     SetWindowPos(handle(), nullptr, x, y, width, height, SWP_NOZORDER);
 #endif
 }
@@ -810,7 +811,7 @@ void cross_platform_window::visible(bool visible)
     if (!impl_->handle_)
         return;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     ShowWindow(impl_->handle_, visible ? SW_SHOW : SW_HIDE);
 #endif
 }
@@ -825,12 +826,40 @@ void cross_platform_window::hide(void)
     visible(false);
 }
 
+void cross_platform_window::capture(bool capture)
+{
+    if (!impl_->handle_)
+        return;
+
+#ifdef __os_win__
+    if (capture)
+        SetCapture(impl_->handle_);
+    else
+        ReleaseCapture();
+#endif
+}
+
+void cross_platform_window::topmost(bool topmost)
+{
+    if (!impl_->handle_)
+        return;
+
+#ifdef __os_win__
+    if (topmost)
+        SetWindowPos(impl_->handle_, HWND_TOPMOST,
+                     0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    else
+        SetWindowPos(impl_->handle_, HWND_NOTOPMOST,
+                     0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+#endif
+}
+
 void cross_platform_window::repaint(void)
 {
     if (!impl_->handle_)
         return;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     InvalidateRect(impl_->handle_, nullptr, TRUE);
 #endif
 }
@@ -840,7 +869,7 @@ void cross_platform_window::repaint(const Rect& rect)
     if (rect.empty() || !impl_->handle_)
         return;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     RECT r;
 
     r.left   = rect.left;
@@ -852,32 +881,19 @@ void cross_platform_window::repaint(const Rect& rect)
 #endif
 }
 
-void cross_platform_window::capture(bool capture)
-{
-    if (!impl_->handle_)
-        return;
-
-#ifdef OS_WIN
-    if (capture)
-        SetCapture(impl_->handle_);
-    else
-        ReleaseCapture();
-#endif
-}
-
 void cross_platform_window::close(void)
 {
     if (!impl_->handle_)
         return;
 
-#ifdef OS_WIN
+#ifdef __os_win__
     DestroyWindow(impl_->handle_);
 #endif
 }
 
 long cross_platform_window::exec(void)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     MSG msg;
 
     while (GetMessage(&msg, nullptr, 0, 0))
@@ -899,7 +915,7 @@ void cross_platform_window::quit(void)
 
 void cross_platform_window::quit(long quitcode)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     PostQuitMessage(quitcode);
 #endif
 }

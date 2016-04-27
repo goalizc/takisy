@@ -1,11 +1,8 @@
 #include <ctime>
-#include <cctype>
-#include <map>
-#include <string>
+#include <vector>
+#include <algorithm>
 #include <takisy/core/os.h>
 #include <takisy/core/stretchy_buffer.h>
-#define  STB_IMAGE_IMPLEMENTATION
-#include <third_party/stb/stb_image.h>
 #include <takisy/cgl/image/image.h>
 
 class image::implement
@@ -23,32 +20,22 @@ public:
 
         if (!is_default_formats_registered)
         {
-            static bmp bmp; formats_["bmp"] = &bmp;
-            static gif gif; formats_["gif"] = &gif;
-            static png png; formats_["png"] = &png;
+         // static png png; formats_.push_back(&png);
+            static gif gif; formats_.push_back(&gif);
+         // static bmp bmp; formats_.push_back(&bmp);
+            static stb stb; formats_.push_back(&stb);
 
             is_default_formats_registered = true;
         }
     }
 
-public:
-    static inline std::string suffix(const std::string& filepath)
-    {
-        std::string suffix = os::path::suffix(filepath);
-
-        if (suffix.empty())
-            return suffix;
-        else
-            return suffix.substr(1);
-    }
-
 private:
     format::frames frames_;
     clock_t load_timestamp_;
-    static std::map<std::string, format*> formats_;
+    static std::vector<const format*> formats_;
 };
 
-std::map<std::string, format*> image::implement::formats_;
+std::vector<const format*> image::implement::formats_;
 
 image::image(void)
     : impl_(new implement)
@@ -60,10 +47,22 @@ image::image(const char* uri)
     load_uri(uri);
 }
 
-image::image(const char* uri, const char* suffix)
+image::image(const char* uri, const format& format)
     : image()
 {
-    load_uri(uri, suffix);
+    load_uri(uri, format);
+}
+
+image::image(stream& stream)
+    : image()
+{
+    load_stream(stream);
+}
+
+image::image(stream& stream, const format& format)
+    : image()
+{
+    load_stream(stream, format);
 }
 
 image::image(const image& _image)
@@ -80,36 +79,40 @@ image::~image(void)
 image& image::operator=(const image& image)
 {
     if (this != &image)
-        impl_->frames_ = image.impl_->frames_.clone();
+    {
+        impl_->load_timestamp_ = image.impl_->load_timestamp_;
+        impl_->frames_         = image.impl_->frames_.clone();
+    }
 
     return *this;
 }
 
-format* image::register_format(const char* suffix, format* format)
+const format* image::register_format(const format* format)
 {
-    if (implement::formats_.find(suffix) != implement::formats_.end())
+    std::vector<const class format*>::iterator iter =
+            std::find(implement::formats_.begin(),
+                      implement::formats_.end(), format);
+
+    if (iter != implement::formats_.end())
     {
-        class format* old_format = implement::formats_[suffix];
-        implement::formats_[suffix] = format;
-        return old_format;
+        std::swap(*iter, format);
+        return format;
     }
     else
     {
-        implement::formats_[suffix] = format;
+        implement::formats_.push_back(format);
         return nullptr;
     }
 }
 
-format* image::deregister_format(const char* suffix)
+void image::deregister_format(const format* format)
 {
-    if (implement::formats_.find(suffix) != implement::formats_.end())
-    {
-        format* format = implement::formats_[suffix];
-        implement::formats_.erase(suffix);
-        return format;
-    }
+    std::vector<const class format*>::iterator iter =
+            std::find(implement::formats_.begin(),
+                      implement::formats_.end(), format);
 
-    return nullptr;
+    if (iter != implement::formats_.end())
+        implement::formats_.erase(iter);
 }
 
 bool image::load_uri(const char* uri)
@@ -122,90 +125,69 @@ bool image::load_uri(const char* uri)
     return load_stream(*stream_ptr);
 }
 
-bool image::load_uri(const char* uri, const char* suffix)
+bool image::load_uri(const char* uri, const format& format)
 {
     std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
 
     if (!stream_ptr)
         return false;
 
-    return load_stream(*stream_ptr, suffix);
+    return load_stream(*stream_ptr, format);
 }
 
-bool image::load_file(const char* filepath)
+bool image::load_stream(stream& stream)
 {
-    return load_file(filepath, implement::suffix(filepath).c_str());
+    seek_stream seek_stream(stream);
+
+    for (const format* format : implement::formats_)
+    {
+        seek_stream.seek(0, stream::stBegin);
+
+        if (load_stream(seek_stream, *format))
+            return true;
+    }
+
+    return false;
 }
 
-bool image::load_file(const char* filepath, const char* suffix)
+bool image::load_stream(stream& stream, const format& format)
 {
-    return load_stream(file_stream(filepath, "rb"), suffix);
+    format::frames frames;
+
+    if (format.load(stream, frames))
+    {
+        impl_->frames_         = frames;
+        impl_->load_timestamp_ = clock();
+
+        return true;
+    }
+
+    return false;
 }
 
-bool image::load_stream(const stream& stream)
+bool image::dump_uri(const char* uri) const
 {
-    typedef struct frame frame_t;
-    canvas_adapter::pointer canvas = nullptr;
-    stbi_io_callbacks callback;
-    int width, height, comp;
+    return dump_uri(uri, png());
+}
 
-    callback.read = [](void* user, char* data, int size) -> int
-        { return reinterpret_cast<class stream*>(user)->read(data, size); };
-    callback.skip = [](void* user, int n) -> void
-        { stretchy_buffer<char> skip_data(n);
-          reinterpret_cast<class stream*>(user)->read(skip_data.data(), n); };
-    callback.eof  = [](void* user) -> int
-        { return reinterpret_cast<class stream*>(user)->readable(); };
+bool image::dump_uri(const char* uri, const format& format) const
+{
+    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
 
-    stbi_uc* data = stbi_load_from_callbacks(&callback,
-                                             &const_cast<class stream&>(stream),
-                                             &width, &height, &comp, 0);
-    if (!data)
+    if (!stream_ptr)
         return false;
 
-    switch (comp)
-    {
-    case 1: canvas = canvas_adapter::make<canvas_G8>(width, height); break;
-    case 2: canvas = canvas_adapter::make<canvas_Ga8>(width, height); break;
-    case 3: canvas = canvas_adapter::make<canvas_rgb8>(width, height); break;
-    case 4: canvas = canvas_adapter::make<canvas_rgba8>(width, height); break;
-    default: return false;
-    }
-
-    clear();
-    impl_->load_timestamp_ = clock();
-    memcpy(canvas->buffer(), data, canvas->bytes());
-    impl_->frames_.append(frame_t{.canvas = canvas, .interval = 0});
-    stbi_image_free(data);
-
-    return true;
+    return dump_stream(*stream_ptr, format);
 }
 
-bool image::load_stream(const stream& stream, const char* suffix)
+bool image::dump_stream(stream& stream) const
 {
-    if (implement::formats_.find(suffix) != implement::formats_.end())
-    {
-        clear();
-        impl_->load_timestamp_ = clock();
-        return implement::formats_[suffix]->load(stream, impl_->frames_);
-    }
-
-    return load_stream(stream);
+    return dump_stream(stream, png());
 }
 
-bool image::dump_file(const char* filepath) const
+bool image::dump_stream(stream& stream, const format& format) const
 {
-    file_stream fstream(filepath, "wb");
-
-    return dump_stream(fstream, implement::suffix(filepath).c_str());
-}
-
-bool image::dump_stream(stream& stream, const char* suffix) const
-{
-    if (implement::formats_.find(suffix) != implement::formats_.end())
-        return implement::formats_[suffix]->dump(impl_->frames_, stream);
-
-    return dump_stream(stream, "png");
+    return format.dump(impl_->frames_, stream);
 }
 
 canvas_adapter& image::new_frame(unsigned int width, unsigned int height)
@@ -213,10 +195,11 @@ canvas_adapter& image::new_frame(unsigned int width, unsigned int height)
     return new_frame(width, height, implement::default_interval);
 }
 
-canvas_adapter& image::new_frame(unsigned int w, unsigned int h,
+canvas_adapter& image::new_frame(unsigned int width, unsigned int height,
                                  unsigned int interval)
 {
-    return new_frame(canvas_adapter::make<canvas_bgra8>(w, h), interval);
+    return new_frame(canvas_adapter::make<canvas_bgra8>(width, height),
+                     interval);
 }
 
 canvas_adapter& image::new_frame(const canvas_adapter::pointer& canvas)
@@ -237,7 +220,7 @@ canvas_adapter& image::new_frame(const canvas_adapter::pointer& canvas,
     return *impl_->frames_.back().canvas;
 }
 
-unsigned int image::nframes(void) const
+unsigned int image::count(void) const
 {
     return impl_->frames_.size();
 }

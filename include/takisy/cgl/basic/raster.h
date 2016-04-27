@@ -27,8 +27,8 @@ private:
     raster& operator=(const raster&) = delete;
 
 public:
-    void fill_evenodd(bool fill_evenodd);
-    bool fill_evenodd(void) const;
+    void evenodd(bool evenodd);
+    bool evenodd(void) const;
 
 public:
     void rasterize(const path& path);

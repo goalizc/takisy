@@ -48,7 +48,7 @@ public:
     }
 
 public:
-    static canvas_adapter::pointer load(const stream& stream)
+    static canvas_adapter::pointer load(stream& stream)
     {
         file_header file_header;
         if (stream.read(file_header) != sizeof(file_header)
@@ -185,7 +185,7 @@ public:
     }
 };
 
-bool bmp::load(const stream& stream, frames& frames)
+bool bmp::load(stream& stream, frames& frames) const
 {
     canvas_adapter::pointer canvas = implement::load(stream);
 

@@ -39,7 +39,7 @@ private:
 
 public:
     implement(void)
-        : fill_evenodd_(false), bbox_(0, 0, 0, 0)
+        : evenodd_(false), bbox_(0, 0, 0, 0)
     {}
 
 public:
@@ -302,7 +302,7 @@ private:
         if (coverage < 0)
             coverage = -coverage;
 
-        if (fill_evenodd_)
+        if (evenodd_)
         {
             constexpr unsigned int scale_x2 = subpixel::scale << 1;
             constexpr unsigned int mask_x2  = scale_x2 - 1;
@@ -318,7 +318,7 @@ private:
     }
 
 private:
-    bool fill_evenodd_;
+    bool evenodd_;
 
     rect        bbox_;
     scanline    scanline_;
@@ -334,14 +334,14 @@ raster::~raster(void)
     delete impl_;
 }
 
-void raster::fill_evenodd(bool fill_evenodd)
+void raster::evenodd(bool evenodd)
 {
-    impl_->fill_evenodd_ = fill_evenodd;
+    impl_->evenodd_ = evenodd;
 }
 
-bool raster::fill_evenodd(void) const
+bool raster::evenodd(void) const
 {
-    return impl_->fill_evenodd_;
+    return impl_->evenodd_;
 }
 
 void raster::rasterize(const path& path)
@@ -384,5 +384,5 @@ rect raster::bbox(void) const
 
 raster::scanline raster::fetch_scanline(int y) const
 {
-    return impl_->fetch_scanline(y);
+    return std::move(impl_->fetch_scanline(y));
 }

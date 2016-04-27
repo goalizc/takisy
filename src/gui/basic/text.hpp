@@ -26,6 +26,19 @@ class text {
         std::wstring content;
     };
 
+    struct isx {
+        typedef int (*isx_f)(int);
+        static int isvname(int c)
+            { return ::isalpha(c) || ::isdigit(c) || c == '_'; }
+        static int isfalse(int) { return false; }
+        static isx_f get_isx(int c) {
+            if (isvname(c)) return isvname;
+            else if (::isblank(c)) return ::isblank;
+            else if (::ispunct(c)) return ::ispunct;
+            else return isfalse;
+        }
+    };
+
     DECLARE_HANDLER(onCaretPositionChanged);
 
 public:
@@ -48,7 +61,7 @@ public:
         , font_(tfont_simple::get())
         , selbrush_(make_color_brush_sptr(color::argb(0xff318dfd)))
         , wrtbrush_(make_color_brush_sptr(color::argb(0xff000000)))
-        , actindex_(-1)
+        , actidx_(-1)
     {
         recalculate();
     }
@@ -323,7 +336,7 @@ public:
         readapt();
     }
 
-    void move(int caret_e, bool shift=false, bool ctrl=false) {
+    void move(int caret_e, bool shift = false) {
         int fix_e = caret_e;
 
         if (caret_e < 0)
@@ -347,6 +360,28 @@ public:
         readapt();
     }
 
+    void move_similar(bool negative, bool shift = false) {
+        int caret = caret_.e;
+        if (negative) {
+            if (caret > 0) {
+                isx::isx_f isx = isx::get_isx(content_[--caret]);
+                while (caret > 0 && isx(content_[caret - 1])) --caret;
+            }
+        } else {
+            int upper_limit = content_.size();
+            if (caret < upper_limit) {
+                isx::isx_f isx = isx::get_isx(content_[caret++]);
+                while (caret < upper_limit && isx(content_[caret])) ++caret;
+            }
+        }
+        if (shift) {
+            if (caret_.s < 0)
+                caret_.s = caret_.e;
+        } else
+            caret_.s = -1;
+        caret_.e = caret;
+    }
+
     void select(int start, int end) {
         caret_.s = start;
         caret_.e = end;
@@ -362,15 +397,20 @@ public:
     }
 
     void select_similar(int caret) {
-        bool mode = stralgo::iswspace(content_[caret]);
-        int i = caret - 1, j = caret + 1, content_size = content_.size();
-        while (i >= 0 && stralgo::iswspace(content_[i]) == mode) --i;
-        while (j < content_size && stralgo::iswspace(content_[j]) == mode) ++j;
-        select(i + 1, j);
+        int upper_limit = content_.size();
+        if (caret < 0) caret = 0;
+        if (caret >= upper_limit) caret = upper_limit - 1;
+        int start = caret, end = caret + 1;
+        isx::isx_f isx = isx::get_isx(content_[caret]);
+        if (isx(content_[caret])) {
+            while (start > 0 && isx(content_[start - 1])) --start;
+            while (end < upper_limit && isx(content_[end])) ++end;
+        }
+        select(start, end);
     }
 
     void cancel_select(void) {
-        select(-1, caret_.e);
+        caret_.s = -1;
     }
 
     unsigned int hittest(point point) const {
@@ -584,9 +624,9 @@ public:
     }
 
     bool undo(void) {
-        if (actindex_ == -1)
+        if (actidx_ == -1)
             return false;
-        const action& action = actions_[actindex_--];
+        const action& action = actions_[actidx_--];
         if (action.type == action::Type::atInsert) {
             content_.erase(action.offset, action.content.size());
             select(-1, action.offset);
@@ -599,9 +639,9 @@ public:
     }
 
     bool redo(void) {
-        if (actindex_ >= (int)actions_.size() - 1)
+        if (actidx_ >= (int)actions_.size() - 1)
             return false;
-        const action& action = actions_[++actindex_];
+        const action& action = actions_[++actidx_];
         if (action.type == action::Type::atInsert) {
             content_.insert(action.offset, action.content);
             select(action.offset, action.offset + action.content.size());
@@ -633,14 +673,14 @@ private:
 
     void clear_actions(void) {
         actions_.clear();
-        actindex_ = actions_.size() - 1;
+        actidx_ = actions_.size() - 1;
     }
 
     void push_action(const action& action) {
-        if (actindex_ + 1 < (int)actions_.size())
-            actions_.resize(actindex_ + 1);
+        if (actidx_ + 1 < (int)actions_.size())
+            actions_.resize(actidx_ + 1);
         actions_.push_back(action);
-        actindex_++;
+        actidx_++;
     }
 
     unsigned int action_insert(unsigned int offset,
@@ -650,10 +690,10 @@ private:
             if (c <= 0) return 0;
             else count = c;
         }
-        if (actindex_ < 0
-            || actions_[actindex_].content.size() > xxdo_limit
-            || actions_[actindex_].type != action::Type::atInsert
-            || actions_[actindex_].offset + actions_[actindex_].content.size()
+        if (actidx_ < 0
+            || actions_[actidx_].content.size() > xxdo_limit
+            || actions_[actidx_].type != action::Type::atInsert
+            || actions_[actidx_].offset + actions_[actidx_].content.size()
                     != offset)
         {
             action action;
@@ -663,17 +703,17 @@ private:
             push_action(action);
         }
         else
-            actions_[actindex_].content.append(str, count);
+            actions_[actidx_].content.append(str, count);
         content_.insert(offset, str, count);
         return count;
     }
 
     void action_erase(unsigned int offset, unsigned int count) {
         bool dealed = false;
-        if (actindex_ >= 0
-            && actions_[actindex_].content.size() < xxdo_limit
-            && actions_[actindex_].type == action::Type::atErase) {
-            action& act = actions_[actindex_];
+        if (actidx_ >= 0
+            && actions_[actidx_].content.size() < xxdo_limit
+            && actions_[actidx_].type == action::Type::atErase) {
+            action& act = actions_[actidx_];
             if (offset + count == act.offset) {
                 act.offset   = offset;
                 act.content  = content_.substr(offset, count) + act.content;
@@ -796,7 +836,7 @@ private:
     const class font* font_;
     brush_sptr selbrush_, wrtbrush_;
     std::vector<std::vector<line>> paragraphs_;
-    int actindex_;
+    int actidx_;
     std::vector<action> actions_;
 };
 

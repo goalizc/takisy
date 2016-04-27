@@ -20,8 +20,8 @@ bit_buffer_i::bit_buffer_i(const unsigned char* buffer, unsigned int size)
     : impl_(new implement(buffer, size))
 {}
 
-bit_buffer_i::bit_buffer_i(const bit_buffer_i& bbr)
-    : bit_buffer_i(bbr.impl_->buffer_, bbr.impl_->size_)
+bit_buffer_i::bit_buffer_i(const bit_buffer_i& bbi)
+    : bit_buffer_i(bbi.impl_->buffer_, bbi.impl_->size_)
 {}
 
 bit_buffer_i::~bit_buffer_i(void)
@@ -29,14 +29,14 @@ bit_buffer_i::~bit_buffer_i(void)
     delete impl_;
 }
 
-bit_buffer_i& bit_buffer_i::operator=(const bit_buffer_i& bbr)
+bit_buffer_i& bit_buffer_i::operator=(const bit_buffer_i& bbi)
 {
-    if (this != &bbr)
+    if (this != &bbi)
     {
-        impl_->buffer_ = bbr.impl_->buffer_;
-        impl_->size_   = bbr.impl_->size_;
-        impl_->Bi_     = bbr.impl_->Bi_;
-        impl_->bi_     = bbr.impl_->bi_;
+        impl_->buffer_ = bbi.impl_->buffer_;
+        impl_->size_   = bbi.impl_->size_;
+        impl_->Bi_     = bbi.impl_->Bi_;
+        impl_->bi_     = bbi.impl_->bi_;
     }
 
     return *this;
@@ -109,10 +109,10 @@ bit_buffer_o::bit_buffer_o(void)
     : impl_(new implement)
 {}
 
-bit_buffer_o::bit_buffer_o(const bit_buffer_o& bbw)
+bit_buffer_o::bit_buffer_o(const bit_buffer_o& bbo)
     : bit_buffer_o()
 {
-    operator=(bbw);
+    operator=(bbo);
 }
 
 bit_buffer_o::~bit_buffer_o(void)
@@ -120,13 +120,13 @@ bit_buffer_o::~bit_buffer_o(void)
     delete impl_;
 }
 
-bit_buffer_o& bit_buffer_o::operator=(const bit_buffer_o& bbw)
+bit_buffer_o& bit_buffer_o::operator=(const bit_buffer_o& bbo)
 {
-    if (this != & bbw)
+    if (this != & bbo)
     {
-        impl_->buffer_     = bbw.impl_->buffer_.clone();
-        impl_->bit_buffer_ = bbw.impl_->bit_buffer_;
-        impl_->bit_count_  = bbw.impl_->bit_count_;
+        impl_->buffer_     = bbo.impl_->buffer_.clone();
+        impl_->bit_buffer_ = bbo.impl_->bit_buffer_;
+        impl_->bit_count_  = bbo.impl_->bit_count_;
     }
 
     return *this;

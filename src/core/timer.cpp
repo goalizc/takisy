@@ -1,8 +1,12 @@
 #include <list>
 #include <algorithm>
 #include <stdexcept>
-#include <Windows.h>
+#include <takisy/core/macro.h>
 #include <takisy/core/timer.h>
+
+#ifdef __os_win__
+#include <Windows.h>
+#endif
 
 class timer::implement
 {

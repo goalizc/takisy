@@ -57,8 +57,10 @@ public:
 
                 if (caret_visible_ != visible)
                 {
+                    Point caret = text_.caret_point() + text_.offset();
                     caret_visible_ = visible;
-                    this_->repaint();
+                    this_->repaint(caret.x, caret.y,
+                                   1, text_.font()->emheight());
                 }
             });
     }
@@ -132,7 +134,7 @@ text_edit::text_edit(const std::wstring& _text)
                             + impl_->text_.caret_point()
                             + impl_->text_.offset();
 
-            #ifdef OS_WIN
+            #ifdef __os_win__
                 HIMC himc = ImmGetContext(handle);
 
                 LOGFONT lf;
@@ -531,22 +533,37 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
     switch (vkey)
     {
     case sys::vkLeft:
-        impl_->text_.move(caret() - 1, shift, ctrl);
+        if (ctrl)
+            impl_->text_.move_similar(true, shift);
+        else
+            impl_->text_.move(impl_->text_.caret() - 1, shift);
         impl_->update();
         break;
     case sys::vkRight:
-        impl_->text_.move(caret() + 1, shift, ctrl);
+        if (ctrl)
+            impl_->text_.move_similar(false, shift);
+        else
+            impl_->text_.move(impl_->text_.caret() + 1, shift);
         impl_->update();
         break;
     case sys::vkUp:
     case sys::vkDown:
+        if (ctrl)
+        {
+            unsigned int height = impl_->text_.font()->height();
+            if (vkey == sys::vkUp)
+                impl_->vscroll_.value(impl_->vscroll_.value() - height);
+            else
+                impl_->vscroll_.value(impl_->vscroll_.value() + height);
+        }
+        else
         {
             Point point = impl_->text_.caret_point();
             if (vkey == sys::vkUp)
                 point.y -= impl_->text_.line_height();
             else
                 point.y += impl_->text_.line_height();
-            impl_->text_.move(impl_->text_.hittest(point), shift, ctrl);
+            impl_->text_.move(impl_->text_.hittest(point), shift);
             impl_->update();
         }
         break;
@@ -555,19 +572,18 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
         if (ctrl)
         {
             if (vkey == sys::vkHome)
-                impl_->text_.move(0, shift, ctrl);
+                impl_->text_.move(0, shift);
             else
-                impl_->text_.move(impl_->text_.content().size(), shift, ctrl);
+                impl_->text_.move(impl_->text_.content().size(), shift);
         }
         else
         {
             std::pair<unsigned int, text::line>
                 range = impl_->text_.line_range(impl_->text_.caret_line());
             if (vkey == sys::vkHome)
-                impl_->text_.move(range.first, shift, ctrl);
+                impl_->text_.move(range.first, shift);
             else
-                impl_->text_.move(range.first + range.second.words,
-                                  shift, ctrl);
+                impl_->text_.move(range.first + range.second.words, shift);
         }
         impl_->update();
         break;
@@ -596,6 +612,10 @@ bool text_edit::onKeyPress(unsigned int chr)
             impl_->text_.select(0, impl_->text_.content().size());
             repaint();
             break;
+        case 'd':
+            impl_->text_.select_similar(impl_->text_.caret());
+            repaint();
+            break;
         case 'y':
             if (!impl_->readonly_ && impl_->text_.redo())
                 impl_->update();
@@ -604,7 +624,7 @@ bool text_edit::onKeyPress(unsigned int chr)
             if (!impl_->readonly_ && impl_->text_.undo())
                 impl_->update();
             break;
-    #ifdef OS_WIN
+    #ifdef __os_win__
         case 'c':
         case 'x':
             if (OpenClipboard(nullptr))

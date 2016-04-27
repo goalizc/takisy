@@ -25,14 +25,14 @@ public:
 public:
     json(void);
     json(const char* filepath_or_content);
-    json(const stream& stream);
+    json(stream& stream);
     json(const json& json);
     json(object*&);
    ~json(void);
 
 public:
     bool load(const char* content);
-    bool load(const stream& stream);
+    bool load(stream& stream);
     bool load_file(const char* filepath);
 
     std::string dump(void) const;

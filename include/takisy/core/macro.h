@@ -2,255 +2,176 @@
 #define macro_h_20160406
 
 /*
-   The operating system, must be one of: (OS_x)
+   The operating system, must be one of: (__os_x__)
 
-     DARWIN   - Any Darwin system
-     MAC      - OS X and iOS
-     OSX      - OS X
-     IOS      - iOS
-     MSDOS    - MS-DOS and Windows
-     OS2      - OS/2
-     OS2EMX   - XFree86 on OS/2 (not PM)
-     WIN32    - Win32 (Windows 2000/XP/Vista/7 and Windows Server 2003/2008)
-     WIN64    - Win64
-     WINCE    - WinCE (Windows CE 5.0)
-     WINRT    - WinRT (Windows 8 Runtime)
-     WIN      - Windows (Cygwin, Win32, Win64, WinCE, WinRT)
-     CYGWIN   - Cygwin
-     SOLARIS  - Sun Solaris
-     HPUX     - HP-UX
-     ULTRIX   - DEC Ultrix
-     LINUX    - Linux [has variants]
-     FREEBSD  - FreeBSD [has variants]
-     NETBSD   - NetBSD
-     OPENBSD  - OpenBSD
-     BSDI     - BSD/OS
-     IRIX     - SGI Irix
-     OSF      - HP Tru64 UNIX
-     SCO      - SCO OpenServer 5
-     UNIXWARE - UnixWare 7, Open UNIX 8
-     AIX      - AIX
-     HURD     - GNU Hurd
-     DGUX     - DG/UX
-     RELIANT  - Reliant UNIX
-     DYNIX    - DYNIX/ptx
-     QNX      - QNX [has variants]
-     QNX6     - QNX RTP 6.1
-     LYNX     - LynxOS
-     BSD4     - Any BSD 4.4 system
-     UNIX     - Any UNIX BSD/SYSV system
-     ANDROID  - Android platform
+    x:
+     darwin   - Any Darwin system
+     mac      - OS X and iOS
+     osx      - OS X
+     ios      - iOS
+     msdos    - MS-DOS and Windows
+     os2      - OS/2
+     os2emx   - XFree86 on OS/2 (not PM)
+     win32    - Win32 (Windows 2000/XP/Vista/7 and Windows Server 2003/2008)
+     win64    - Win64
+     wince    - WinCE (Windows CE 5.0)
+     winrt    - WinRT (Windows 8 Runtime)
+     win      - Windows (Cygwin, Win32, Win64, WinCE, WinRT)
+     cygwin   - Cygwin
+     solaris  - Sun Solaris
+     hpux     - HP-UX
+     ultrix   - DEC Ultrix
+     linux    - Linux [has variants]
+     freebsd  - FreeBSD [has variants]
+     netbsd   - NetBSD
+     openbsd  - OpenBSD
+     bsdi     - BSD/OS
+     irix     - SGI Irix
+     osf      - HP Tru64 UNIX
+     sco      - SCO OpenServer 5
+     unixware - UnixWare 7, Open UNIX 8
+     aix      - AIX
+     hurd     - GNU Hurd
+     dgux     - DG/UX
+     reliant  - Reliant UNIX
+     dynix    - DYNIX/ptx
+     qnx      - QNX [has variants]
+     qnx6     - QNX RTP 6.1
+     lynx     - LynxOS
+     bsd4     - Any BSD 4.4 system
+     unix     - Any UNIX BSD/SYSV system
+     android  - Android platform
 
    The following operating systems have variants:
-     LINUX    - both OS_LINUX and OS_ANDROID are defined when building for Android
-              - only OS_LINUX is defined if building for other Linux systems
-     QNX      - both OS_QNX and OS_BLACKBERRY are defined when building for Blackberry 10
-              - only OS_QNX is defined if building for other QNX targets
-     FREEBSD  - OS_FREEBSD is defined only when building for FreeBSD with a BSD userland
-              - OS_FREEBSD_KERNEL is always defined on FreeBSD, even if the userland is from GNU
+     linux    - both __os_linux__ and __os_android__ are defined when building for Android
+              - only __os_linux__ is defined if building for other Linux systems
+     qnx      - both __os_qnx__ and __os_blackberry__ are defined when building for Blackberry 10
+              - only __os_qnx__ is defined if building for other QNX targets
+     freebsd  - __os_freebsd__ is defined only when building for FreeBSD with a BSD userland
+              - __os_freebsd_kernel__ is always defined on FreeBSD, even if the userland is from GNU
 */
 
-#if defined(__APPLE__) \
-    && (defined(__GNUC__) || defined(__xlC__) || defined(__xlc__))
-#  define OS_DARWIN
-#  define OS_BSD4
+#if defined(__APPLE__) && (defined(__GNUC__) || defined(__xlC__) \
+    || defined(__xlc__))
+#  define __os_darwin__
+#  define __os_bsd4__
 #  ifdef __LP64__
-#    define OS_DARWIN64
+#    define __os_darwin64__
 #  else
-#    define OS_DARWIN32
+#    define __os_darwin32__
 #  endif
 #elif defined(ANDROID)
-#  define OS_ANDROID
-#  define OS_LINUX
+#  define __os_android__
+#  define __os_linux__
 #elif defined(__CYGWIN__)
-#  define OS_CYGWIN
+#  define __os_cygwin__
 #elif !defined(SAG_COM) \
     && (!defined(WINAPI_FAMILY) || WINAPI_FAMILY==WINAPI_FAMILY_DESKTOP_APP) \
     && (defined(WIN64) || defined(_WIN64) || defined(__WIN64__))
-#  define OS_WIN32
-#  define OS_WIN64
+#  define __os_win32__
+#  define __os_win64__
 #elif !defined(SAG_COM) \
     && (defined(WIN32) || defined(_WIN32) || defined(__WIN32__) \
         || defined(__NT__))
 #  if defined(WINCE) || defined(_WIN32_WCE)
-#    define OS_WINCE
+#    define __os_wince__
 #  elif defined(WINAPI_FAMILY)
 #    if WINAPI_FAMILY==WINAPI_FAMILY_PHONE_APP
-#      define OS_WINPHONE
-#      define OS_WINRT
+#      define __os_winphone__
+#      define __os_winrt__
 #    elif WINAPI_FAMILY==WINAPI_FAMILY_APP
-#      define OS_WINRT
+#      define __os_winrt__
 #    else
-#      define OS_WIN32
+#      define __os_win32__
 #    endif
 #  else
-#    define OS_WIN32
+#    define __os_win32__
 #  endif
 #elif defined(__sun) || defined(sun)
-#  define OS_SOLARIS
+#  define __os_solaris__
 #elif defined(hpux) || defined(__hpux)
-#  define OS_HPUX
+#  define __os_hpux__
 #elif defined(__ultrix) || defined(ultrix)
-#  define OS_ULTRIX
+#  define __os_ultrix__
 #elif defined(sinix)
-#  define OS_RELIANT
+#  define __os_reliant__
 #elif defined(__native_client__)
-#  define OS_NACL
+#  define __os_nacl__
 #elif defined(__linux__) || defined(__linux)
-#  define OS_LINUX
+#  define __os_linux__
 #elif defined(__FreeBSD__) || defined(__DragonFly__) \
     || defined(__FreeBSD_kernel__)
 #  ifndef __FreeBSD_kernel__
-#    define OS_FREEBSD
+#    define __os_freebsd__
 #  endif
-#  define OS_FREEBSD_KERNEL
-#  define OS_BSD4
+#  define __os_freebsd_kernel__
+#  define __os_bsd4__
 #elif defined(__NetBSD__)
-#  define OS_NETBSD
-#  define OS_BSD4
+#  define __os_netbsd__
+#  define __os_bsd4__
 #elif defined(__OpenBSD__)
-#  define OS_OPENBSD
-#  define OS_BSD4
+#  define __os_openbsd__
+#  define __os_bsd4__
 #elif defined(__bsdi__)
-#  define OS_BSDI
-#  define OS_BSD4
+#  define __os_bsdi__
+#  define __os_bsd4__
 #elif defined(__sgi)
-#  define OS_IRIX
+#  define __os_irix__
 #elif defined(__osf__)
-#  define OS_OSF
+#  define __os_osf__
 #elif defined(_AIX)
-#  define OS_AIX
+#  define __os_aix__
 #elif defined(__Lynx__)
-#  define OS_LYNX
+#  define __os_lynx__
 #elif defined(__GNU__)
-#  define OS_HURD
+#  define __os_hurd__
 #elif defined(__DGUX__)
-#  define OS_DGUX
+#  define __os_dgux__
 #elif defined(__QNXNTO__)
-#  define OS_QNX
+#  define __os_qnx__
 #elif defined(_SEQUENT_)
-#  define OS_DYNIX
+#  define __os_dynix__
 #elif defined(_SCO_DS) /* SCO OpenServer 5 + GCC */
-#  define OS_SCO
+#  define __os_sco__
 #elif defined(__USLC__) /* all SCO platforms + UDK or OUDK */
-#  define OS_UNIXWARE
+#  define __os_unixware__
 #elif defined(__svr4__) && defined(i386) /* Open UNIX 8 + GCC */
-#  define OS_UNIXWARE
+#  define __os_unixware__
 #elif defined(__INTEGRITY)
-#  define OS_INTEGRITY
+#  define __os_integrity__
 #elif defined(VXWORKS)
 /* there is no "real" VxWorks define - this has to be set in the mkspec! */
-#  define OS_VXWORKS
+#  define __os_vxworks__
 #elif defined(__MAKEDEPEND__)
 #else
-#  error "Qt has not been ported to this OS - see http://www.qt-project.org/"
+#  error "Takisy has not been ported to this OS!"
 #endif
 
-#if defined(OS_CYGWIN) || defined(OS_WIN32) || defined(OS_WIN64) \
-    || defined(OS_WINCE) || defined(OS_WINRT)
-#  define OS_WIN
+#if defined(__os_cygwin__) || defined(__os_win32__) || defined(__os_win64__) \
+    || defined(__os_wince__) || defined(__os_winrt__)
+#  define __os_win__
 #endif
 
-#if defined(OS_DARWIN)
-#  define OS_MAC
-#  if defined(OS_DARWIN64)
-#     define OS_MAC64
-#  elif defined(OS_DARWIN32)
-#     define OS_MAC32
+#if defined(__os_darwin__)
+#  define __os_mac__
+#  if defined(__os_darwin64__)
+#     define __os_mac64__
+#  elif defined(__os_darwin32__)
+#     define __os_mac32__
 #  endif
 #  include <TargetConditionals.h>
 #  if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
-#     define OS_IOS
+#     define __os_ios__
 #  elif defined(TARGET_OS_MAC) && TARGET_OS_MAC
-#     define OS_OSX
-#     define OS_MACX // compatibility synonym
+#     define __os_osx__
+#     define __os_macx__ // compatibility synonym
 #  endif
 #endif
 
-#if defined(OS_WIN)
-#  undef OS_UNIX
-#elif !defined(OS_UNIX)
-#  define OS_UNIX
-#endif
-
-#ifdef OS_DARWIN
-#  include <Availability.h>
-#  include <AvailabilityMacros.h>
-#
-#  ifdef OS_OSX
-#    if !defined(__MAC_OS_X_VERSION_MIN_REQUIRED) \
-        || __MAC_OS_X_VERSION_MIN_REQUIRED < __MAC_10_6
-#       undef __MAC_OS_X_VERSION_MIN_REQUIRED
-#       define __MAC_OS_X_VERSION_MIN_REQUIRED __MAC_10_6
-#    endif
-#    if !defined(MAC_OS_X_VERSION_MIN_REQUIRED) \
-        || MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_6
-#       undef MAC_OS_X_VERSION_MIN_REQUIRED
-#       define MAC_OS_X_VERSION_MIN_REQUIRED MAC_OS_X_VERSION_10_6
-#    endif
-#  endif
-#
-#  // Numerical checks are preferred to named checks, but to be safe
-#  // we define the missing version names in case Qt uses them.
-#
-#  if !defined(__MAC_10_7)
-#       define __MAC_10_7 1070
-#  endif
-#  if !defined(__MAC_10_8)
-#       define __MAC_10_8 1080
-#  endif
-#  if !defined(__MAC_10_9)
-#       define __MAC_10_9 1090
-#  endif
-#  if !defined(__MAC_10_10)
-#       define __MAC_10_10 101000
-#  endif
-#  if !defined(MAC_OS_X_VERSION_10_7)
-#       define MAC_OS_X_VERSION_10_7 1070
-#  endif
-#  if !defined(MAC_OS_X_VERSION_10_8)
-#       define MAC_OS_X_VERSION_10_8 1080
-#  endif
-#  if !defined(MAC_OS_X_VERSION_10_9)
-#       define MAC_OS_X_VERSION_10_9 1090
-#  endif
-#  if !defined(MAC_OS_X_VERSION_10_10)
-#       define MAC_OS_X_VERSION_10_10 101000
-#  endif
-#
-#  if !defined(__IPHONE_4_3)
-#       define __IPHONE_4_3 40300
-#  endif
-#  if !defined(__IPHONE_5_0)
-#       define __IPHONE_5_0 50000
-#  endif
-#  if !defined(__IPHONE_5_1)
-#       define __IPHONE_5_1 50100
-#  endif
-#  if !defined(__IPHONE_6_0)
-#       define __IPHONE_6_0 60000
-#  endif
-#  if !defined(__IPHONE_6_1)
-#       define __IPHONE_6_1 60100
-#  endif
-#  if !defined(__IPHONE_7_0)
-#       define __IPHONE_7_0 70000
-#  endif
-#  if !defined(__IPHONE_7_1)
-#       define __IPHONE_7_1 70100
-#  endif
-#  if !defined(__IPHONE_8_0)
-#       define __IPHONE_8_0 80000
-#  endif
-#endif
-
-#ifdef __LSB_VERSION__
-#  if __LSB_VERSION__ < 40
-#    error "This version of the Linux Standard Base is unsupported"
-#  endif
-#ifndef QT_LINUXBASE
-#  define QT_LINUXBASE
-#endif
+#if defined(__os_win__) && !defined(__os_cygwin__)
+#  undef __os_unix__
+#elif !defined(__os_unix__)
+#  define __os_unix__
 #endif
 
 #endif // macro_h_20160406

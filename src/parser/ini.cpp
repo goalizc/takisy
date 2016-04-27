@@ -14,7 +14,7 @@ ini::ini(const char* filepath_or_content)
         load(filepath_or_content);
 }
 
-ini::ini(const stream& stream)
+ini::ini(stream& stream)
 {
     load(stream);
 }
@@ -36,10 +36,12 @@ ini& ini::operator=(const ini& ini)
 
 bool ini::load(const char* content)
 {
-    return load(buffer_stream(content, strlen(content)));
+    buffer_stream bs(content, strlen(content));
+
+    return load(bs);
 }
 
-bool ini::load(const stream& stream)
+bool ini::load(stream& stream)
 {
     std::string section_name = "default";
 
@@ -86,7 +88,9 @@ bool ini::load(const stream& stream)
 
 bool ini::load_file(const char* filepath)
 {
-    return load(file_stream(filepath, "r"));
+    file_stream fs(filepath, "r");
+
+    return load(fs);
 }
 
 std::string ini::dump(void) const

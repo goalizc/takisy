@@ -7,8 +7,8 @@ class file
 {
 public:
     inline  file(FILE* fp) : fp_(fp) {}
-    inline  file(const char* file_path, const char* mode)
-        : fp_(fopen(file_path, mode)) {}
+    inline  file(const char* filepath, const char* mode)
+        : fp_(fopen(filepath, mode)) {}
     inline  file(const file& f) : fp_(f.fp_) { f.fp_ = nullptr; }
     inline ~file(void) { if (fp_) fclose(fp_); }
 

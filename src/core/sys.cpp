@@ -3,7 +3,7 @@
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/sys.h>
 
-#ifdef OS_WIN
+#ifdef __os_win__
 #include <Windows.h>
 #endif
 
@@ -20,7 +20,7 @@ unsigned long long sys::rdtsc(void)
 
 bool sys::key_pressed(VirtualKey virtual_key)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     return 0x0100 & GetKeyState(virtual_key);
 #else
     return false;

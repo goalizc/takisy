@@ -14,10 +14,10 @@ class bit_buffer_i
 
 public:
     bit_buffer_i(const unsigned char* buffer, unsigned int size);
-    bit_buffer_i(const bit_buffer_i& bbr);
+    bit_buffer_i(const bit_buffer_i& bbi);
    ~bit_buffer_i(void);
 
-    bit_buffer_i& operator=(const bit_buffer_i& bbr);
+    bit_buffer_i& operator=(const bit_buffer_i& bbi);
 
 public:
     void align(void);
@@ -34,10 +34,10 @@ class bit_buffer_o
 
 public:
     bit_buffer_o(void);
-    bit_buffer_o(const bit_buffer_o& bbw);
+    bit_buffer_o(const bit_buffer_o& bbo);
    ~bit_buffer_o(void);
 
-    bit_buffer_o& operator=(const bit_buffer_o& bbw);
+    bit_buffer_o& operator=(const bit_buffer_o& bbo);
 
 public:
     void align(void);

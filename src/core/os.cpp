@@ -46,7 +46,7 @@ off_t os::path::getsize(const std::string& path)
 
 bool os::path::isabs(const std::string& path)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     return path[1] == ':';
 #else
     return path[0] == '/';
@@ -81,7 +81,7 @@ os::path::pair os::path::split(const std::string& path)
 
 os::path::pair os::path::splitdrive(const std::string& path)
 {
-#ifdef OS_WIN
+#ifdef __os_win__
     if (path[1] == ':')
         return pair { path.substr(0, 2), path.substr(2) };
     else

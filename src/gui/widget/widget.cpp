@@ -8,7 +8,7 @@
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/widget.h>
 
-#ifdef OS_WIN
+#ifdef __os_win__
 #include <Windows.h>
 #endif
 
@@ -585,6 +585,16 @@ void widget::repaint(void)
     repaint(client_rect());
 }
 
+void widget::repaint(int x, int y, unsigned int width, unsigned int height)
+{
+    repaint(Rect(x, y, x + width, y + height));
+}
+
+void widget::repaint(const Point& xy, const Size& size)
+{
+    repaint(Rect(xy, size));
+}
+
 void widget::repaint(const Rect& rect)
 {
     if (!visible() || rect.empty())
@@ -595,11 +605,14 @@ void widget::repaint(const Rect& rect)
 
     while (widget->father())
     {
+        if (!widget->visible())
+            return;
+
         paint_rect = paint_rect.offset(widget->xy());
         widget     = widget->father();
         paint_rect = paint_rect.intersect(widget->client_rect());
 
-        if (!widget->visible() || paint_rect.empty())
+        if (paint_rect.empty())
             return;
     }
 
@@ -664,7 +677,7 @@ bool widget::as_window(bool enable_alpha_channel)
         return true;
 
     cross_platform_window::Handle handle = nullptr;
-#ifdef OS_WIN
+#ifdef __os_win__
     DWORD style = WS_POPUP;
     if (visible())
         style |= WS_VISIBLE;

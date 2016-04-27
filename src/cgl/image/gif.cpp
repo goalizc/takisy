@@ -231,7 +231,7 @@ class gif::implement
     };
 
 private:
-    static stretchy_buffer<unsigned char> read_sub_blocks(const stream& stream)
+    static stretchy_buffer<unsigned char> read_sub_blocks(stream& stream)
     {
         stretchy_buffer<unsigned char> result;
 
@@ -255,7 +255,7 @@ private:
     }
 
 public:
-    static bool load(const stream& stream, frames& frames)
+    static bool load(stream& stream, frames& frames)
     {
         typedef pf_rgb8 palette_pf_t;
         const unsigned int kPFPaletteBytes = palette_pf_t::pixel_bytes();
@@ -408,7 +408,7 @@ public:
     }
 };
 
-bool gif::load(const stream& stream, frames& frames)
+bool gif::load(stream& stream, frames& frames) const
 {
     return implement::load(stream, frames);
 }

@@ -12,26 +12,27 @@ public:
     image(void);
     explicit
     image(const char* uri);
-    image(const char* uri, const char* suffix);
+    image(const char* uri, const format& format);
+    image(stream& stream);
+    image(stream& stream, const format& format);
     image(const image& image);
    ~image(void);
 
     image& operator=(const image& image);
 
 public:
-    static format* register_format(const char* suffix, format* format);
-    static format* deregister_format(const char* suffix);
+    static const format* register_format(const format* format);
+    static void        deregister_format(const format* format);
 
 public:
     bool load_uri(const char* uri);
-    bool load_uri(const char* uri, const char* suffix);
-    bool load_file(const char* filepath);
-    bool load_file(const char* filepath, const char* suffix);
-    bool load_stream(const stream& stream);
-    bool load_stream(const stream& stream, const char* suffix);
-    bool dump_uri(const char* uri, const char* suffix) const;
-    bool dump_file(const char* filepath) const;
-    bool dump_stream(stream& stream, const char* suffix) const;
+    bool load_uri(const char* uri, const format& format);
+    bool load_stream(stream& stream);
+    bool load_stream(stream& stream, const format& format);
+    bool dump_uri(const char* uri) const;
+    bool dump_uri(const char* uri, const format& format) const;
+    bool dump_stream(stream& stream) const;
+    bool dump_stream(stream& stream, const format& format) const;
 
 public:
     canvas_adapter& new_frame(unsigned int width, unsigned int height);
@@ -46,7 +47,7 @@ public:
     canvas_adapter& new_frame(const PixelMatrix& pixel_matrix,
                               unsigned int interval);
 
-    unsigned int nframes(void) const;
+    unsigned int count(void) const;
     unsigned int duration(void) const;
     unsigned int seek(unsigned int timestamp) const;
 

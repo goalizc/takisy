@@ -13,13 +13,13 @@ public:
     picture(void);
     explicit
     picture(const char* uri);
-    picture(const stream& stream);
+    picture(stream& stream);
     picture(const class image& image);
    ~picture(void);
 
 public:
     bool load_uri(const char* uri);
-    bool load_stream(const stream& stream);
+    bool load_stream(stream& stream);
 
 public:
     bool               scalable(void) const;

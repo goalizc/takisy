@@ -4,6 +4,60 @@
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/stream.h>
 
+std::string stream::read_all(void)
+{
+    stretchy_buffer<unsigned char> buffer(0);
+    unsigned long length = buffer_stream(buffer).plunder(*this);
+
+    return std::string((char*)buffer.data(), length);
+}
+
+std::string stream::read_line(void)
+{
+    std::string line;
+    char ch = 0;
+
+    while (read(ch) == sizeof(ch) && ch != '\n')
+        line += ch;
+
+    if (line.back() == '\r' && ch == '\n')
+        line.pop_back();
+
+    return std::move(line);
+}
+
+std::string stream::read_chars(unsigned long nchars)
+{
+    stretchy_buffer<char> buffer(nchars);
+    unsigned long length = read(buffer.data(), buffer.size());
+
+    return std::string(buffer.data(), length);
+}
+
+unsigned long stream::plunder(const char* uri)
+{
+    std::shared_ptr<class stream> stream = from_uri(uri);
+
+    if (!stream)
+        return 0;
+
+    return plunder(*stream);
+}
+
+unsigned long stream::plunder(stream& src)
+{
+    stretchy_buffer<unsigned char> buffer(512 * 1024);
+    unsigned long length = 0, read_length = 0;
+
+    while ((read_length = src.read(buffer.data(), buffer.size())))
+    {
+        length += read_length;
+        write(buffer.data(), read_length);
+    }
+
+    return length;
+}
+
 std::shared_ptr<stream> stream::from_uri(const char* uri)
 {
     stralgo::strings pair = stralgo::split(uri, "://", 1);
@@ -124,44 +178,115 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
         return nullptr;
 }
 
-unsigned long stream::plunder(const char* uri)
+/////////////////////////////////////////
+//
+//  ### Seek Wrapper
+//
+/////////////////////////////////////////
+
+class seek_stream::implement
 {
-    std::shared_ptr<class stream> stream = from_uri(uri);
+    friend class seek_stream;
 
-    if (!stream)
-        return 0;
+public:
+    implement(stream& stream)
+        : stream_(stream)
+    {}
 
-    return plunder(*stream);
+private:
+    stream& stream_;
+    buffer_stream history_;
+};
+
+seek_stream::seek_stream(stream& stream)
+    : impl_(new implement(stream))
+{}
+
+seek_stream::~seek_stream(void)
+{
+    delete impl_;
 }
 
-unsigned long stream::plunder(const stream& src)
+seek_stream::seek_stream(const seek_stream& ss)
 {
-    stretchy_buffer<unsigned char> buffer(512 * 1024);
-    unsigned long length = 0, readed_length = 0;
+    operator=(ss);
+}
 
-    while ((readed_length = src.read(buffer.data(), buffer.size())))
+seek_stream& seek_stream::operator=(const seek_stream&)
+{
+    throw std::logic_error("class seek_stream is noncopyable class.");
+}
+
+bool seek_stream::seek(long offset, SeekType seek_type)
+{
+    switch (seek_type)
     {
-        length += readed_length;
-        write(buffer.data(), readed_length);
+    case stBegin:
+    case stCurrent:
+        {
+            long oldtell = impl_->history_.tell();
+            impl_->history_.seek(offset, seek_type);
+            long newtell = impl_->history_.tell();
+            long dsttell = offset + (seek_type == stCurrent ? oldtell : 0);
+
+            if (newtell < dsttell)
+            {
+                stretchy_buffer<char> skip_data(dsttell - newtell);
+                read(skip_data.data(), skip_data.size());
+            }
+
+            return true;
+        }
+    case stEnd:
+        {
+            impl_->history_.plunder(impl_->stream_);
+            impl_->history_.seek(offset, seek_type);
+
+            return true;
+        }
+    default:
+        return false;
+    }
+}
+
+long seek_stream::tell(void) const
+{
+    return impl_->history_.tell();
+}
+
+bool seek_stream::readable(void) const
+{
+    return impl_->history_.readable() || impl_->stream_.readable();
+}
+
+bool seek_stream::writable(void) const
+{
+    return impl_->stream_.writable();
+}
+
+unsigned long seek_stream::read(void* buffer, unsigned long size)
+{
+    unsigned char* buffer_uc = reinterpret_cast<unsigned char*>(buffer);
+    unsigned long  hl = impl_->history_.read(buffer_uc, size);
+    unsigned long  rl = 0;
+
+    if (hl < size)
+    {
+        rl = impl_->stream_.read(buffer_uc + hl, size - hl);
+
+        if (rl > 0)
+        {
+            impl_->history_.write(buffer_uc + hl, rl);
+            impl_->history_.seek(0, stEnd);
+        }
     }
 
-    return length;
+    return hl + rl;
 }
 
-std::string stream::readn(unsigned int n) const
+unsigned long seek_stream::write(const void* buffer, unsigned long size)
 {
-    stretchy_buffer<char> buffer(n);
-    unsigned long length = read(buffer.data(), buffer.size());
-
-    return std::string(buffer.data(), length);
-}
-
-std::string stream::readall(void) const
-{
-    stretchy_buffer<unsigned char> buffer(0);
-    unsigned long length = buffer_stream(buffer).plunder(*this);
-
-    return std::string((char*)buffer.data(), length);
+    return impl_->stream_.write(buffer, size);
 }
 
 /////////////////////////////////////////
@@ -180,7 +305,7 @@ private:
     {}
 
 private:
-    mutable unsigned int tell_;
+    unsigned long tell_;
     stretchy_buffer<unsigned char> buffer_;
 };
 
@@ -188,7 +313,7 @@ buffer_stream::buffer_stream(void)
     : impl_(new implement)
 {}
 
-buffer_stream::buffer_stream(const void* buffer, unsigned int size)
+buffer_stream::buffer_stream(const void* buffer, unsigned long size)
     : buffer_stream()
 {
     write(buffer, size);
@@ -222,9 +347,9 @@ buffer_stream& buffer_stream::operator=(const buffer_stream& bs)
     return *this;
 }
 
-bool buffer_stream::seek(long offset, SeekType seek_type) const
+bool buffer_stream::seek(long offset, SeekType seek_type)
 {
-    int tell = -1;
+    long tell = -1;
 
     switch (seek_type)
     {
@@ -233,10 +358,15 @@ bool buffer_stream::seek(long offset, SeekType seek_type) const
     case stEnd:     tell = impl_->buffer_.size() + offset; break;
     }
 
-    if (0 <= tell && tell <= static_cast<int>(impl_->buffer_.size()))
-        return impl_->tell_ = tell, true;
+    if (tell < 0)
+        tell = 0;
     else
-        return false;
+    if (tell > static_cast<long>(impl_->buffer_.size()))
+        tell = static_cast<long>(impl_->buffer_.size());
+
+    impl_->tell_ = tell;
+
+    return true;
 }
 
 long buffer_stream::tell(void) const
@@ -254,14 +384,14 @@ bool buffer_stream::writable(void) const
     return true;
 }
 
-unsigned int buffer_stream::read(void* buffer, unsigned int size) const
+unsigned long buffer_stream::read(void* buffer, unsigned long size)
 {
     if (size > impl_->buffer_.size() - impl_->tell_)
         size = impl_->buffer_.size() - impl_->tell_;
 
     unsigned char* buffer_uc = reinterpret_cast<unsigned char*>(buffer);
 
-    for (unsigned int i = 0; i < size; ++i)
+    for (unsigned long i = 0; i < size; ++i)
         buffer_uc[i] = impl_->buffer_[impl_->tell_ + i];
 
     impl_->tell_ += size;
@@ -269,7 +399,7 @@ unsigned int buffer_stream::read(void* buffer, unsigned int size) const
     return size;
 }
 
-unsigned int buffer_stream::write(const void* buffer, unsigned int size)
+unsigned long buffer_stream::write(const void* buffer, unsigned long size)
 {
     impl_->buffer_.append(reinterpret_cast<const unsigned char*>(buffer), size);
 
@@ -295,12 +425,12 @@ private:
     file file_;
 };
 
-file_stream::file_stream(const char* file_path)
-    : file_stream(file_path, "rb")
+file_stream::file_stream(const char* filepath)
+    : file_stream(filepath, "rb")
 {}
 
-file_stream::file_stream(const char* file_path, const char* mode)
-    : file_stream(file(file_path, mode))
+file_stream::file_stream(const char* filepath, const char* mode)
+    : file_stream(file(filepath, mode))
 {}
 
 file_stream::file_stream(const file& file)
@@ -329,7 +459,7 @@ void file_stream::close(void)
     impl_->file_ = nullptr;
 }
 
-bool file_stream::seek(long offset, SeekType seek_type) const
+bool file_stream::seek(long offset, SeekType seek_type)
 {
     switch (seek_type)
     {
@@ -345,24 +475,22 @@ long file_stream::tell(void) const
     return ftell(impl_->file_);
 }
 
-// TODO:
 bool file_stream::readable(void) const
 {
     return impl_->file_ && !feof(impl_->file_);
 }
 
-// TODO:
 bool file_stream::writable(void) const
 {
-    return true;
+    return impl_->file_;
 }
 
-unsigned int file_stream::read(void* buffer, unsigned int size) const
+unsigned long file_stream::read(void* buffer, unsigned long size)
 {
     return fread(buffer, 1, size, impl_->file_);
 }
 
-unsigned int file_stream::write(const void* buffer, unsigned int size)
+unsigned long file_stream::write(const void* buffer, unsigned long size)
 {
     return fwrite(buffer, 1, size, impl_->file_);
 }
@@ -428,7 +556,7 @@ void pipe_stream::close(void)
     impl_->pipe_ = nullptr;
 }
 
-bool pipe_stream::seek(long, SeekType) const
+bool pipe_stream::seek(long, SeekType)
 {
     return false;
 }
@@ -438,39 +566,35 @@ long pipe_stream::tell(void) const
     return -1;
 }
 
-// TODO:
 bool pipe_stream::readable(void) const
 {
     return impl_->pipe_ && !feof(impl_->pipe_);
 }
 
-// TODO:
 bool pipe_stream::writable(void) const
 {
     return impl_->pipe_;
 }
 
-unsigned int pipe_stream::read(void* buffer, unsigned int size) const
+unsigned long pipe_stream::read(void* buffer, unsigned long size)
 {
     return fread(buffer, 1, size, impl_->pipe_);
 }
 
-unsigned int pipe_stream::write(const void* buffer, unsigned int size)
+unsigned long pipe_stream::write(const void* buffer, unsigned long size)
 {
     return fwrite(buffer, 1, size, impl_->pipe_);
 }
 
-/// include socket headers
-
-#ifdef OS_WIN
+#ifndef __os_unix__
 
 #include <Winsock2.h>
 
-static struct WSAFactory
+static struct WSAInitializer
 {
-    WSAFactory(void) { WSAStartup(MAKEWORD(2, 2), new WSADATA); }
-   ~WSAFactory(void) { WSACleanup(); }
-} __wsaFactory;
+    WSAInitializer(void) { WSAStartup(MAKEWORD(2, 2), new WSADATA); }
+   ~WSAInitializer(void) { WSACleanup(); }
+} __wsa_initializer__;
 
 #else
 
@@ -565,7 +689,7 @@ void tcp_stream::close(void)
     impl_->fd_ = -1;
 }
 
-bool tcp_stream::seek(long offset, SeekType seek_type) const
+bool tcp_stream::seek(long offset, SeekType seek_type)
 {
     return false;
 }
@@ -585,15 +709,15 @@ bool tcp_stream::writable(void) const
     return impl_->fd_ != -1;
 }
 
-unsigned int tcp_stream::read(void* buffer, unsigned int size) const
+unsigned long tcp_stream::read(void* buffer, unsigned long size)
 {
-    unsigned int readed_length = 0;
+    unsigned long read_length = 0;
 
-    while (impl_->fd_ != -1 && readed_length < size)
+    while (impl_->fd_ != -1 && read_length < size)
     {
         int l = recv(impl_->fd_,
-                     reinterpret_cast<char*>(buffer) + readed_length,
-                     size - readed_length, 0);
+                     reinterpret_cast<char*>(buffer) + read_length,
+                     size - read_length, 0);
 
         if (l == -1)
             impl_->fd_ = -1;
@@ -601,15 +725,15 @@ unsigned int tcp_stream::read(void* buffer, unsigned int size) const
         if (l == 0)
             closesocket(impl_->fd_), impl_->fd_ = -1;
         else
-            readed_length += l;
+            read_length += l;
     }
 
-    return readed_length;
+    return read_length;
 }
 
-unsigned int tcp_stream::write(const void* buffer, unsigned int size)
+unsigned long tcp_stream::write(const void* buffer, unsigned long size)
 {
-    unsigned int written_length = 0;
+    unsigned long written_length = 0;
 
     while (impl_->fd_ != -1 && written_length < size)
     {
@@ -722,7 +846,7 @@ struct udp_stream::endpoint udp_stream::read_endpoint(void) const
     };
 }
 
-bool udp_stream::seek(long, SeekType) const
+bool udp_stream::seek(long, SeekType)
 {
     return false;
 }
@@ -742,7 +866,7 @@ bool udp_stream::writable(void) const
     return impl_->fd_ != -1;
 }
 
-unsigned int udp_stream::read(void* buffer, unsigned int size) const
+unsigned long udp_stream::read(void* buffer, unsigned long size)
 {
     int addrlen = sizeof(impl_->raddr_);
 
@@ -752,9 +876,9 @@ unsigned int udp_stream::read(void* buffer, unsigned int size) const
                     &addrlen);
 }
 
-unsigned int udp_stream::write(const void* buffer, unsigned int size)
+unsigned long udp_stream::write(const void* buffer, unsigned long size)
 {
-    unsigned int written_length = 0;
+    unsigned long written_length = 0;
 
     while (impl_->fd_ != -1 && written_length < size)
     {
@@ -827,21 +951,22 @@ public:
         set_if_not_exist(headers, "Accept",     "*/*");
         set_if_not_exist(headers, "User-Agent", "takisy.stream.http");
         set_if_not_exist(headers, "Connection", "Keep-Alive");
-        std::string request_message =
+        std::string reqdata =
             stralgo::format("%s\n%s\n%s",
-               stralgo::format("%s %s HTTP/1.0",
-                               method.c_str(), path.c_str()).c_str(),
-               headers2string(headers).c_str(),
-               data.c_str());
+                            stralgo::format("%s %s HTTP/1.1",
+                                            method.c_str(),
+                                            path.c_str()).c_str(),
+                            headers2string(headers).c_str(),
+                            data.c_str());
 
         // 进行请求并解析响应消息
-        request(host, port, request_message);
+        request(host, port, reqdata);
     }
 
     implement(const std::string& host, unsigned short port,
-              const std::string& request_message)
+              const std::string& reqdata)
     {
-        request(host, port, request_message);
+        request(host, port, reqdata);
     }
 
     ~implement(void)
@@ -851,22 +976,6 @@ public:
     }
 
 private:
-    static std::string readline(tcp_stream* ts)
-    {
-        std::string line;
-
-        while (true)
-        {
-            char ch;
-            if (ts->read(&ch, 1) != 1) return "";
-            if (ch == '\r') continue;
-            if (ch == '\n') break;
-            line += ch;
-        }
-
-        return line;
-    }
-
     static std::string headers2string(const dict& headers)
     {
         std::string str;
@@ -918,7 +1027,7 @@ private:
             request_ = request;
 
         // 读取HTTP响应消息并解析响应状态码
-        status_ = stralgo::split(readline(tcp_stream_), ' ', 2);
+        status_ = stralgo::split(tcp_stream_->read_line(), ' ', 2);
         if (status_.size() == 0) status_.push_back("HTTP/1.0");
         if (status_.size() == 1) status_.push_back("0");
         if (status_.size() == 2) status_.push_back("");
@@ -926,7 +1035,7 @@ private:
         // 解析响应消息头
         while (true)
         {
-            std::string line = readline(tcp_stream_);
+            std::string line = tcp_stream_->read_line();
             if (line.empty())
                 break;
 
@@ -956,7 +1065,7 @@ private:
     tcp_stream*       tcp_stream_;
     stralgo::strings  status_;
     http_stream::dict headers_;
-    long long         content_length_, tell_;
+    long              content_length_, tell_;
 };
 
 http_stream::http_stream(const char* url)
@@ -1037,7 +1146,7 @@ bool http_stream::writable(void) const
     return false;
 }
 
-bool http_stream::seek(long offset, SeekType seek_type) const
+bool http_stream::seek(long offset, SeekType seek_type)
 {
     return false;
 }
@@ -1047,7 +1156,7 @@ long http_stream::tell(void) const
     return impl_->tell_;
 }
 
-unsigned int http_stream::read(void* buffer, unsigned int size) const
+unsigned long http_stream::read(void* buffer, unsigned long size)
 {
     if (!readable())
         return 0;
@@ -1060,7 +1169,7 @@ unsigned int http_stream::read(void* buffer, unsigned int size) const
             size = left_length;
     }
 
-    unsigned int length = 0;
+    unsigned long length = 0;
 
     if (size > 0)
     {
@@ -1071,7 +1180,7 @@ unsigned int http_stream::read(void* buffer, unsigned int size) const
     return length;
 }
 
-unsigned int http_stream::write(const void* buffer, unsigned int size)
+unsigned long http_stream::write(const void* buffer, unsigned long size)
 {
     return 0;
 }
@@ -1088,7 +1197,7 @@ std::string http_stream::encode_query(const dict& query)
                                           pair.second.c_str()));
 
     std::string string = strings[0];
-    for (unsigned int i = 1; i < strings.size(); ++i)
+    for (unsigned long i = 1; i < strings.size(); ++i)
         string += "&" + strings[i];
 
     return string;

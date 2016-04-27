@@ -100,6 +100,8 @@ public:
 
 public:
     void repaint(void);
+    void repaint(int x, int y, unsigned int width, unsigned int height);
+    void repaint(const Point& xy, const Size& size);
     void repaint(const Rect& rect);
     void capture(bool capture);
 

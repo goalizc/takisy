@@ -4,8 +4,8 @@
 #include <Windows.h>
 #include <memory>
 #include <string>
-#include <takisy/oldgui/basic/define.h>
-#include <takisy/oldgui/widget/widget.h>
+#include <takisy/oldgui/define.h>
+#include <takisy/oldgui/typedef.h>
 
 class Window
 {
@@ -62,11 +62,6 @@ public:
 
     void attach(HWND hwnd);
     void detach(void);
-
-public:
-    void addWidget(Widget* widget);
-    bool existsWidget(Widget* widget);
-    void removeWidget(Widget* widget);
 
 public:
     std::string caption(void) const;
@@ -139,7 +134,6 @@ public:
     void rect(int x, int y, unsigned int width, unsigned int height);
     void rect(const Point& xy, const Size& size);
     void rect(const Rect& rect);
-    void background_color(Color color);
 
     void opacity(double factor);
     void topmost(void);

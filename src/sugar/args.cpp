@@ -11,16 +11,16 @@ const char* operator%(const char* format, const args& args)
     } buffers[kBufferCount];
     static long long index = 0;
 
-    struct buffer_t& buf = buffers[++index %= kBufferCount];
+    struct buffer_t& buffer = buffers[++index %= kBufferCount];
     char* va_list = const_cast<char*>(args.stack_.data());
-    int length = vsnprintf(buf.data, buf.size, format, va_list);
+    int length = vsnprintf(buffer.data, buffer.size, format, va_list);
 
-    if (buf.size <= length)
+    if (buffer.size <= length)
     {
-        delete [] buf.data;
-        buf.data = new char [(buf.size = length + 1)];
-        vsnprintf(buf.data, buf.size, format, va_list);
+        delete [] buffer.data;
+        buffer.data = new char [(buffer.size = length + 1)];
+        vsnprintf(buffer.data, buffer.size, format, va_list);
     }
 
-    return buf.data;
+    return buffer.data;
 }

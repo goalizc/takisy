@@ -25,6 +25,7 @@ public:
 
 public:
     static void set(CursorType cursor);
+    static void set(const char* cursor_file);
 };
 
 #endif // cursor_h_20151230

@@ -14,24 +14,25 @@ public:
     virtual ~format(void) {}
 
 public:
-    virtual bool load(const stream& stream, frames& frames) = 0;
+    virtual bool load(stream& stream, frames& frames) const = 0;
     virtual bool dump(const frames& frames, stream& stream) const = 0;
 };
 
-#define define_image_format(class_name)                                 \
+#define define_format(class_name)                                       \
     class class_name : public format                                    \
     {                                                                   \
         class implement;                                                \
                                                                         \
     public:                                                             \
-        bool load(const stream& stream, frames& frames) override;       \
+        bool load(stream& stream, frames& frames) const override;       \
         bool dump(const frames& frames, stream& stream) const override; \
     };
 
-define_image_format(bmp);
-define_image_format(gif);
-define_image_format(png);
+define_format(png);
+define_format(gif);
+define_format(bmp);
+define_format(stb);
 
-#undef define_image_format
+#undef define_format
 
 #endif //format_h_20131120

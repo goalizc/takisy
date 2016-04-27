@@ -23,36 +23,11 @@ public:
         fflush(stdout);
     }
 
-    std::string readline(const stream& stream) const
-    {
-        std::string line;
-
-        while (true)
-        {
-            char ch;
-            if (stream.read(&ch, sizeof(ch)) != sizeof(ch))
-                break;
-
-            if (ch == '\n' && line.back() == '\r')
-            {
-                line.pop_back();
-                break;
-            }
-            else
-                line.push_back(ch);
-        }
-
-        if (debug_)
-            print(line);
-
-        return line;
-    }
-
-    response get_response(void) const
+    response get_response(void)
     {
         response rsp;
 
-        std::string line = readline(tcp_);
+        std::string line = tcp_.read_line();
         if (line.size() < 4)
             return rsp;
 
@@ -64,7 +39,7 @@ public:
 
             while (true)
             {
-                line = readline(tcp_);
+                line = tcp_.read_line();
                 if (!tcp_.readable())
                     return rsp;
 
@@ -280,11 +255,13 @@ ftp_client::response ftp_client::put(const char* localfile) const
 ftp_client::response
     ftp_client::put(const char* localfile, const char* remotefile) const
 {
-    return put(file_stream(localfile, "rb"), remotefile);
+    file_stream fs(localfile, "rb");
+
+    return put(fs, remotefile);
 }
 
 ftp_client::response
-    ftp_client::put(const stream& istream, const char* remotefile) const
+    ftp_client::put(stream& istream, const char* remotefile) const
 {
     response rsp;
 

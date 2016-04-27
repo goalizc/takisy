@@ -5,11 +5,11 @@
 #include <takisy/core/macro.h>
 #include <takisy/gui/basic/define.h>
 
-#ifdef OS_WIN
+#ifdef __os_win__
 #include <Windows.h>
-#define __SytemHandleType__ HWND
+#define __SystemHandle__ HWND
 #else
-#define __SytemHandleType__ void*
+#define __SystemHandle__ void*
 #endif
 
 class cross_platform_window
@@ -17,7 +17,7 @@ class cross_platform_window
     class implement;
 
 public:
-    typedef __SytemHandleType__ Handle;
+    typedef __SystemHandle__ Handle;
 
 public:
     cross_platform_window(void);
@@ -69,9 +69,11 @@ public:
     void show(void);
     void hide(void);
 
+public:
+    void capture(bool capture);
+    void topmost(bool topmost);
     void repaint(void);
     void repaint(const Rect& rect);
-    void capture(bool capture);
     void close(void);
 
 public:

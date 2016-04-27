@@ -1,8 +1,14 @@
-#include <Windows.h>
+#include <map>
+#include <takisy/core/macro.h>
 #include <takisy/gui/basic/cursor.h>
+
+#ifdef __os_win__
+#include <Windows.h>
+#endif
 
 void cursor::set(CursorType cursor)
 {
+#ifdef __os_win__
     switch (cursor)
     {
     default:
@@ -22,4 +28,43 @@ void cursor::set(CursorType cursor)
     case ctUpArrow:     SetCursor(LoadCursor(nullptr, IDC_UPARROW));     break;
     case ctWait:        SetCursor(LoadCursor(nullptr, IDC_WAIT));        break;
     }
+#endif
+}
+
+void cursor::set(const char* cursor_file)
+{
+#ifdef __os_win__
+    static class file_cursor
+    {
+    public:
+        ~file_cursor(void)
+        {
+            for (auto& pair : cursors_)
+                DestroyCursor(pair.second);
+        }
+
+    public:
+        void set(const char* cursor_file)
+        {
+            HCURSOR cursor = nullptr;
+
+            if (cursors_.find(cursor_file) != cursors_.end())
+                cursor = cursors_[cursor_file];
+            else
+            {
+                cursor = LoadCursorFromFile(cursor_file);
+                if (cursor)
+                    cursors_[cursor_file] = cursor;
+            }
+
+            if (cursor)
+                SetCursor(cursor);
+        }
+
+    private:
+        std::map<const char*, HCURSOR> cursors_;
+    } file_cursor;
+
+    file_cursor.set(cursor_file);
+#endif
 }

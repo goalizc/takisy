@@ -38,13 +38,13 @@ struct stralgo
                               const std::string& format, ...);
 
     static strings      codecs(void);
-    static std::wstring decode(
-        const std::string& text, const std::string& codec);
-    static std::string  encode(
-        const std::wstring& text, const std::string& codec);
-    static std::string  convert(
-        const std::string& text,
-        const std::string& text_codec, const std::string& convert_codec);
+    static std::wstring decode(const std::string& text,
+                               const std::string& codec);
+    static std::string  encode(const std::wstring& text,
+                               const std::string& codec);
+    static std::string convert(const std::string& text,
+                               const std::string& text_codec,
+                               const std::string& convert_codec);
 
     template <typename CharType>
     static std::vector<std::basic_string<CharType>>
@@ -199,75 +199,128 @@ struct stralgo
     template <typename CharType>
     static inline std::basic_string<CharType>&
         ltrim(std::basic_string<CharType>& str)
-        { return ltrim(str, (CharType)0x20); }
+    {
+        return ltrim(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>&
         ltrim(std::basic_string<CharType>& str, CharType ch)
-        { return str.erase(0, str.find_first_not_of(ch)); }
+    {
+        return str.erase(0, str.find_first_not_of(ch));
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>&
         rtrim(std::basic_string<CharType>& str)
-        { return rtrim(str, (CharType)0x20); }
+    {
+        return rtrim(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>&
         rtrim(std::basic_string<CharType>& str, CharType ch)
-        { return str.erase(str.find_last_not_of(ch) + 1); }
+    {
+        return str.erase(str.find_last_not_of(ch) + 1);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>&
         trim(std::basic_string<CharType>& str)
-        { return trim(str, (CharType)0x20); }
+    {
+        return trim(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>&
         trim(std::basic_string<CharType>& str, CharType ch)
-        { return ltrim(rtrim(str, ch), ch); }
+    {
+        return ltrim(rtrim(str, ch), ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         ltrimc(std::basic_string<CharType> str)
-        { return ltrimc(str, (CharType)0x20); }
+    {
+        return ltrimc(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         ltrimc(const CharType* str)
-        { return ltrimc(std::basic_string<CharType>(str), (CharType)0x20); }
+    {
+        return ltrimc(std::basic_string<CharType>(str), (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         ltrimc(std::basic_string<CharType> str, CharType ch)
-        { return ltrim(str, ch); }
+    {
+        return ltrim(str, ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         ltrimc(const CharType* str, CharType ch)
-        { return ltrim(std::basic_string<CharType>(str), ch); }
+    {
+        return ltrim(std::basic_string<CharType>(str), ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         rtrimc(std::basic_string<CharType> str)
-        { return rtrimc(str, (CharType)0x20); }
+    {
+        return rtrimc(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         rtrimc(const CharType* str)
-        { return rtrimc(std::basic_string<CharType>(str), (CharType)0x20); }
+    {
+        return rtrimc(std::basic_string<CharType>(str), (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         rtrimc(std::basic_string<CharType> str, CharType ch)
-        { return rtrim(str, ch); }
+    {
+        return rtrim(str, ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         rtrimc(const CharType* str, CharType ch)
-        { return rtrim(std::basic_string<CharType>(str), ch); }
+    {
+        return rtrim(std::basic_string<CharType>(str), ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         trimc(std::basic_string<CharType> str)
-        { return trimc(str, (CharType)0x20); }
+    {
+        return trimc(str, (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         trimc(const CharType* str)
-        { return trimc(std::basic_string<CharType>(str), (CharType)0x20); }
+    {
+        return trimc(std::basic_string<CharType>(str), (CharType)0x20);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         trimc(std::basic_string<CharType> str, CharType ch)
-        { return trim(str, ch); }
+    {
+        return trim(str, ch);
+    }
+
     template <typename CharType>
     static inline std::basic_string<CharType>
         trimc(const CharType* str, CharType ch)
-        { return trim(std::basic_string<CharType>(str), ch); }
+    {
+        return trim(std::basic_string<CharType>(str), ch);
+    }
 };
 
 #endif //stralgo_hpp_20140508

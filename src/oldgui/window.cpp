@@ -3,80 +3,18 @@
 #include <vector>
 #include <algorithm>
 #include <takisy/core/dynamic_linking_loader.h>
-#include <takisy/oldgui/basic/exception.h>
+#include <takisy/oldgui/exception.h>
 #include <takisy/oldgui/window.h>
-#include "impl/graphics.hpp"
 
 #define assert(condition) \
-    if (!(condition))       \
+    if (!(condition))     \
         throw takisy::oldgui::Exception::system_exception(GetLastError())
-
-namespace global
-{
-    std::list<Window*>      windowWithWidgets;
-    std::map<HWND, Widget*> capturedWidget;
-    std::map<HWND, Widget*> focusedWidget;
-}
 
 Window::EventListener::~EventListener(void) {}
 
 class Window::Implement
 {
     friend class Window;
-
-    class Container : public Widget
-    {
-    public:
-        inline void set_background_color(Color color)
-        {
-            background_color_ = color;
-            repaint();
-        }
-
-    public:
-        inline void onPaint(Graphics graphics) override
-        {
-            if (background_color_.a)
-                graphics.clear(background_color_);
-        }
-
-    private:
-        Color background_color_;
-    };
-
-    template <typename... Params>
-    class EventProcessor
-    {
-    public:
-        template <bool (Widget::*Method)(Params..., Point)>
-        bool do_event(Widget* widget, Params... params, Point hit_point) const
-        {
-            while (widget)
-                if ((widget->*Method)(params..., hit_point)) return true;
-                else hit_point += widget->xy(), widget = widget->parent();
-            return false;
-        }
-
-        template <bool (Widget::*Method)(Params...)>
-        bool do_event_keyboard(Widget* widget, Params... params) const
-        {
-            while (widget)
-                if ((widget->*Method)(params...)) return true;
-                else widget = widget->parent();
-            return false;
-        }
-    };
-
-    template <typename... Params>
-    static inline EventProcessor<Params...> get_event_processor(Params...)
-    {
-        return EventProcessor<Params...>();
-    }
-
-    #define DO_EVENT(widget, method, hit_point, params...) \
-        get_event_processor(params).do_event<method>(widget, params, hit_point)
-    #define DO_EVENT_KEYBOARD(widget, method, params...) \
-        get_event_processor(params).do_event_keyboard<method>(widget, params)
 
 public:
     Implement(void)
@@ -149,21 +87,6 @@ public:
                     reinterpret_cast<CREATESTRUCT*>(lparam)->lpCreateParams);
             break;
 
-        case WM_ACTIVATE:
-            {
-                auto window = std::find(global::windowWithWidgets.begin(),
-                                        global::windowWithWidgets.end(),
-                                        windows[hwnd]);
-                if (window != global::windowWithWidgets.end()
-                    && window != global::windowWithWidgets.begin())
-                    std::swap(global::windowWithWidgets.front(), *window);
-            }
-            break;
-
-        case WM_SIZE:
-            windows[hwnd]->impl_->container_.size(windows[hwnd]->clientSize());
-            break;
-
         case WM_CHAR:
             if (last_char[hwnd] > 0x7f) {
                 wparam |= last_char[hwnd] << 8;
@@ -177,7 +100,6 @@ public:
 
         case WM_DESTROY:
             windows[hwnd]->detach();
-            global::windowWithWidgets.remove(windows[hwnd]);
             windows.erase(hwnd);
             if (windows.empty())
                 Window::quit();
@@ -200,13 +122,6 @@ public:
                         .wparam = wparam,
                         .lparam = lparam
                     });
-
-            if (!window->impl_->container_.children().empty())
-            {
-                std::vector<Widget*> container;
-                container.push_back(&window->impl_->container_);
-                onWidgetEvent(container, *window, msg, wparam, lparam);
-            }
         }
 
         switch (msg)
@@ -216,308 +131,6 @@ public:
         }
     }
 
-    static void onWidgetEvent(const std::vector<Widget*>& widgets,
-                              Window& window,
-                              UINT    msg,
-                              WPARAM  wparam,
-                              LPARAM  lparam)
-    {
-        class util
-        {
-        public:
-            static inline KeyState key_state(void)
-            {
-                return KeyState {
-                    .button_left   = !!(0x0100 & GetKeyState(vkLButton)),
-                    .button_middle = !!(0x0100 & GetKeyState(vkMButton)),
-                    .button_right  = !!(0x0100 & GetKeyState(vkRButton)),
-                    .button_x1     = !!(0x0100 & GetKeyState(vkXButton1)),
-                    .button_x2     = !!(0x0100 & GetKeyState(vkXButton2)),
-                    .shift         = !!(0x0100 & GetKeyState(vkShift)),
-                    .shift_left    = !!(0x0100 & GetKeyState(vkLShift)),
-                    .shift_right   = !!(0x0100 & GetKeyState(vkRShift)),
-                    .ctrl          = !!(0x0100 & GetKeyState(vkControl)),
-                    .ctrl_left     = !!(0x0100 & GetKeyState(vkLControl)),
-                    .ctrl_right    = !!(0x0100 & GetKeyState(vkRControl)),
-                    .alt           = !!(0x0100 & GetKeyState(vkMenu)),
-                    .alt_left      = !!(0x0100 & GetKeyState(vkLMenu)),
-                    .alt_right     = !!(0x0100 & GetKeyState(vkRMenu)),
-                };
-            }
-
-            static inline Point point(LPARAM lparam)
-            {
-                return Point {
-                    .x = static_cast<short>(lparam),
-                    .y = static_cast<short>(lparam >> 16),
-                };
-            }
-
-            static inline Point screen2client(HWND hwnd, const Point& point)
-            {
-                POINT bar = {point.x, point.y};
-                ScreenToClient(hwnd, &bar);
-                return Point(bar.x, bar.y);
-            }
-
-            static Widget* hit_test(HWND hwnd,
-                                    const std::vector<Widget*>& widgets,
-                                    Point& hit_point)
-            {
-                if (hwnd && global::capturedWidget.find(hwnd)
-                         != global::capturedWidget.end()
-                    && global::capturedWidget[hwnd])
-                {
-                    Widget* widget = global::capturedWidget[hwnd];
-                    do { hit_point -= widget->xy(); widget = widget->parent(); }
-                    while (widget);
-                    return global::capturedWidget[hwnd];
-                }
-
-                typedef decltype(widgets.rbegin()) iterator_type;
-                iterator_type iterator = widgets.rbegin();
-                for ( ; iterator != widgets.rend(); ++iterator)
-                {
-                    Widget* widget = *iterator;
-                    if (!widget->visible())
-                        continue;
-                    Widget* hitted_widget = widget->hit_test(hit_point);
-                    if (!hitted_widget)
-                        continue;
-                    hit_point -= hitted_widget->global_xy();
-                    return hitted_widget;
-                }
-
-                return nullptr;
-            }
-
-            static void onWidgetPaint(const std::vector<Widget*>& widgets,
-                                      Rect paint_rect,
-                                      Graphics& graphics)
-            {
-                for (Widget* child : widgets)
-                {
-                    if (!child->visible())
-                        continue;
-                    Rect crct = child->rect();
-                    Point offset = crct.left_top();
-                    Rect cpr = paint_rect.intersect(crct).offset(-offset);
-                    if (cpr.empty())
-                        continue;
-                    Graphics child_graphics = graphics;
-                    child_graphics.impl_->paintArea(offset, cpr);
-                    child->onPaint(child_graphics);
-                    onWidgetPaint(child->children(), cpr, child_graphics);
-                }
-            }
-        };
-
-        struct ClickInfo
-        {
-            DWORD last_time;
-            int times;
-            Point point;
-            MouseButton button;
-
-        public:
-            ClickInfo(void)
-                : last_time(0), times(0), point(-1, -1), button(mbNoneButton)
-            {}
-        };
-
-        static std::map<Widget*, ClickInfo> click_info;
-        HWND hwnd = window.hwnd();
-
-        switch (msg)
-        {
-        case WM_PAINT:
-            if (window.impl_->alpha_window_)
-            {
-                RECT client_rect;
-                GetClientRect(hwnd, &client_rect);
-                Rect rect = client_rect;
-
-                HDC hdc = GetDC(hwnd);
-                HDC cdc = CreateCompatibleDC(hdc);
-                HBITMAP bitmap =
-                    CreateCompatibleBitmap(hdc, rect.width(), rect.height());
-                SelectObject(cdc, bitmap);
-
-                Graphics graphics(cdc, rect);
-                util::onWidgetPaint(widgets, rect, graphics);
-                graphics.endpaint(true);
-
-                SIZE size = {rect.width(), rect.height()};
-                POINT position = {0, 0};
-                BLENDFUNCTION bf = {
-                    .BlendOp = AC_SRC_OVER,
-                    .BlendFlags = 0,
-                    .SourceConstantAlpha = 255,
-                    .AlphaFormat = AC_SRC_ALPHA,
-                };
-                UpdateLayeredWindow(hwnd, hdc, nullptr, &size, cdc,
-                                    &position, RGB(0, 0, 0), &bf, ULW_ALPHA);
-
-                DeleteObject(bitmap);
-                DeleteObject(cdc);
-                ReleaseDC(hwnd, hdc);
-            }
-            else
-            {
-                PAINTSTRUCT ps;
-                BeginPaint(hwnd, &ps);
-                {
-                    Rect paint_rect = ps.rcPaint;
-                    Graphics graphics(ps);
-                    graphics.impl_->canvas_->clear(Color::white());
-                    util::onWidgetPaint(widgets, paint_rect, graphics);
-                }
-                EndPaint(hwnd, &ps);
-            }
-            break;
-
-        case WM_MOUSEMOVE:
-            do
-            {
-                Point hit_point    = util::point(lparam);
-                Widget* widget     = util::hit_test(hwnd, widgets, hit_point);
-                static Widget* prewdt = nullptr; // last widget
-                KeyState key_state = util::key_state();
-                TRACKMOUSEEVENT track_mouse_event = {
-                    .cbSize      = sizeof(TRACKMOUSEEVENT),
-                    .dwFlags     = TME_HOVER,
-                    .hwndTrack   = hwnd,
-                    .dwHoverTime = HOVER_DEFAULT,
-                };
-
-                TrackMouseEvent(&track_mouse_event);
-
-                DO_EVENT(widget, Widget::onMouseMove, hit_point, key_state);
-                if (widget) widget->onSetCursor();
-                if (prewdt == widget) break;
-                DO_EVENT(prewdt, Widget::onMouseLeave, hit_point, key_state);
-                DO_EVENT(widget, Widget::onMouseEnter, hit_point, key_state);
-                prewdt = widget;
-            } while (false);
-            break;
-
-        case WM_MOUSEHOVER:
-            {
-                Point    hit_point = util::point(lparam);
-                Widget*     widget = util::hit_test(hwnd, widgets, hit_point);
-                KeyState key_state = util::key_state();
-
-                DO_EVENT(widget, Widget::onMouseHover, hit_point, key_state);
-            }
-            break;
-
-        case WM_LBUTTONDOWN:
-        case WM_MBUTTONDOWN:
-        case WM_RBUTTONDOWN:
-            {
-                Point hit_point = util::point(lparam);
-                Widget*  widget = util::hit_test(hwnd, widgets, hit_point);
-
-                if (global::focusedWidget[hwnd])
-                    global::focusedWidget[hwnd]->onFocus(false);
-                global::focusedWidget[hwnd] = widget;
-
-                if (widget)
-                {
-                    widget->onFocus(true);
-
-                    MouseButton button = mbNoneButton;
-
-                    switch (msg)
-                    {
-                    case WM_LBUTTONDOWN: button = mbLeftButton;   break;
-                    case WM_MBUTTONDOWN: button = mbMiddleButton; break;
-                    case WM_RBUTTONDOWN: button = mbRightButton;  break;
-                    }
-
-                    click_info[widget].times =
-                               button        == click_info[widget].button
-                            && hit_point     == click_info[widget].point
-                            && GetTickCount() - click_info[widget].last_time
-                                    < GetDoubleClickTime()
-                                ? click_info[widget].times + 1 : 1;
-                    click_info[widget].button    = button;
-                    click_info[widget].point     = hit_point;
-                    click_info[widget].last_time = GetTickCount();
-
-                    DO_EVENT(widget, Widget::onMouseDown, hit_point,
-                             button, util::key_state());
-                }
-            }
-            break;
-
-        case WM_LBUTTONUP:
-        case WM_MBUTTONUP:
-        case WM_RBUTTONUP:
-            {
-                Point hit_point = util::point(lparam);
-                Widget*  widget = util::hit_test(hwnd, widgets, hit_point);
-
-                if (widget)
-                {
-                    MouseButton button = mbNoneButton;
-                    KeyState key_state = util::key_state();
-
-                    switch (msg)
-                    {
-                    case WM_LBUTTONUP: button = mbLeftButton;   break;
-                    case WM_MBUTTONUP: button = mbMiddleButton; break;
-                    case WM_RBUTTONUP: button = mbRightButton;  break;
-                    }
-
-                    if (button == click_info[widget].button)
-                        DO_EVENT(widget, Widget::onClick, hit_point,
-                                 button, key_state, click_info[widget].times);
-
-                    DO_EVENT(widget, Widget::onMouseUp, hit_point,
-                             button, key_state);
-                }
-            }
-            break;
-
-        case WM_MOUSEWHEEL:
-            {
-                Point hit_point = util::point(lparam);
-                      hit_point = util::screen2client(hwnd, hit_point);
-                Widget*  widget = util::hit_test(hwnd, widgets, hit_point);
-                int       delta = GET_WHEEL_DELTA_WPARAM(wparam);
-
-                DO_EVENT(widget, Widget::onMouseWheel, hit_point,
-                         util::key_state(), delta);
-            }
-            break;
-
-        case WM_KEYDOWN:
-            DO_EVENT_KEYBOARD(global::focusedWidget[hwnd], Widget::onKeyDown,
-                              static_cast<VirtualKey>(wparam),
-                              util::key_state());
-            break;
-
-        case WM_CHAR:
-            DO_EVENT_KEYBOARD(global::focusedWidget[hwnd], Widget::onKeyPress,
-                              static_cast<unsigned int>(wparam),
-                              util::key_state());
-            break;
-
-        case WM_KEYUP:
-            DO_EVENT_KEYBOARD(global::focusedWidget[hwnd], Widget::onKeyUp,
-                              static_cast<VirtualKey>(wparam),
-                              util::key_state());
-            break;
-
-        default:
-            break;
-        }
-    }
-
-    #undef DO_EVENT
-    #undef DO_EVENT_KEYBOARD
-
 private:
     typedef std::shared_ptr<EventListener> EventListenerPtr;
 
@@ -526,7 +139,6 @@ private:
     HWND hwnd_;
     bool created_;
     bool alpha_window_;
-    Container container_;
     std::map<UINT, std::vector<EventListenerPtr>> event_listeners_;
 };
 
@@ -699,29 +311,6 @@ void Window::detach(void)
 {
     impl_->hdc_  = nullptr;
     impl_->hwnd_ = nullptr;
-}
-
-void Window::addWidget(Widget* widget)
-{
-    if (impl_->container_.children().empty())
-        global::windowWithWidgets.push_back(this);
-
-    impl_->container_.add(widget);
-}
-
-bool Window::existsWidget(Widget* widget)
-{
-    return widget == &impl_->container_ || impl_->container_.exists(widget);
-}
-
-void Window::removeWidget(Widget* widget)
-{
-    impl_->container_.remove(widget);
-
-    if (impl_->container_.children().empty())
-        global::windowWithWidgets.erase(
-                std::find(global::windowWithWidgets.begin(),
-                          global::windowWithWidgets.end(), this));
 }
 
 std::string Window::caption(void) const
@@ -1041,11 +630,6 @@ void Window::rect(const Point& xy, const Size& size)
 void Window::rect(const Rect& _rect)
 {
     rect(_rect.left_top(), _rect.size());
-}
-
-void Window::background_color(Color color)
-{
-    impl_->container_.set_background_color(color);
 }
 
 void Window::opacity(double factor)

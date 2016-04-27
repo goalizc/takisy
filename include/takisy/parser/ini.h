@@ -16,7 +16,7 @@ public:
 public:
     ini(void);
     ini(const char* filepath_or_content);
-    ini(const stream& stream);
+    ini(stream& stream);
     ini(const ini& ini);
    ~ini(void);
 
@@ -24,7 +24,7 @@ public:
 
 public:
     bool load(const char* content);
-    bool load(const stream& stream);
+    bool load(stream& stream);
     bool load_file(const char* filepath);
 
     std::string dump(void) const;

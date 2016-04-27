@@ -41,7 +41,7 @@ class png::implement
         }
 
     public:
-        bool load(const stream& stream)
+        bool load(stream& stream)
         {
             return stream.read(length)     == sizeof(length)
                 && stream.read(chunk_type) == sizeof(chunk_type)
@@ -61,7 +61,7 @@ class png::implement
         }
 
     private:
-        bool read_chunk_data(const stream& stream)
+        bool read_chunk_data(stream& stream)
         {
             if (chunk_data)
             {
@@ -206,7 +206,7 @@ private:
     }
 
 public:
-    static canvas_adapter::pointer load(const stream& stream)
+    static canvas_adapter::pointer load(stream& stream)
     {
         etbe_uint64 flag;
         if (stream.read(flag) != sizeof(flag) || flag != kPngFlag)
@@ -402,7 +402,7 @@ public:
     }
 };
 
-bool png::load(const stream& stream, frames& frames)
+bool png::load(stream& stream, frames& frames) const
 {
     try
     {

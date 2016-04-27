@@ -3,7 +3,7 @@
 #include <takisy/core/macro.h>
 #include <takisy/core/dynamic_linking_loader.h>
 
-#ifdef OS_WIN
+#ifdef __os_win__
     #include <Windows.h>
     #define dlopen  LoadLibrary
     #define dlclose FreeLibrary

@@ -321,10 +321,10 @@ bool graphics<Canvas>::save(const char* filename)
 
     image.new_frame(*this);
 
-    return image.dump_file(filename);
+    return image.dump_uri(filename);
 }
 
-#ifdef OS_WIN
+#ifdef __os_win__
 
 #include <Windows.h>
 

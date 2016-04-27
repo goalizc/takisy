@@ -16,35 +16,60 @@ public:
     virtual ~stream(void) {}
 
 public:
-    virtual bool seek(long offset, SeekType seek_type) const = 0;
+    virtual bool seek(long offset, SeekType seek_type) = 0;
     virtual long tell(void) const = 0; // -1: invalid position
     virtual bool readable(void) const = 0;
     virtual bool writable(void) const = 0;
-    virtual unsigned int read(void* buffer, unsigned int size) const = 0;
-    virtual unsigned int write(const void* buffer, unsigned int size) = 0;
+    virtual unsigned long read(void* buffer, unsigned long size) = 0;
+    virtual unsigned long write(const void* buffer, unsigned long size) = 0;
 
 public:
-    static std::shared_ptr<stream> from_uri(const char* uri);
-
-public:
-    // read all data from from_uri(uri)/src into *this
-    unsigned long plunder(const char* uri);
-    unsigned long plunder(const stream& src);
-
-    std::string readn(unsigned int n) const;
-    std::string readall(void) const;
-
     template <typename ValueType>
-    inline unsigned int read(ValueType& value) const
+    inline unsigned long read(ValueType& value)
     {
         return read(&value, sizeof(value));
     }
 
     template <typename ValueType>
-    inline unsigned int write(const ValueType& value)
+    inline unsigned long write(const ValueType& value)
     {
         return write(&value, sizeof(value));
     }
+
+    std::string read_all(void);
+    std::string read_line(void);
+    std::string read_chars(unsigned long nchars);
+
+    // read all data from from_uri(uri)/src into *this
+    unsigned long plunder(const char* uri);
+    unsigned long plunder(stream& src);
+
+public:
+    static std::shared_ptr<stream> from_uri(const char* uri);
+};
+
+class seek_stream : public stream
+{
+    class implement;
+
+public:
+    seek_stream(stream& stream);
+   ~seek_stream(void);
+
+private:
+    seek_stream(const seek_stream&);
+    seek_stream& operator=(const seek_stream&);
+
+public:
+    bool seek(long, SeekType) override;
+    long tell(void) const override;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void*, unsigned long) override;
+
+private:
+    class implement* impl_;
 };
 
 class buffer_stream : public stream
@@ -53,7 +78,7 @@ class buffer_stream : public stream
 
 public:
     buffer_stream(void);
-    buffer_stream(const void* buffer, unsigned int size);
+    buffer_stream(const void* buffer, unsigned long size);
     buffer_stream(const stretchy_buffer<unsigned char>& buffer);
     buffer_stream(const buffer_stream& bs);
    ~buffer_stream(void);
@@ -61,12 +86,12 @@ public:
     buffer_stream& operator=(const buffer_stream& bs);
 
 public:
-    virtual bool seek(long offset, SeekType seek_type) const override;
-    virtual long tell(void) const override;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
+    bool seek(long offset, SeekType seek_type) override;
+    long tell(void) const override;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
     class implement* impl_;
@@ -77,8 +102,8 @@ class file_stream : public stream
     class implement;
 
 public:
-    file_stream(const char* file_path);
-    file_stream(const char* file_path, const char* mode);
+    file_stream(const char* filepath);
+    file_stream(const char* filepath, const char* mode);
     file_stream(const file& file);
     file_stream(const file_stream& fs);
    ~file_stream(void);
@@ -89,12 +114,12 @@ public:
     void close(void);
 
 public:
-    virtual bool seek(long offset, SeekType seek_type) const override;
-    virtual long tell(void) const override;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
+    bool seek(long offset, SeekType seek_type) override;
+    long tell(void) const override;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
     class implement* impl_;
@@ -116,12 +141,12 @@ public:
     void close(void);
 
 public:
-    virtual bool seek(long, SeekType) const override final;
-    virtual long tell(void) const override final;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
+    bool seek(long, SeekType) override final;
+    long tell(void) const override final;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
     class implement* impl_;
@@ -143,12 +168,12 @@ public:
     void close(void);
 
 public:
-    virtual bool seek(long, SeekType) const override final;
-    virtual long tell(void) const override final;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
+    bool seek(long, SeekType) override final;
+    long tell(void) const override final;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
     class implement* impl_;
@@ -179,12 +204,12 @@ public:
     struct endpoint read_endpoint(void) const;
 
 public:
-    virtual bool seek(long, SeekType) const override final;
-    virtual long tell(void) const override final;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void* buffer, unsigned int size) override;
+    bool seek(long, SeekType) override final;
+    long tell(void) const override final;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
     class implement* impl_;
@@ -216,12 +241,12 @@ public:
     const char* header(const char* key) const;
 
 public:
-    virtual bool seek(long, SeekType) const override final;
-    virtual long tell(void) const override;
-    virtual bool readable(void) const override;
-    virtual bool writable(void) const override;
-    virtual unsigned int read(void* buffer, unsigned int size) const override;
-    virtual unsigned int write(const void*, unsigned int) override final;
+    bool seek(long, SeekType) override final;
+    long tell(void) const override;
+    bool readable(void) const override;
+    bool writable(void) const override;
+    unsigned long read(void* buffer, unsigned long size) override;
+    unsigned long write(const void*, unsigned long) override final;
 
 public:
     static std::string encode_query(const dict& query);

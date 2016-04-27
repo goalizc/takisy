@@ -77,17 +77,17 @@ public:
     implement(object*& object) : object_(object) {}
 
 public:
-    static json::object* parse_null  (const stream& stream);
-    static json::object* parse_true  (const stream& stream);
-    static json::object* parse_false (const stream& stream);
-    static json::object* parse_number(const stream& stream, int& ch);
-    static json::object* parse_string(const stream& stream);
-    static json::object* parse_array (const stream& stream);
-    static json::object* parse_dict  (const stream& stream);
-    static json::object* parse       (const stream& stream, int& ch);
+    static json::object* parse_null  (stream& stream);
+    static json::object* parse_true  (stream& stream);
+    static json::object* parse_false (stream& stream);
+    static json::object* parse_number(stream& stream, int& ch);
+    static json::object* parse_string(stream& stream);
+    static json::object* parse_array (stream& stream);
+    static json::object* parse_dict  (stream& stream);
+    static json::object* parse       (stream& stream, int& ch);
 
 public:
-    static char* read(const stream& stream, char* buffer, unsigned int size)
+    static char* read(stream& stream, char* buffer, unsigned int size)
     {
         if (stream.read(buffer, size) != size)
             throw("stream error: read(%d).", size);
@@ -95,7 +95,7 @@ public:
         return buffer;
     }
 
-    static char read_char(const stream& stream, bool skip_space = false)
+    static char read_char(stream& stream, bool skip_space = false)
     {
         char ch;
 
@@ -128,7 +128,7 @@ public:
     }
 
 private:
-    static inline bool compare(const stream& stream, const char* desc)
+    static inline bool compare(stream& stream, const char* desc)
     {
         int   length = strlen(desc);
         char* chars  = new char [length + 1];
@@ -238,14 +238,14 @@ public:
    ~number(void) {}
 
 private:
-    static inline char getchar_nothrow(const stream& stream)
+    static inline char getchar_nothrow(stream& stream)
     {
         try { return read_char(stream); }
         catch (...) { return 0; }
     }
 
 public:
-    char load(const stream& stream, int ch)
+    char load(stream& stream, int ch)
     {
         std::string desc;
         char c;
@@ -343,7 +343,7 @@ public:
     }
 
 public:
-    void load(const stream& stream)
+    void load(stream& stream)
     {
         char ch4[5] = {0};
         wchar_t wch;
@@ -637,7 +637,7 @@ public:
     }
 };
 
-json::object* json::implement::parse_null(const stream& stream)
+json::object* json::implement::parse_null(stream& stream)
 {
     if (!compare(stream, "ull"))
         throw("failed to parse null.");
@@ -645,7 +645,7 @@ json::object* json::implement::parse_null(const stream& stream)
     return new null;
 }
 
-json::object* json::implement::parse_true(const stream& stream)
+json::object* json::implement::parse_true(stream& stream)
 {
     if (!compare(stream, "rue"))
         throw("failed to parse boolean:true.");
@@ -653,7 +653,7 @@ json::object* json::implement::parse_true(const stream& stream)
     return new boolean(true);
 }
 
-json::object* json::implement::parse_false(const stream& stream)
+json::object* json::implement::parse_false(stream& stream)
 {
     if (!compare(stream, "alse"))
         throw("failed to parse boolean:false.");
@@ -661,7 +661,7 @@ json::object* json::implement::parse_false(const stream& stream)
     return new boolean(false);
 }
 
-json::object* json::implement::parse_number(const stream& stream, int& ch)
+json::object* json::implement::parse_number(stream& stream, int& ch)
 {
     number* number = new implement::number;
 
@@ -673,7 +673,7 @@ json::object* json::implement::parse_number(const stream& stream, int& ch)
     return number;
 }
 
-json::object* json::implement::parse_string(const stream& stream)
+json::object* json::implement::parse_string(stream& stream)
 {
     string* string = new implement::string;
 
@@ -683,7 +683,7 @@ json::object* json::implement::parse_string(const stream& stream)
     return string;
 }
 
-json::object* json::implement::parse_array(const stream& stream)
+json::object* json::implement::parse_array(stream& stream)
 {
     array* array = new implement::array;
     if (!array)
@@ -707,7 +707,7 @@ json::object* json::implement::parse_array(const stream& stream)
     return array;
 }
 
-json::object* json::implement::parse_dict(const stream& stream)
+json::object* json::implement::parse_dict(stream& stream)
 {
     dict* dict = new implement::dict;
     if (!dict)
@@ -740,7 +740,7 @@ json::object* json::implement::parse_dict(const stream& stream)
     return dict;
 }
 
-json::object* json::implement::parse(const stream& stream, int& ch)
+json::object* json::implement::parse(stream& stream, int& ch)
 {
     json::object* object = nullptr;
 
@@ -775,7 +775,7 @@ json::json(const char* filepath_or_content)
         load(filepath_or_content);
 }
 
-json::json(const stream& stream)
+json::json(stream& stream)
     : json()
 {
     load(stream);
@@ -798,10 +798,12 @@ json::~json(void)
 
 bool json::load(const char* content)
 {
-    return load(buffer_stream(content, strlen(content)));
+    buffer_stream bs(content, strlen(content));
+
+    return load(bs);
 }
 
-bool json::load(const stream& stream)
+bool json::load(stream& stream)
 {
     try
     {
@@ -817,7 +819,9 @@ bool json::load(const stream& stream)
 
 bool json::load_file(const char* filepath)
 {
-    return load(file_stream(filepath, "r"));
+    file_stream fs(filepath, "r");
+
+    return load(fs);
 }
 
 std::string json::dump(void) const
