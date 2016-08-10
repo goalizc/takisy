@@ -1,56 +1,6 @@
 #ifndef macro_h_20160406
 #define macro_h_20160406
 
-/*
-   The operating system, must be one of: (__os_x__)
-
-    x:
-     darwin   - Any Darwin system
-     mac      - OS X and iOS
-     osx      - OS X
-     ios      - iOS
-     msdos    - MS-DOS and Windows
-     os2      - OS/2
-     os2emx   - XFree86 on OS/2 (not PM)
-     win32    - Win32 (Windows 2000/XP/Vista/7 and Windows Server 2003/2008)
-     win64    - Win64
-     wince    - WinCE (Windows CE 5.0)
-     winrt    - WinRT (Windows 8 Runtime)
-     win      - Windows (Cygwin, Win32, Win64, WinCE, WinRT)
-     cygwin   - Cygwin
-     solaris  - Sun Solaris
-     hpux     - HP-UX
-     ultrix   - DEC Ultrix
-     linux    - Linux [has variants]
-     freebsd  - FreeBSD [has variants]
-     netbsd   - NetBSD
-     openbsd  - OpenBSD
-     bsdi     - BSD/OS
-     irix     - SGI Irix
-     osf      - HP Tru64 UNIX
-     sco      - SCO OpenServer 5
-     unixware - UnixWare 7, Open UNIX 8
-     aix      - AIX
-     hurd     - GNU Hurd
-     dgux     - DG/UX
-     reliant  - Reliant UNIX
-     dynix    - DYNIX/ptx
-     qnx      - QNX [has variants]
-     qnx6     - QNX RTP 6.1
-     lynx     - LynxOS
-     bsd4     - Any BSD 4.4 system
-     unix     - Any UNIX BSD/SYSV system
-     android  - Android platform
-
-   The following operating systems have variants:
-     linux    - both __os_linux__ and __os_android__ are defined when building for Android
-              - only __os_linux__ is defined if building for other Linux systems
-     qnx      - both __os_qnx__ and __os_blackberry__ are defined when building for Blackberry 10
-              - only __os_qnx__ is defined if building for other QNX targets
-     freebsd  - __os_freebsd__ is defined only when building for FreeBSD with a BSD userland
-              - __os_freebsd_kernel__ is always defined on FreeBSD, even if the userland is from GNU
-*/
-
 #if defined(__APPLE__) && (defined(__GNUC__) || defined(__xlC__) \
     || defined(__xlc__))
 #  define __os_darwin__

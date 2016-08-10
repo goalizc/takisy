@@ -14,8 +14,8 @@ public:
 
 public:
     widget* content(void) const;
-    vertical_scroll& vertical_scroll(void);
-    horizontal_scroll& horizontal_scroll(void);
+    class vertical_scroll& vertical_scroll(void);
+    class horizontal_scroll& horizontal_scroll(void);
 
 public:
     void onSize(void) override;

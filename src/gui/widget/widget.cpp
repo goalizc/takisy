@@ -54,7 +54,7 @@ public:
     }
 
 public:
-    std::vector<widget*>::const_iterator find_child(widget* widget) const
+    std::vector<widget*>::iterator find_child(widget* widget)
     {
         return std::find(children_.begin(), children_.end(), widget);
     }
@@ -307,7 +307,7 @@ bool widget::add(widget* widget)
 
 bool widget::remove(widget* widget)
 {
-    typedef std::vector<class widget*>::const_iterator widget_iterator;
+    typedef std::vector<class widget*>::iterator widget_iterator;
     widget_iterator child = impl_->find_child(widget);
     if (child == impl_->children_.end())
         return false;

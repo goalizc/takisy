@@ -73,6 +73,7 @@ private:
     // other system callback
 #endif
 
+#ifdef __os_win__
     static Point pointFromLPARAM(LPARAM lparam)
     {
         return Point {
@@ -85,6 +86,7 @@ private:
     {
         return Size(LOWORD(lparam), HIWORD(lparam));
     }
+#endif
 
     static Point cursor_point(void)
     {
@@ -558,12 +560,16 @@ cross_platform_window&
 
 cross_platform_window::Handle cross_platform_window::create(void)
 {
+#ifdef __os_win__
     return CreateWindowEx(0, takisy::class_name__, "Cross Platform Window",
                           WS_OVERLAPPEDWINDOW,
                           CW_USEDEFAULT, CW_USEDEFAULT,
                           CW_USEDEFAULT, CW_USEDEFAULT,
                           GetDesktopWindow(), nullptr,
                           GetModuleHandle(nullptr), nullptr);
+#else
+    return nullptr;
+#endif
 }
 
 cross_platform_window::Handle cross_platform_window::handle(void) const

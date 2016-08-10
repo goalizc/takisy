@@ -122,7 +122,8 @@ typedef graphics<canvas_rgba8>   graphics_rgba8;
 typedef graphics<canvas_bgra8>   graphics_bgra8;
 typedef graphics<canvas_argb8>   graphics_argb8;
 typedef graphics<canvas_abgr8>   graphics_abgr8;
-typedef graphics<canvas_mask8>   graphics_a8, graphics_mask8;
+typedef graphics<canvas_mask8>   graphics_a8;
+typedef graphics_a8              graphics_mask8;
 
 typedef graphics<canvas_G8be>    graphics_G8be;
 typedef graphics<canvas_Ga8be>   graphics_Ga8be;
@@ -133,7 +134,8 @@ typedef graphics<canvas_rgba8be> graphics_rgba8be;
 typedef graphics<canvas_bgra8be> graphics_bgra8be;
 typedef graphics<canvas_argb8be> graphics_argb8be;
 typedef graphics<canvas_abgr8be> graphics_abgr8be;
-typedef graphics<canvas_mask8be> graphics_a8be, graphics_mask8be;
+typedef graphics<canvas_mask8be> graphics_a8be;
+typedef graphics_a8be            graphics_mask8be;
 
 typedef graphics<canvas_G8le>    graphics_G8le;
 typedef graphics<canvas_Ga8le>   graphics_Ga8le;
@@ -144,7 +146,8 @@ typedef graphics<canvas_rgba8le> graphics_rgba8le;
 typedef graphics<canvas_bgra8le> graphics_bgra8le;
 typedef graphics<canvas_argb8le> graphics_argb8le;
 typedef graphics<canvas_abgr8le> graphics_abgr8le;
-typedef graphics<canvas_mask8le> graphics_a8le, graphics_mask8le;
+typedef graphics<canvas_mask8le> graphics_a8le;
+typedef graphics_a8le            graphics_mask8le;
 
 typedef graphics<canvas_G16>      graphics_G16;
 typedef graphics<canvas_Ga16>     graphics_Ga16;
@@ -155,7 +158,8 @@ typedef graphics<canvas_rgba16>   graphics_rgba16;
 typedef graphics<canvas_bgra16>   graphics_bgra16;
 typedef graphics<canvas_argb16>   graphics_argb16;
 typedef graphics<canvas_abgr16>   graphics_abgr16;
-typedef graphics<canvas_mask16>   graphics_a16, graphics_mask16;
+typedef graphics<canvas_mask16>   graphics_a16;
+typedef graphics_a16              graphics_mask16;
 
 typedef graphics<canvas_G16be>    graphics_G16be;
 typedef graphics<canvas_Ga16be>   graphics_Ga16be;
@@ -166,7 +170,8 @@ typedef graphics<canvas_rgba16be> graphics_rgba16be;
 typedef graphics<canvas_bgra16be> graphics_bgra16be;
 typedef graphics<canvas_argb16be> graphics_argb16be;
 typedef graphics<canvas_abgr16be> graphics_abgr16be;
-typedef graphics<canvas_mask16be> graphics_a16be, graphics_mask16be;
+typedef graphics<canvas_mask16be> graphics_a16be;
+typedef graphics_a16be            graphics_mask16be;
 
 typedef graphics<canvas_G16le>    graphics_G16le;
 typedef graphics<canvas_Ga16le>   graphics_Ga16le;
@@ -177,6 +182,7 @@ typedef graphics<canvas_rgba16le> graphics_rgba16le;
 typedef graphics<canvas_bgra16le> graphics_bgra16le;
 typedef graphics<canvas_argb16le> graphics_argb16le;
 typedef graphics<canvas_abgr16le> graphics_abgr16le;
-typedef graphics<canvas_mask16le> graphics_a16le, graphics_mask16le;
+typedef graphics<canvas_mask16le> graphics_a16le;
+typedef graphics_a16le            graphics_mask16le;
 
 #endif //graphics_h_20131115

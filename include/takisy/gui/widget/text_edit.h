@@ -18,36 +18,36 @@ public:
    ~text_edit(void);
 
 public:
-    std::wstring text(void) const;
-    std::wstring selected_text(void) const;
-    unsigned int caret(void) const;
-    Margin       margin(void) const;
-    int          margin_left(void) const;
-    int          margin_top(void) const;
-    int          margin_right(void) const;
-    int          margin_bottom(void) const;
-    unsigned int indent(void) const;
-    Alignment    alignment(void) const;
-    bool         readonly(void) const;
-    bool         multiline(void) const;
-    bool         word_wrap(void) const;
-    unsigned int line_spacing(void) const;
-    unsigned int word_spacing(void) const;
-    const font&  font(void) const;
-    color        border_color(void) const;
-    brush_sptr   selection_brush(void) const;
-    brush_sptr   background_brush(void) const;
-    brush_sptr   foreground_brush(void) const;
-    bool         fixed_brush(void) const;
-    Point        offset(void) const;
-    int          offset_x(void) const;
-    int          offset_y(void) const;
-    unsigned int max_length(void) const;
-    unsigned int blink_interval(void) const;
+    std::wstring      text(void) const;
+    std::wstring      selected_text(void) const;
+    unsigned int      caret(void) const;
+    Margin            margin(void) const;
+    int               margin_left(void) const;
+    int               margin_top(void) const;
+    int               margin_right(void) const;
+    int               margin_bottom(void) const;
+    unsigned int      indent(void) const;
+    Alignment         alignment(void) const;
+    bool              readonly(void) const;
+    bool              multiline(void) const;
+    bool              word_wrap(void) const;
+    unsigned int      line_spacing(void) const;
+    unsigned int      word_spacing(void) const;
+    const class font& font(void) const;
+    color             border_color(void) const;
+    brush_sptr        selection_brush(void) const;
+    brush_sptr        background_brush(void) const;
+    brush_sptr        foreground_brush(void) const;
+    bool              fixed_brush(void) const;
+    Point             offset(void) const;
+    int               offset_x(void) const;
+    int               offset_y(void) const;
+    unsigned int      max_length(void) const;
+    unsigned int      blink_interval(void) const;
 
 public:
-    vertical_scroll& vertical_scroll(void);
-    horizontal_scroll& horizontal_scroll(void);
+    class vertical_scroll& vertical_scroll(void);
+    class horizontal_scroll& horizontal_scroll(void);
 
 public:
     void text(const std::string& text);

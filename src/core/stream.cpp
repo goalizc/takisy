@@ -596,6 +596,8 @@ static struct WSAInitializer
    ~WSAInitializer(void) { WSACleanup(); }
 } __wsa_initializer__;
 
+typedef int socklen_t;
+
 #else
 
 #include <netdb.h>
@@ -868,7 +870,7 @@ bool udp_stream::writable(void) const
 
 unsigned long udp_stream::read(void* buffer, unsigned long size)
 {
-    int addrlen = sizeof(impl_->raddr_);
+    socklen_t addrlen = sizeof(impl_->raddr_);
 
     return recvfrom(impl_->fd_,
                     reinterpret_cast<char*>(buffer), size, 0,

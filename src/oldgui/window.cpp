@@ -1,3 +1,5 @@
+#ifdef __ow_win__
+
 #include <map>
 #include <list>
 #include <vector>
@@ -705,3 +707,5 @@ void Window::quit(void)
 {
     PostQuitMessage(0);
 }
+
+#endif

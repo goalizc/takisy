@@ -14,9 +14,9 @@ template <typename PixelFormat,
 class canvas
 {
 public:
-    typedef stretchy_buffer<PixelFormat> stretchy_buffer;
     typedef PixelFormat pixel_format;
     typedef GammaType   gamma_type;
+    typedef stretchy_buffer<pixel_format> pixels_type;
 
 public:
     canvas(void)
@@ -99,7 +99,7 @@ public:
         }
         else
         {
-            stretchy_buffer pixels(width * height);
+            pixels_type pixels(width * height);
 
             unsigned int xlimit = width  < size_.width  ? width  : size_.width;
             unsigned int ylimit = height < size_.height ? height : size_.height;
@@ -168,12 +168,12 @@ public:
         return pixels_.data() + y * size_.width;
     }
 
-    inline stretchy_buffer& pixels(void)
+    inline pixels_type& pixels(void)
     {
         return pixels_;
     }
 
-    inline const stretchy_buffer& pixels(void) const
+    inline const pixels_type& pixels(void) const
     {
         return pixels_;
     }
@@ -191,13 +191,6 @@ public:
             unsafe_pixel(x, y).blend(color);
     }
 
-    inline void pixel(unsigned int x, unsigned int y,
-                      const absolute_color& color)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y) = color;
-    }
-
     template <typename Brush>
     inline void pixel(unsigned int x, unsigned int y,
                       const Brush& brush, color::channel_type covarage)
@@ -212,13 +205,6 @@ public:
             unsafe_pixel(x, y).blend(color, gamma_.gamma_value(covarage));
     }
 
-    inline void pixel(unsigned int x, unsigned int y,
-                      const absolute_color& color, color::channel_type covarage)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y) = color * gamma_.gamma_value(covarage);
-    }
-
 private:
     inline bool valid_xy(unsigned int x, unsigned int y) const
     {
@@ -228,7 +214,7 @@ private:
 private:
     sizeu size_;
     gamma_type gamma_;
-    stretchy_buffer pixels_;
+    pixels_type pixels_;
 };
 
 typedef canvas<pf_G8>      canvas_G8;
@@ -240,7 +226,8 @@ typedef canvas<pf_rgba8>   canvas_rgba8;
 typedef canvas<pf_bgra8>   canvas_bgra8;
 typedef canvas<pf_argb8>   canvas_argb8;
 typedef canvas<pf_abgr8>   canvas_abgr8;
-typedef canvas<pf_mask8>   canvas_a8, canvas_mask8;
+typedef canvas<pf_mask8>   canvas_a8;
+typedef canvas_a8          canvas_mask8;
 
 typedef canvas<pf_G8be>    canvas_G8be;
 typedef canvas<pf_Ga8be>   canvas_Ga8be;
@@ -251,7 +238,8 @@ typedef canvas<pf_rgba8be> canvas_rgba8be;
 typedef canvas<pf_bgra8be> canvas_bgra8be;
 typedef canvas<pf_argb8be> canvas_argb8be;
 typedef canvas<pf_abgr8be> canvas_abgr8be;
-typedef canvas<pf_mask8be> canvas_a8be, canvas_mask8be;
+typedef canvas<pf_mask8be> canvas_a8be;
+typedef canvas_a8be        canvas_mask8be;
 
 typedef canvas<pf_G8le>    canvas_G8le;
 typedef canvas<pf_Ga8le>   canvas_Ga8le;
@@ -262,7 +250,8 @@ typedef canvas<pf_rgba8le> canvas_rgba8le;
 typedef canvas<pf_bgra8le> canvas_bgra8le;
 typedef canvas<pf_argb8le> canvas_argb8le;
 typedef canvas<pf_abgr8le> canvas_abgr8le;
-typedef canvas<pf_mask8le> canvas_a8le, canvas_mask8le;
+typedef canvas<pf_mask8le> canvas_a8le;
+typedef canvas_a8le        canvas_mask8le;
 
 typedef canvas<pf_G16>      canvas_G16;
 typedef canvas<pf_Ga16>     canvas_Ga16;
@@ -273,7 +262,8 @@ typedef canvas<pf_rgba16>   canvas_rgba16;
 typedef canvas<pf_bgra16>   canvas_bgra16;
 typedef canvas<pf_argb16>   canvas_argb16;
 typedef canvas<pf_abgr16>   canvas_abgr16;
-typedef canvas<pf_mask16>   canvas_a16, canvas_mask16;
+typedef canvas<pf_mask16>   canvas_a16;
+typedef canvas_a16          canvas_mask16;
 
 typedef canvas<pf_G16be>    canvas_G16be;
 typedef canvas<pf_Ga16be>   canvas_Ga16be;
@@ -284,7 +274,8 @@ typedef canvas<pf_rgba16be> canvas_rgba16be;
 typedef canvas<pf_bgra16be> canvas_bgra16be;
 typedef canvas<pf_argb16be> canvas_argb16be;
 typedef canvas<pf_abgr16be> canvas_abgr16be;
-typedef canvas<pf_mask16be> canvas_a16be, canvas_mask16be;
+typedef canvas<pf_mask16be> canvas_a16be;
+typedef canvas_a16be        canvas_mask16be;
 
 typedef canvas<pf_G16le>    canvas_G16le;
 typedef canvas<pf_Ga16le>   canvas_Ga16le;
@@ -295,6 +286,7 @@ typedef canvas<pf_rgba16le> canvas_rgba16le;
 typedef canvas<pf_bgra16le> canvas_bgra16le;
 typedef canvas<pf_argb16le> canvas_argb16le;
 typedef canvas<pf_abgr16le> canvas_abgr16le;
-typedef canvas<pf_mask16le> canvas_a16le, canvas_mask16le;
+typedef canvas<pf_mask16le> canvas_a16le;
+typedef canvas_a16le        canvas_mask16le;
 
 #endif //canvas_h_20131115

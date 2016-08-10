@@ -61,12 +61,12 @@ widget* scroll_view::content(void) const
     return impl_->content_;
 }
 
-vertical_scroll& scroll_view::vertical_scroll(void)
+class vertical_scroll& scroll_view::vertical_scroll(void)
 {
     return impl_->vscroll_;
 }
 
-horizontal_scroll& scroll_view::horizontal_scroll(void)
+class horizontal_scroll& scroll_view::horizontal_scroll(void)
 {
     return impl_->hscroll_;
 }

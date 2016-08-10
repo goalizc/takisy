@@ -24,7 +24,8 @@ public:
     transformer& scale(double scale_x, double scale_y);
     transformer& scale(const path::vertex_type& center, double scale);
     transformer& scale(const path::vertex_type& center,
-                       double scale_x, double scale_y);
+                       double scale_x,
+                       double scale_y);
     transformer& scale(double x, double y, double scale);
     transformer& scale(double x, double y, double scale_x, double scale_y);
 
@@ -37,7 +38,8 @@ public:
 
     transformer& shear(double shear_x, double shear_y);
     transformer& shear(const path::vertex_type& center,
-                       double shear_x, double shear_y);
+                       double shear_x,
+                       double shear_y);
     transformer& shear(double x, double y, double shear_x, double shear_y);
 
 public:

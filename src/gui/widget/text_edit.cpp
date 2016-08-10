@@ -147,6 +147,8 @@ text_edit::text_edit(const std::wstring& _text)
                 cf.ptCurrentPos.y = point.y + impl_->text_.font()->emheight();
 
                 ImmSetCompositionWindow(himc, &cf);
+            #else
+                point.x += 1;
             #endif
             }
         });
@@ -287,12 +289,12 @@ unsigned int text_edit::blink_interval(void) const
     return impl_->blink_interval_;
 }
 
-vertical_scroll& text_edit::vertical_scroll(void)
+class vertical_scroll& text_edit::vertical_scroll(void)
 {
     return impl_->vscroll_;
 }
 
-horizontal_scroll& text_edit::horizontal_scroll(void)
+class horizontal_scroll& text_edit::horizontal_scroll(void)
 {
     return impl_->hscroll_;
 }

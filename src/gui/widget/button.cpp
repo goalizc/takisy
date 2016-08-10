@@ -135,7 +135,7 @@ unsigned int text_button::margin(void) const
     return impl_->label_.margin().left;
 }
 
-const font& text_button::font(void) const
+const class font& text_button::font(void) const
 {
     return impl_->label_.font();
 }

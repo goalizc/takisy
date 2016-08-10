@@ -29,13 +29,13 @@ public:
     pen& operator=(const pen& pen);
 
 public:
-    double width(void) const;
-    brush* brush(void) const;
-    Cap    cap(void) const;
-    Joint  joint(void) const;
-    int    dash_array_size(void) const;
-    double dash(int index) const;
-    double offset(void) const;
+    double     width(void) const;
+    brush_sptr brush(void) const;
+    Cap        cap(void) const;
+    Joint      joint(void) const;
+    int        dash_array_size(void) const;
+    double     dash(int index) const;
+    double     offset(void) const;
 
 public:
     void width(double width);

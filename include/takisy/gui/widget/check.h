@@ -56,9 +56,9 @@ private:
     using check::content;
 
 public:
-    bool         word_wrap(void) const;
-    std::wstring text(void) const;
-    const font&  font(void) const;
+    bool              word_wrap(void) const;
+    std::wstring      text(void) const;
+    const class font& font(void) const;
 
 public:
     void word_wrap(bool word_wrap);

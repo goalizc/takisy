@@ -6,6 +6,9 @@
 
 #ifdef __os_win__
 #include <Windows.h>
+#else
+#include <signal.h>
+#include <sys/time.h>
 #endif
 
 class timer::implement
@@ -14,27 +17,45 @@ class timer::implement
     friend class core;
 
 public:
-    implement(DWORD interval, bool repeatable)
+    implement(unsigned long interval, bool repeatable)
         : repeatable_(repeatable), interval_(interval), handle_times_(0)
     {}
 
 private:
     bool  repeatable_;
-    DWORD interval_;
-    DWORD start_timestamp_, handle_timestamp_;
+    unsigned long interval_;
+    unsigned long start_timestamp_, handle_timestamp_;
     unsigned int handle_times_;
 };
 
 class timer::core
 {
+    static constexpr unsigned long minimal_interval = 10;
+
 private:
     core(void)
-        : eventid_(SetTimer(nullptr, 0, 10, callback))
-    {}
-
-   ~core(void)
+    #ifdef __os_win__
+        : eventid_(SetTimer(nullptr, 0, minimal_interval, callback))
+    #endif
     {
+    #ifndef __os_win__
+        signal(SIGALRM, callback);
+
+        struct itimerval itimerval;
+        itimerval.it_interval.tv_sec  =
+        itimerval.it_value.tv_sec     = minimal_interval / 1000;
+        itimerval.it_interval.tv_usec =
+        itimerval.it_value.tv_usec    = (minimal_interval % 1000) * 1000;
+
+        setitimer(ITIMER_REAL, &itimerval, nullptr);
+    #endif
+    }
+
+    ~core(void)
+    {
+    #ifdef __os_win__
         KillTimer(nullptr, eventid_);
+    #endif
     }
 
 public:
@@ -67,15 +88,23 @@ public:
     }
 
 private:
-    static VOID CALLBACK callback(HWND hwnd, UINT msg,
-                                  UINT_PTR eventid, DWORD timestamp)
+#ifdef __os_win__
+    static VOID CALLBACK callback(HWND, UINT, UINT_PTR, DWORD timestamp)
+#else
+    static void callback(int sig)
+#endif
     {
+    #ifndef __os_win__
+        unsigned long timestamp = timer::now();
+    #endif
+
         for (timer* timer : get().timers_)
         {
             if (  timer->impl_->handle_timestamp_
                 + timer->impl_->interval_ < timestamp)
             {
                 timer->onTimer();
+                timer->impl_->handle_times_++;
 
                 if (timer->impl_->repeatable_)
                     timer->impl_->handle_timestamp_ = timestamp;
@@ -86,7 +115,9 @@ private:
     }
 
 private:
+#ifdef __os_win__
     UINT_PTR eventid_;
+#endif
     std::list<timer*> timers_;
 };
 
@@ -166,5 +197,14 @@ void timer::stop(void)
 
 unsigned long timer::now()
 {
+#ifdef __os_win__
     return GetTickCount();
+#else
+    struct timeval timeval;
+
+    if (gettimeofday(&timeval, nullptr) == 0)
+        return timeval.tv_sec * 1000 + timeval.tv_usec / 1000;
+    else
+        return 0;
+#endif
 }

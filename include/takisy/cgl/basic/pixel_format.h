@@ -101,6 +101,16 @@ public:
         return channel_bytes() * 8;
     }
 
+    static inline constexpr unsigned int channel_scale(void)
+    {
+        return 1 << channel_bits();
+    }
+
+    static inline constexpr unsigned int channel_mask(void)
+    {
+        return channel_scale() - 1;
+    }
+
     static inline constexpr unsigned int pixel_bytes(void)
     {
         return channels() * channel_bytes();
@@ -281,15 +291,15 @@ private:
             if (alpha == color::channel_mask)
                 return (void)operator=(color);
 
-            constexpr double p_mask  = (1 << channel_bits()) - 1;
-            constexpr double c_mask  = color::channel_mask;
-            register  double p_alpha = a()   / p_mask;
-            register  double c_alpha = alpha / c_mask;
-            register  double _1      = p_alpha - c_alpha * p_alpha;
-            register  double _2      = c_alpha + _1;
-            register  double _3      = c_alpha / c_mask;
-            register  double _4      = _1 / p_mask;
-            register  double _5      = _2 / p_mask;
+            constexpr double pm = channel_mask();      // pixel mask
+            constexpr double cm = color::channel_mask; // color mask
+            register  double pa = a()   / pm;          // pixel alpha
+            register  double ca = alpha / cm;          // color alpha
+            register  double _1 = pa - ca * pa;
+            register  double _2 = ca + _1;
+            register  double _3 = ca / cm;
+            register  double _4 = _1 / pm;
+            register  double _5 = _2 / pm;
 
             #define BLEND_CHANNEL(p, c) p((c * _3 + p() * _4) / _5)
 
@@ -302,7 +312,7 @@ private:
                 if (exist_b_channel()) BLEND_CHANNEL(b, color.b);
             }
 
-            a(_2 * p_mask);
+            a(_2 * pm);
 
             #undef BLEND_CHANNEL
         }
@@ -355,7 +365,8 @@ typedef pixel_format<etlc_uint8, r, g, b, a> pf_rgba8;
 typedef pixel_format<etlc_uint8, b, g, r, a> pf_bgra8;
 typedef pixel_format<etlc_uint8, a, r, g, b> pf_argb8;
 typedef pixel_format<etlc_uint8, a, b, g, r> pf_abgr8;
-typedef pixel_format<etlc_uint8, a>          pf_a8, pf_mask8;
+typedef pixel_format<etlc_uint8, a>          pf_a8;
+typedef pf_a8                                pf_mask8;
 
 typedef pixel_format<etbe_uint8, G>          pf_G8be;
 typedef pixel_format<etbe_uint8, G, a>       pf_Ga8be;
@@ -366,7 +377,8 @@ typedef pixel_format<etbe_uint8, r, g, b, a> pf_rgba8be;
 typedef pixel_format<etbe_uint8, b, g, r, a> pf_bgra8be;
 typedef pixel_format<etbe_uint8, a, r, g, b> pf_argb8be;
 typedef pixel_format<etbe_uint8, a, b, g, r> pf_abgr8be;
-typedef pixel_format<etbe_uint8, a>          pf_a8be, pf_mask8be;
+typedef pixel_format<etbe_uint8, a>          pf_a8be;
+typedef pf_a8be                              pf_mask8be;
 
 typedef pixel_format<etle_uint8, G>          pf_G8le;
 typedef pixel_format<etle_uint8, G, a>       pf_Ga8le;
@@ -377,7 +389,8 @@ typedef pixel_format<etle_uint8, r, g, b, a> pf_rgba8le;
 typedef pixel_format<etle_uint8, b, g, r, a> pf_bgra8le;
 typedef pixel_format<etle_uint8, a, r, g, b> pf_argb8le;
 typedef pixel_format<etle_uint8, a, b, g, r> pf_abgr8le;
-typedef pixel_format<etle_uint8, a>          pf_a8le, pf_mask8le;
+typedef pixel_format<etle_uint8, a>          pf_a8le;
+typedef pf_a8le                              pf_mask8le;
 
 typedef pixel_format<etlc_uint16, G>          pf_G16;
 typedef pixel_format<etlc_uint16, G, a>       pf_Ga16;
@@ -388,7 +401,8 @@ typedef pixel_format<etlc_uint16, r, g, b, a> pf_rgba16;
 typedef pixel_format<etlc_uint16, b, g, r, a> pf_bgra16;
 typedef pixel_format<etlc_uint16, a, r, g, b> pf_argb16;
 typedef pixel_format<etlc_uint16, a, b, g, r> pf_abgr16;
-typedef pixel_format<etlc_uint16, a>          pf_a16, pf_mask16;
+typedef pixel_format<etlc_uint16, a>          pf_a16;
+typedef pf_a16                                pf_mask16;
 
 typedef pixel_format<etbe_uint16, G>          pf_G16be;
 typedef pixel_format<etbe_uint16, G, a>       pf_Ga16be;
@@ -399,7 +413,8 @@ typedef pixel_format<etbe_uint16, r, g, b, a> pf_rgba16be;
 typedef pixel_format<etbe_uint16, b, g, r, a> pf_bgra16be;
 typedef pixel_format<etbe_uint16, a, r, g, b> pf_argb16be;
 typedef pixel_format<etbe_uint16, a, b, g, r> pf_abgr16be;
-typedef pixel_format<etbe_uint16, a>          pf_a16be, pf_mask16be;
+typedef pixel_format<etbe_uint16, a>          pf_a16be;
+typedef pf_a16be                              pf_mask16be;
 
 typedef pixel_format<etle_uint16, G>          pf_G16le;
 typedef pixel_format<etle_uint16, G, a>       pf_Ga16le;
@@ -410,6 +425,7 @@ typedef pixel_format<etle_uint16, r, g, b, a> pf_rgba16le;
 typedef pixel_format<etle_uint16, b, g, r, a> pf_bgra16le;
 typedef pixel_format<etle_uint16, a, r, g, b> pf_argb16le;
 typedef pixel_format<etle_uint16, a, b, g, r> pf_abgr16le;
-typedef pixel_format<etle_uint16, a>          pf_a16le, pf_mask16le;
+typedef pixel_format<etle_uint16, a>          pf_a16le;
+typedef pf_a16le                              pf_mask16le;
 
 #endif //pixel_format_h_20131106

@@ -38,11 +38,11 @@ public:
    ~text_button(void);
 
 public:
-    std::wstring caption(void) const;
-    unsigned int margin(void) const;
-    const font&  font(void) const;
-    brush_sptr   foreground_brush(void) const;
-    Size         optimal_size(void) const override;
+    std::wstring      caption(void) const;
+    unsigned int      margin(void) const;
+    const class font& font(void) const;
+    brush_sptr        foreground_brush(void) const;
+    Size              optimal_size(void) const override;
 
 public:
     void caption(const std::string& caption);

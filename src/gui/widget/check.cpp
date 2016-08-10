@@ -167,7 +167,7 @@ std::wstring text_check::text(void) const
     return impl_->label_.text();
 }
 
-const font& text_check::font(void) const
+const class font& text_check::font(void) const
 {
     return impl_->label_.font();
 }

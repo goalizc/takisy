@@ -158,7 +158,8 @@ transformer& transformer::scale(const path::vertex_type& center, double _scale)
 }
 
 transformer& transformer::scale(const path::vertex_type& center,
-                                double scale_x, double scale_y)
+                                double scale_x,
+                                double scale_y)
 {
     return scale(center.x, center.y, scale_x, scale_y);
 }
@@ -169,7 +170,8 @@ transformer& transformer::scale(double x, double y, double _scale)
 }
 
 transformer& transformer::scale(double x, double y,
-                                double scale_x, double scale_y)
+                                double scale_x,
+                                double scale_y)
 {
     return offset(-x, -y).scale(scale_x, scale_y).offset(x, y);
 }
@@ -228,13 +230,15 @@ transformer& transformer::shear(double shear_x, double shear_y)
 }
 
 transformer& transformer::shear(const path::vertex_type& center,
-                                double shear_x, double shear_y)
+                                double shear_x,
+                                double shear_y)
 {
     return shear(center.x, center.y, shear_x, shear_y);
 }
 
 transformer& transformer::shear(double x, double y,
-                                double shear_x, double shear_y)
+                                double shear_x,
+                                double shear_y)
 {
     return offset(-x, -y).shear(shear_x, shear_y).offset(x, y);
 }

@@ -198,7 +198,7 @@ public:
     udp_stream& operator=(const udp_stream& us);
 
 public:
-    bool bind(const char* ip, unsigned short port);
+    bool            bind(const char* ip, unsigned short port);
     void            endpoint(struct endpoint& endpoint);
     struct endpoint endpoint(void) const;
     struct endpoint read_endpoint(void) const;

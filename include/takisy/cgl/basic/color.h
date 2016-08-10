@@ -408,16 +408,6 @@ public:
     }
 };
 
-class absolute_color : public color
-{
-public:
-    using color::color;
-
-    absolute_color(const color& c)
-        : color(c)
-    {}
-};
-
 color operator*(color::channel_type factor, const color& color);
 
 #endif //color_h_20130717

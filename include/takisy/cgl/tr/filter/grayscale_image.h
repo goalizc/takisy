@@ -9,8 +9,8 @@ public:
     {
         dst.resize(src.width(), src.height());
 
-        const typename Canvas::stretchy_buffer& src_pixels = src.pixels();
-              typename Canvas::stretchy_buffer& dst_pixels = dst.pixels();
+        const typename Canvas::pixels_type& src_pixels = src.pixels();
+              typename Canvas::pixels_type& dst_pixels = dst.pixels();
 
         for (unsigned int i = 0; i < src_pixels.size(); ++i)
             dst_pixels[i] = src_pixels[i].grayscale_color();

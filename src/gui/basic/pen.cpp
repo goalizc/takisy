@@ -56,9 +56,9 @@ double pen::width(void) const
     return impl_->contour_.width();
 }
 
-brush* pen::brush(void) const
+brush_sptr pen::brush(void) const
 {
-    return impl_->brush_.get();
+    return impl_->brush_;
 }
 
 pen::Cap pen::cap(void) const

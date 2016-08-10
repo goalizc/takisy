@@ -4,6 +4,7 @@
 #include <tuple>
 #include <string>
 #include <vector>
+#include <numeric>
 #include <algorithm>
 #include <takisy/core/handler.h>
 #include <takisy/core/algorithm.h>
