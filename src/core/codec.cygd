@@ -1,0 +1,3 @@
+/cygdrive/z/takisy/src/core/codec.cygo /cygdrive/z/takisy/src/core/codec.cygd: /cygdrive/z/takisy/src/core/codec.cpp \
+ /cygdrive/z/takisy/include/takisy/core/codec.h \
+ /cygdrive/z/takisy/src/core/codec_unicode2gbk.h

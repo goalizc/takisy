@@ -1,0 +1,7 @@
+/cygdrive/z/takisy/src/cgl/path/vertices_wrapper.cygo /cygdrive/z/takisy/src/cgl/path/vertices_wrapper.cygd: /cygdrive/z/takisy/src/cgl/path/vertices_wrapper.cpp \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices_wrapper.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h

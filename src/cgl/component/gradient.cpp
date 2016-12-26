@@ -19,24 +19,30 @@ public:
 public:
     inline void center(pointf::axis_type center_x, pointf::axis_type center_y)
     {
-        center_.x = center_x;
-        center_.y = center_y;
-
-        refresh_transformer();
+        if (center_ != pointf(center_x, center_y))
+        {
+            center_.x = center_x;
+            center_.y = center_y;
+            refresh_transformer();
+        }
     }
 
     inline void radius(double radius)
     {
-        radius_ = radius;
-
-        refresh_transformer();
+        if (radius_ != radius)
+        {
+            radius_ = radius;
+            refresh_transformer();
+        }
     }
 
     inline void angle(double angle)
     {
-        angle_ = angle;
-
-        refresh_transformer();
+        if (angle_ != angle)
+        {
+            angle_ = angle;
+            refresh_transformer();
+        }
     }
 
     inline double gradual_value(pointf::axis_type x, pointf::axis_type y) const
@@ -75,9 +81,7 @@ private:
     inline void refresh_transformer(void)
     {
         transformer_.reset()
-                    .offset(-center_)
-                    .rotate(-angle_)
-                    .scale(1 / radius_);
+                    .offset(-center_).rotate(-angle_).scale(1 / radius_);
     }
 
 private:
@@ -130,6 +134,31 @@ gradient& gradient::operator=(const gradient& gradient)
     return *this;
 }
 
+gradient::GradientType gradient::gradient_type(void) const
+{
+    return impl_->gradient_type_;
+}
+
+pointf gradient::center(void) const
+{
+    return impl_->center_;
+}
+
+double gradient::radius(void) const
+{
+    return impl_->radius_;
+}
+
+double gradient::angle(void) const
+{
+    return impl_->angle_;
+}
+
+gradient::FnCalculator gradient::custom_calculator(void) const
+{
+    return impl_->calculator_;
+}
+
 gradient& gradient::gradient_type(GradientType gradient_type)
 {
     impl_->gradient_type_ = gradient_type;
@@ -173,31 +202,6 @@ gradient& gradient::custom_calculator(FnCalculator calculator)
     gradient_type(gtCustom);
 
     return *this;
-}
-
-gradient::GradientType gradient::gradient_type(void) const
-{
-    return impl_->gradient_type_;
-}
-
-pointf gradient::center(void) const
-{
-    return impl_->center_;
-}
-
-double gradient::radius(void) const
-{
-    return impl_->radius_;
-}
-
-double gradient::angle(void) const
-{
-    return impl_->angle_;
-}
-
-gradient::FnCalculator gradient::custom_calculator(void) const
-{
-    return impl_->calculator_;
 }
 
 double gradient::gradual_value(const pointf& dott) const

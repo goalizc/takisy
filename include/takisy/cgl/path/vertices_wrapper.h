@@ -9,14 +9,14 @@ class vertices_wrapper : public path
 
 public:
     vertices_wrapper(const path::vertex_type* vertices, unsigned int size);
-    vertices_wrapper(const vertices_wrapper& ps);
+    vertices_wrapper(const vertices_wrapper& vw);
    ~vertices_wrapper(void);
 
-    vertices_wrapper& operator=(const vertices_wrapper& ps);
+    vertices_wrapper& operator=(const vertices_wrapper& vw);
 
 public:
     unsigned int size(void) const override;
-    path::vertex_type fetch_vertex(unsigned int index) const override;
+    path::vertex_type at(unsigned int index) const override;
 
 private:
     class implement* impl_;

@@ -165,11 +165,11 @@ std::shared_ptr<stream> stream::from_uri(const char* uri)
                 return nullptr;
         }
 
-        std::shared_ptr<stream> shared_ptr(new buffer_stream);
-        if (ftp.get(ap[1].c_str(), *shared_ptr).status[0] != '2')
+        std::shared_ptr<stream> bufstream(new buffer_stream);
+        if (ftp.get(ap[1].c_str(), *bufstream).status[0] != '2')
             return nullptr;
 
-        return shared_ptr;
+        return bufstream;
     }
     else
     if (protocol == "http")

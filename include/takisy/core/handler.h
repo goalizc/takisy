@@ -1,57 +1,106 @@
 #ifndef handler_h_20150715
 #define handler_h_20150715
 
-#include <vector>
+#include <set>
+#include <tuple>
 #include <memory>
 
 class handler
 {
-public:
-    virtual ~handler(void) {}
-    virtual void handle(void) = 0;
-};
-
-typedef std::shared_ptr<handler> handler_sptr;
-
-template <typename This, typename Lambda>
-inline handler_sptr make_lambda_handler(This _this, Lambda lambda)
-{
-    class lambda_handler : public handler
+protected:
+    template <unsigned int N>
+    struct Apply
     {
-    public:
-        inline lambda_handler(This _this, Lambda lambda)
-            : this_(_this), lambda_(lambda)
-        {}
-
-    public:
-        inline void handle() override
+        template <typename F, typename T, typename... A>
+        static inline void apply(F& f, T& t, A&... a)
         {
-            lambda_(*this_);
+            Apply<N - 1>::apply(f, t, std::get<N - 1>(t), a...);
         }
-
-    private:
-        This this_;
-        Lambda lambda_;
     };
 
-    return handler_sptr(new lambda_handler(_this, lambda));
-}
+public:
+    typedef std::shared_ptr<handler> sptr;
 
-#define DECLARE_HANDLER(h)                                          \
-public:                                                             \
-    template <typename Lambda>                                      \
-    inline void h(Lambda lambda)                                    \
-    {                                                               \
-        h##_handlers_.push_back(make_lambda_handler(this, lambda)); \
-    }                                                               \
-                                                                    \
-    inline void h(void)                                             \
-    {                                                               \
-        for (handler_sptr& handler : h##_handlers_)                 \
-            handler->handle();                                      \
-    }                                                               \
-                                                                    \
-private:                                                            \
-    std::vector<handler_sptr> h##_handlers_;
+    struct handlers : std::set<sptr>
+    {
+        handlers(void) : std::set<sptr>() {}
+        handlers(const handlers&) {}
+        handlers& operator=(const handlers&) { return *this; }
+    };
+
+public:
+    virtual ~handler(void) {}
+    virtual void handle(void* tuple) = 0;
+
+public:
+    template <typename... Args, typename Lambda>
+    static sptr make(Lambda lambda)
+    {
+        class lambda_handler : public handler
+        {
+        public:
+            inline lambda_handler(Lambda lambda)
+                : lambda_(lambda)
+            {}
+
+        public:
+            inline void handle(void* tuple) override
+            {
+                Apply<sizeof...(Args)>::apply
+                    (lambda_, *reinterpret_cast<std::tuple<Args...>*>(tuple));
+            }
+
+        private:
+            Lambda lambda_;
+        };
+
+        return sptr(new lambda_handler(lambda));
+    }
+};
+
+template <>
+struct handler::Apply<0>
+{
+    template <typename F, typename T, typename... A>
+    static inline void apply(F& f, T&, A&... a)
+    {
+        f(a...);
+    }
+};
+
+#define DECLARE_HANDLER(h, ...)                                         \
+public:                                                                 \
+    template <typename Lambda>                                          \
+    inline handler::sptr h(Lambda lambda)                               \
+    {                                                                   \
+        return h(handler::make<decltype(this), ##__VA_ARGS__>(lambda)); \
+    }                                                                   \
+                                                                        \
+    inline handler::sptr h(const handler::sptr& handler)                \
+    {                                                                   \
+        return h##_.insert(handler), handler;                           \
+    }                                                                   \
+                                                                        \
+    inline void h##Remove(const handler::sptr& handler)                 \
+    {                                                                   \
+        h##_.erase(handler);                                            \
+    }                                                                   \
+                                                                        \
+    inline void h##Reset(void)                                          \
+    {                                                                   \
+        h##_.clear();                                                   \
+    }                                                                   \
+                                                                        \
+private:                                                                \
+    template <typename... Args>                                         \
+    inline void h##Handle(Args&&... args)                               \
+    {                                                                   \
+        std::tuple<decltype(this), ##__VA_ARGS__> tuple(this, args...); \
+                                                                        \
+        for (const handler::sptr& handler : h##_)                       \
+            handler->handle(&tuple);                                    \
+    }                                                                   \
+                                                                        \
+    handler::handlers h##_;
 
 #endif // handler_h_20150715

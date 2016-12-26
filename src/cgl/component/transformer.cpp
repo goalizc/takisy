@@ -1,6 +1,5 @@
 #include <takisy/core/math.h>
 #include <takisy/cgl/path/vertices_wrapper.h>
-#include <takisy/cgl/path/vertex_set.h>
 #include <takisy/cgl/component/transformer.h>
 
 class transformer::implement
@@ -64,24 +63,24 @@ public:
         };
     }
 
-    vertex_set* transform(const path& path, vertex_set* vertex_set) const
+    vertices* transform(const path& path, vertices* vertices) const
     {
         for (unsigned int i = 0; i < path.size(); ++i)
         {
-            const path::vertex_type& vertex = path.fetch_vertex(i);
+            const path::vertex_type& vertex = path[i];
 
-            vertex_set->append(transform(vertex.x, vertex.y));
+            vertices->append(transform(vertex.x, vertex.y));
         }
 
-        return vertex_set;
+        return vertices;
     }
 
 private:
-    double matrix_[3][3] = {{1, 0, 0},
-                            {0, 1, 0},
-                            {0, 0, 1}};
-    vertex_set transformed_path_;
-    paths      transformed_paths_;
+    double matrix_[3][3] = {
+        {1, 0, 0},
+        {0, 1, 0},
+        {0, 0, 1}
+    };
 };
 
 transformer::transformer(void)
@@ -125,11 +124,13 @@ transformer& transformer::offset(const path::vertex_type& _offset)
     return offset(_offset.x, _offset.y);
 }
 
-transformer& transformer::offset(double offset_x, double offset_y)
+transformer& transformer::offset(double dx, double dy)
 {
-    double matrix[3][3] = {{1, 0, offset_x},
-                           {0, 1, offset_y},
-                           {0, 0, 1       }};
+    double matrix[3][3] = {
+        {1, 0, dx},
+        {0, 1, dy},
+        {0, 0,  1}
+    };
 
     impl_->matrix_multiply(matrix);
 
@@ -141,11 +142,13 @@ transformer& transformer::scale(double _scale)
     return scale(_scale, _scale);
 }
 
-transformer& transformer::scale(double scale_x, double scale_y)
+transformer& transformer::scale(double fx, double fy)
 {
-    double matrix[3][3] = {{scale_x, 0,       0},
-                           {0,       scale_y, 0},
-                           {0,       0,       1}};
+    double matrix[3][3] = {
+        {fx,  0, 0},
+        { 0, fy, 0},
+        { 0,  0, 1}
+    };
 
     impl_->matrix_multiply(matrix);
 
@@ -157,11 +160,10 @@ transformer& transformer::scale(const path::vertex_type& center, double _scale)
     return scale(center, _scale, _scale);
 }
 
-transformer& transformer::scale(const path::vertex_type& center,
-                                double scale_x,
-                                double scale_y)
+transformer& transformer::scale(
+    const path::vertex_type& center, double fx, double fy)
 {
-    return scale(center.x, center.y, scale_x, scale_y);
+    return scale(center.x, center.y, fx, fy);
 }
 
 transformer& transformer::scale(double x, double y, double _scale)
@@ -169,18 +171,18 @@ transformer& transformer::scale(double x, double y, double _scale)
     return scale(x, y, _scale, _scale);
 }
 
-transformer& transformer::scale(double x, double y,
-                                double scale_x,
-                                double scale_y)
+transformer& transformer::scale(double x, double y, double fx, double fy)
 {
-    return offset(-x, -y).scale(scale_x, scale_y).offset(x, y);
+    return offset(-x, -y).scale(fx, fy).offset(x, y);
 }
 
 transformer& transformer::rotate(double angle)
 {
-    double matrix[3][3] = {{math::cos(angle), -math::sin(angle), 0},
-                           {math::sin(angle),  math::cos(angle), 0},
-                           {0,                 0,                1}};
+    double matrix[3][3] = {
+        {math::cos(angle), -math::sin(angle), 0},
+        {math::sin(angle),  math::cos(angle), 0},
+        {               0,                 0, 1}
+    };
 
     impl_->matrix_multiply(matrix);
 
@@ -209,20 +211,24 @@ transformer& transformer::reflect(double x, double y)
     x = unit.x;
     y = unit.y;
 
-    double matrix[3][3] = {{2 * x * x - 1, 2 * x * y,     0},
-                           {2 * x * y,     2 * y * y - 1, 0},
-                           {0,             0,             1}};
+    double matrix[3][3] = {
+        {2 * x * x - 1, 2 * x * y,     0},
+        {2 * x * y,     2 * y * y - 1, 0},
+        {            0,             0, 1}
+    };
 
     impl_->matrix_multiply(matrix);
 
     return *this;
 }
 
-transformer& transformer::shear(double shear_x, double shear_y)
+transformer& transformer::shear(double fx, double fy)
 {
-    double matrix[3][3] = {{1,       shear_x, 0},
-                           {shear_y, 1,       0},
-                           {0,       0,       1}};
+    double matrix[3][3] = {
+        { 1, fx, 0},
+        {fy,  1, 0},
+        { 0,  0, 1}
+    };
 
     impl_->matrix_multiply(matrix);
 
@@ -230,17 +236,15 @@ transformer& transformer::shear(double shear_x, double shear_y)
 }
 
 transformer& transformer::shear(const path::vertex_type& center,
-                                double shear_x,
-                                double shear_y)
+                                double fx,
+                                double fy)
 {
-    return shear(center.x, center.y, shear_x, shear_y);
+    return shear(center.x, center.y, fx, fy);
 }
 
-transformer& transformer::shear(double x, double y,
-                                double shear_x,
-                                double shear_y)
+transformer& transformer::shear(double x, double y, double fx, double fy)
 {
-    return offset(-x, -y).shear(shear_x, shear_y).offset(x, y);
+    return offset(-x, -y).shear(fx, fy).offset(x, y);
 }
 
 transformer& transformer::inverse(void)
@@ -267,38 +271,36 @@ path::vertex_type transformer::transform(
     return impl_->transform(x, y);
 }
 
-const path& transformer::transform(const path& path) const
+vertices transformer::transform(const path& path) const
 {
-    impl_->transformed_path_.clear();
+    vertices transformed_path;
 
-    return *impl_->transform(path, &impl_->transformed_path_);
+    return *impl_->transform(path, &transformed_path);
 }
 
-const path& transformer::transform(const path::vertex_type* vertices,
-                                   unsigned int size) const
+vertices transformer::transform(const path::vertex_type* vertices,
+                                unsigned int size) const
 {
     return transform(vertices_wrapper(vertices, size));
 }
 
-const paths& transformer::transform(const paths& paths) const
+paths transformer::transform(const paths& paths) const
 {
-    impl_->transformed_paths_.clear();
+    class paths transformed_paths;
 
     for (unsigned int i = 0; i < paths.size(); ++i)
-        impl_->transformed_paths_.append(
-                impl_->transform(*paths.fetch_path(i), new vertex_set));
+        transformed_paths.append(impl_->transform(*paths[i], new vertices));
 
-    return impl_->transformed_paths_;
+    return transformed_paths;
 }
 
-const paths& transformer::transform(const path* paths, unsigned int size) const
+paths transformer::transform(const path* paths, unsigned int size) const
 {
-    impl_->transformed_paths_.clear();
+    class paths transformed_paths;
 
     for (unsigned int i = 0; i < size; ++i)
-        impl_->transformed_paths_.append(
-                impl_->transform(paths[i], new vertex_set));
+        transformed_paths.append(impl_->transform(paths[i], new vertices));
 
-    return impl_->transformed_paths_;
+    return transformed_paths;
 }
 

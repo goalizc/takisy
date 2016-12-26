@@ -7,22 +7,22 @@
 namespace rfc1951
 {
 
-typedef stretchy_buffer<unsigned char> buffer_t;
+typedef stretchy_buffer<unsigned char> buffer_type;
 
 enum ExceptionCode
 {
     ecUnkown,
 
-    ecOutOfBuffer = bit_buffer_exception_code::kOutOfBuffer,
+    ecOutOfBuffer = bit_buffer::ecOutOfBuffer,
     ecInvalidCode,
     ecInvalidBlockType,
     ecInvalidCodeLength,
     ecInvalidStoreLEN,
 };
 
-void     deflate(const unsigned char* buffer, unsigned int length,
-                 bit_buffer_o& output, unsigned int level);
-buffer_t inflate(bit_buffer_i& input);
+void deflate(const unsigned char* buffer, unsigned int length,
+             bit_buffer::output& output, unsigned int level);
+buffer_type inflate(bit_buffer::input& input);
 
 } // end of namespace rfc1951
 

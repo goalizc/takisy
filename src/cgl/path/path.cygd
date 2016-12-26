@@ -1,0 +1,11 @@
+/cygdrive/z/takisy/src/cgl/path/path.cygo /cygdrive/z/takisy/src/cgl/path/path.cygd: /cygdrive/z/takisy/src/cgl/path/path.cpp \
+ /cygdrive/z/takisy/include/third_party/gpc.h \
+ /cygdrive/z/takisy/include/takisy/core/memory.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/builder/rectangle.h

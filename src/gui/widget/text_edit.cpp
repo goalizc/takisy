@@ -5,102 +5,81 @@
 #include <takisy/core/timer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/basic/cursor.h>
-#include <takisy/gui/widget/scroll.h>
 #include <takisy/gui/widget/text_edit.h>
 #include <takisy/gui/cross_platform_window.h>
 #include "../basic/text.hpp"
+#include "edit_box.h"
 
-namespace takisy
+namespace takisy {
+namespace gui
 {
     cross_platform_window::Handle handleFromLPWIDGET(const widget* widget);
-}
+}}
 
 class text_edit::implement
 {
     friend class text_edit;
+    friend class edit_box;
 
 public:
     static const unsigned int lower_blink_interval = 200;
 
 public:
-    implement(text_edit* _this)
-        : this_(_this), border_color_(color::black(0))
-        , readonly_(false), focused_(false), caret_visible_(false)
+    implement(text_edit& self)
+        : self(self), border_visible_(false), fixed_brush_(false)
+        , readonly_(false), caret_visible_(false)
         , blink_interval_(500), caret_timer_(100)
+        , dragging_({.underway = false})
     {
         text_.margin(3);
 
-        vscroll_.show();
-        vscroll_.step(text_.line_height() * 3);
-        vscroll_.onScroll(
-            [this](const scroll& scroll)
-            {
-                text_.offset_top(-scroll.value());
-                this_->repaint();
-            });
-
-        hscroll_.show();
-        hscroll_.step(36);
-        hscroll_.onScroll(
-            [this](const scroll& scroll)
-            {
-                text_.offset_left(-scroll.value());
-                this_->repaint();
-            });
-
         caret_timer_.start();
         caret_timer_.onTimer(
-            [this](timer& timer)
+            [this, &self](timer* timer)
             {
-                bool visible = ((timer.elapse() / blink_interval_) % 2) == 0
-                               && focused_ && !readonly_ && !outside_caret();
+                bool visible = ((timer->elapse() / blink_interval_) % 2) == 0
+                               && self.focused()
+                               && self.enabled()
+                               && !readonly_
+                               && !text_.outside_caret();
 
                 if (caret_visible_ != visible)
                 {
-                    Point caret = text_.caret_point() + text_.offset();
+                    Point cp = text_.caret_point() - text_.offset();
+                    self.repaint(cp.x, cp.y, 1, text_.font()->emheight());
                     caret_visible_ = visible;
-                    this_->repaint(caret.x, caret.y,
-                                   1, text_.font()->emheight());
                 }
             });
     }
 
 public:
-    inline bool outside_caret(void) const
-    {
-        Point caret = text_.caret_point() + text_.offset();
-
-        return caret.x < 0
-            || caret.x > text_.view().width
-            || caret.y + text_.font()->emheight() < 0
-            || caret.y > text_.view().height;
-    }
-
     void update(void)
     {
         caret_timer_.restart();
 
-        vscroll_.range(0, text_.height());
-        vscroll_.page (   text_.view().height);
-        vscroll_.value(  -text_.offset().y);
+        self.vertical_scroll().range(0, text_.height());
+        self.vertical_scroll().value(   text_.offset().y);
 
-        hscroll_.range(0, text_.width());
-        hscroll_.page (   text_.view().width);
-        hscroll_.value(  -text_.offset().x);
+        self.horizontal_scroll().range(0, text_.width());
+        self.horizontal_scroll().value(   text_.offset().x);
 
-        this_->repaint();
+        self.repaint();
     }
 
 private:
-    text_edit* this_;
+    text_edit& self;
     class text text_;
-    color border_color_;
-    brush_sptr background_brush_;
-    class vertical_scroll vscroll_;
-    class horizontal_scroll hscroll_;
-    bool readonly_, focused_, caret_visible_;
+    bool border_visible_;
+    bool fixed_brush_;
+    brush_sptr selbrush_, bgbrush_, fgbrush_;
+    bool readonly_, caret_visible_;
     unsigned int blink_interval_;
     timer caret_timer_;
+    struct {
+        bool underway;
+        long mode;
+        Point milestone;
+    } dragging_;
 };
 
 text_edit::text_edit(void)
@@ -116,42 +95,98 @@ text_edit::text_edit(const std::string& text, const std::string& codec)
 {}
 
 text_edit::text_edit(const std::wstring& _text)
-    : impl_(new implement(this))
+    : impl_(new implement(*this))
 {
-    attribute("intercept.onClick", true);
-    add(&impl_->hscroll_);
-    add(&impl_->vscroll_);
     text(_text);
 
-    impl_->text_.onCaretPositionChanged(
-        [this](class text& text)
+    impl_->text_.onCaretPointChanged(
+        [this](class text* self)
         {
             cross_platform_window::Handle handle =
-                    takisy::handleFromLPWIDGET(forefather());
+                            takisy::gui::handleFromLPWIDGET(forefather());
             if (handle)
             {
-                Point point = window_xy()
-                            + impl_->text_.caret_point()
-                            + impl_->text_.offset();
-
             #ifdef __os_win__
+                Point cp = window_xy()
+                         + impl_->text_.caret_point()
+                         - impl_->text_.offset();
+
                 HIMC himc = ImmGetContext(handle);
 
                 LOGFONT lf;
                 if (ImmGetCompositionFont(himc, &lf))
-                    point.y -= lf.lfHeight;
+                    cp.y -= lf.lfHeight;
 
                 COMPOSITIONFORM cf;
                 cf.dwStyle = CFS_POINT;
-                cf.ptCurrentPos.x = point.x;
-                cf.ptCurrentPos.y = point.y + impl_->text_.font()->emheight();
+                cf.ptCurrentPos.x = cp.x;
+                cf.ptCurrentPos.y = cp.y + impl_->text_.font()->emheight();
 
                 ImmSetCompositionWindow(himc, &cf);
-            #else
-                point.x += 1;
             #endif
             }
         });
+    impl_->text_.onCaretChanged(
+        [this](class text* self)
+        {
+            onCaretChangedHandle();
+        });
+    impl_->text_.onTypewriting(
+        [this](class text* self, std::wstring& text)
+        {
+            onTypewritingHandle(text);
+        });
+    impl_->text_.onErased(
+        [this](class text* self, const std::wstring& text)
+        {
+            onErasedHandle(text);
+        });
+    impl_->text_.onContentChanged(
+        [this](class text* self)
+        {
+            onTextChangedHandle();
+        });
+    impl_->text_.onSelectionChanged(
+        [this](class text* self)
+        {
+            onSelectionChangedHandle();
+        });
+    impl_->text_.onCopyAvailable(
+        [this](class text* self, bool yes)
+        {
+            onCopyAvailableHandle(yes);
+        });
+    impl_->text_.onUndoAvailable(
+        [this](class text* self, bool yes)
+        {
+            onUndoAvailableHandle(yes);
+        });
+    impl_->text_.onRedoAvailable(
+        [this](class text* self, bool yes)
+        {
+            onRedoAvailableHandle(yes);
+        });
+
+    vertical_scroll().step(impl_->text_.line_height() * 3);
+    vertical_scroll().show();
+    vertical_scroll().onScroll(
+        [this](const scroll* self)
+        {
+            impl_->text_.offset_top(self->value());
+            repaint();
+        });
+
+    horizontal_scroll().step(36);
+    horizontal_scroll().show();
+    horizontal_scroll().onScroll(
+        [this](const scroll* self)
+        {
+            impl_->text_.offset_left(self->value());
+            repaint();
+        });
+
+    add(&vertical_scroll());
+    add(&horizontal_scroll());
 }
 
 text_edit::~text_edit(void)
@@ -159,7 +194,7 @@ text_edit::~text_edit(void)
     delete impl_;
 }
 
-std::wstring text_edit::text(void) const
+const std::wstring& text_edit::text(void) const
 {
     return impl_->text_.content();
 }
@@ -204,7 +239,7 @@ unsigned int text_edit::indent(void) const
     return impl_->text_.indent();
 }
 
-Alignment text_edit::alignment(void) const
+unsigned int text_edit::alignment(void) const
 {
     return impl_->text_.alignment();
 }
@@ -234,34 +269,34 @@ unsigned int text_edit::word_spacing(void) const
     return impl_->text_.word_spacing();
 }
 
-const class font& text_edit::font(void) const
+const class font* text_edit::font(void) const
 {
-    return *impl_->text_.font();
+    return impl_->text_.font();
 }
 
-color text_edit::border_color(void) const
+bool text_edit::border_visible(void) const
 {
-    return impl_->border_color_;
-}
-
-brush_sptr text_edit::selection_brush(void) const
-{
-    return impl_->text_.selection_brush();
-}
-
-brush_sptr text_edit::background_brush(void) const
-{
-    return impl_->background_brush_;
-}
-
-brush_sptr text_edit::foreground_brush(void) const
-{
-    return impl_->text_.writing_brush();
+    return impl_->border_visible_;
 }
 
 bool text_edit::fixed_brush(void) const
 {
-    return impl_->text_.fixed_brush();
+    return impl_->fixed_brush_;
+}
+
+brush_sptr text_edit::text_brush(void) const
+{
+    return impl_->fgbrush_;
+}
+
+brush_sptr text_edit::background_brush(void) const
+{
+    return impl_->bgbrush_;
+}
+
+brush_sptr text_edit::selection_brush(void) const
+{
+    return impl_->selbrush_;
 }
 
 Point text_edit::offset(void) const
@@ -289,16 +324,6 @@ unsigned int text_edit::blink_interval(void) const
     return impl_->blink_interval_;
 }
 
-class vertical_scroll& text_edit::vertical_scroll(void)
-{
-    return impl_->vscroll_;
-}
-
-class horizontal_scroll& text_edit::horizontal_scroll(void)
-{
-    return impl_->hscroll_;
-}
-
 void text_edit::text(const std::string& _text)
 {
     text(_text, sys::default_codec());
@@ -321,9 +346,9 @@ void text_edit::select(unsigned int offset, unsigned int count)
     impl_->update();
 }
 
-void text_edit::caret(unsigned int caret_position)
+void text_edit::caret(unsigned int caret)
 {
-    impl_->text_.move(caret_position);
+    impl_->text_.move(caret);
     impl_->update();
 }
 
@@ -373,7 +398,7 @@ void text_edit::indent(unsigned int indent)
     impl_->update();
 }
 
-void text_edit::alignment(Alignment alignment)
+void text_edit::alignment(unsigned int alignment)
 {
     impl_->text_.alignment(alignment);
     repaint();
@@ -408,28 +433,44 @@ void text_edit::word_spacing(unsigned int word_spacing)
     impl_->update();
 }
 
-void text_edit::font(const class font& font)
+void text_edit::font(const class font* font)
 {
-    impl_->text_.font(&font);
-    impl_->vscroll_.step(impl_->text_.line_height() * 3);
+    vertical_scroll().step(impl_->text_.line_height() * 3);
+    impl_->text_.font(font);
     impl_->update();
 }
 
-void text_edit::border_color(const color& color)
+void text_edit::border_visible(bool visible)
 {
-    impl_->border_color_ = color;
-    repaint();
+    if (impl_->border_visible_ != visible)
+    {
+        impl_->border_visible_ = visible;
+        repaint();
+    }
 }
 
-void text_edit::selection_color(const color& color)
+void text_edit::show_border(void)
 {
-    selection_brush(make_color_brush_sptr(color));
+    border_visible(true);
 }
 
-void text_edit::selection_brush(const brush_sptr& brush)
+void text_edit::hide_border(void)
 {
-    impl_->text_.selection_brush(brush);
-    repaint();
+    border_visible(false);
+}
+
+void text_edit::text_color(const color& color)
+{
+    text_brush(make_color_brush_sptr(color));
+}
+
+void text_edit::text_brush(const brush_sptr& brush)
+{
+    if (impl_->fgbrush_ != brush)
+    {
+        impl_->fgbrush_ = brush;
+        repaint();
+    }
 }
 
 void text_edit::background_color(const color& color)
@@ -439,25 +480,34 @@ void text_edit::background_color(const color& color)
 
 void text_edit::background_brush(const brush_sptr& brush)
 {
-    impl_->background_brush_ = brush;
-    repaint();
+    if (impl_->bgbrush_ != brush)
+    {
+        impl_->bgbrush_ = brush;
+        repaint();
+    }
 }
 
-void text_edit::foreground_color(const color& color)
+void text_edit::selection_color(const color& color)
 {
-    foreground_brush(make_color_brush_sptr(color));
+    selection_brush(make_color_brush_sptr(color));
 }
 
-void text_edit::foreground_brush(const brush_sptr& brush)
+void text_edit::selection_brush(const brush_sptr& brush)
 {
-    impl_->text_.writing_brush(brush);
-    repaint();
+    if (impl_->selbrush_ != brush)
+    {
+        impl_->selbrush_ = brush;
+        repaint();
+    }
 }
 
 void text_edit::fixed_brush(bool fixed)
 {
-    impl_->text_.fixed_brush(fixed);
-    repaint();
+    if (impl_->fixed_brush_ != fixed)
+    {
+        impl_->fixed_brush_ = fixed;
+        repaint();
+    }
 }
 
 void text_edit::max_length(unsigned int max_length)
@@ -473,48 +523,91 @@ void text_edit::blink_interval(unsigned int blink_interval)
     impl_->blink_interval_ = blink_interval;
 }
 
+void text_edit::undo(void)
+{
+    impl_->text_.undo();
+}
+
+void text_edit::redo(void)
+{
+    impl_->text_.redo();
+}
+
+unsigned int text_edit::hittest(Point point) const
+{
+    return impl_->text_.hittest(point);
+}
+
 void text_edit::onSize(void)
 {
-    impl_->vscroll_.rect(width() - 7, 0, 7, height() - 7);
-    impl_->hscroll_.rect(0, height() - 7, width() - 7, 7);
+    scroll_area::onSize();
     impl_->text_.view(width(), height());
     impl_->update();
 }
 
 void text_edit::onPaint(graphics graphics, Rect rect)
 {
-    if (impl_->background_brush_)
-    {
-        if (impl_->text_.fixed_brush())
-            impl_->background_brush_->offset(0, 0);
-        else
-            impl_->background_brush_->offset(offset_x(), offset_y());
+    Point offset(0, 0);
+    if (impl_->fixed_brush_)
+        offset = this->offset();
 
-        graphics.fill_rectangle(rect, *impl_->background_brush_);
+    if (impl_->bgbrush_)
+    {
+        impl_->bgbrush_->offset(offset.x, offset.y);
+        graphics.fill_rectangle(rect, *impl_->bgbrush_);
     }
 
-    impl_->text_.draw(graphics, rect);
+    brush_sptr selbrush, wrtbrush;
+
+    if (impl_->selbrush_)
+    {
+        selbrush = impl_->selbrush_;
+        selbrush->offset(offset.x, offset.y);
+    }
+    else
+    if (focused())
+        selbrush.reset(new color_brush(color_scheme().selection()));
+    else
+        selbrush.reset(new color_brush(color_scheme().inactive_selection()));
+
+    if (impl_->fgbrush_)
+    {
+        wrtbrush = impl_->fgbrush_;
+        wrtbrush->offset(offset.x, offset.y);
+    }
+    else
+    if (focused())
+        wrtbrush.reset(new color_brush(color_scheme().text()));
+    else
+        wrtbrush.reset(new color_brush(color_scheme().inactive_text()));
+
+    impl_->text_.draw(graphics, rect, selbrush, *wrtbrush);
 
     if (impl_->caret_visible_)
     {
-        Point caret = impl_->text_.caret_point() + impl_->text_.offset();
+        Point cp = impl_->text_.caret_point() - impl_->text_.offset();
 
-        graphics.draw_line(caret.x, caret.y,
-                           caret.x, caret.y + impl_->text_.font()->emheight(),
-                           make_lambda_brush(
-                                [&graphics](int x, int y) -> color
-                                {
-                                    return ~graphics.pixel(x, y).opaque();
-                                }));
+        graphics.draw_line(cp.x + 0.5, cp.y,
+                           cp.x + 0.5, cp.y + impl_->text_.font()->emheight(),
+                           make_lambda_brush_sptr(
+            [&graphics](int x, int y) -> color
+            {
+                return ~graphics.pixel(x, y).opaque();
+            }));
     }
 
-    if (impl_->border_color_.a > 0)
-        graphics.draw_rectangle(client_rect().expand(-1), impl_->border_color_);
+    if (impl_->border_visible_)
+    {
+        color border = color_scheme().border();
+        rectf rect   = client_rect();
+
+        if (border.a)
+            graphics.draw_rectangle(rect.inflate(-0.5), border);
+    }
 }
 
 bool text_edit::onFocus(bool focus)
 {
-    impl_->focused_ = focus;
     impl_->update();
 
     return true;
@@ -529,6 +622,8 @@ bool text_edit::onSetCursor(void)
 
 bool text_edit::onKeyDown(sys::VirtualKey vkey)
 {
+    class text& text = impl_->text_;
+
     bool shift = sys::key_pressed(sys::vkShift);
     bool ctrl  = sys::key_pressed(sys::vkControl);
 
@@ -536,63 +631,73 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
     {
     case sys::vkLeft:
         if (ctrl)
-            impl_->text_.move_similar(true, shift);
+            text.move_similar(true, shift);
         else
-            impl_->text_.move(impl_->text_.caret() - 1, shift);
+            text.move(text.caret() - 1, shift);
         impl_->update();
         break;
     case sys::vkRight:
         if (ctrl)
-            impl_->text_.move_similar(false, shift);
+            text.move_similar(false, shift);
         else
-            impl_->text_.move(impl_->text_.caret() + 1, shift);
+            text.move(text.caret() + 1, shift);
         impl_->update();
         break;
     case sys::vkUp:
     case sys::vkDown:
-        if (ctrl)
+        if (ctrl && !shift)
         {
-            unsigned int height = impl_->text_.font()->height();
+            unsigned int height = text.line_height();
             if (vkey == sys::vkUp)
-                impl_->vscroll_.value(impl_->vscroll_.value() - height);
+                vertical_scroll().value(vertical_scroll().value() - height);
             else
-                impl_->vscroll_.value(impl_->vscroll_.value() + height);
+                vertical_scroll().value(vertical_scroll().value() + height);
         }
         else
         {
-            Point point = impl_->text_.caret_point();
+            Point cp = text.caret_point();
             if (vkey == sys::vkUp)
-                point.y -= impl_->text_.line_height();
+                cp.y -= text.line_height();
             else
-                point.y += impl_->text_.line_height();
-            impl_->text_.move(impl_->text_.hittest(point), shift);
+                cp.y += text.line_height();
+            text.move(text.hittest(cp), shift);
             impl_->update();
         }
         break;
     case sys::vkHome:
+        if (ctrl)
+            text.move(0, shift);
+        else
+            text.move(text.line_info(text.caret_line()).lrange.offset, shift);
+        impl_->update();
+        break;
     case sys::vkEnd:
         if (ctrl)
-        {
-            if (vkey == sys::vkHome)
-                impl_->text_.move(0, shift);
-            else
-                impl_->text_.move(impl_->text_.content().size(), shift);
-        }
+            text.move(text.content().size(), shift);
         else
-        {
-            std::pair<unsigned int, text::line>
-                range = impl_->text_.line_range(impl_->text_.caret_line());
-            if (vkey == sys::vkHome)
-                impl_->text_.move(range.first, shift);
-            else
-                impl_->text_.move(range.first + range.second.words, shift);
-        }
+            text.move([](const text::line_info::range& range)
+                      {
+                          return range.offset + range.words;
+                      }(text.line_info(text.caret_line()).lrange), shift);
         impl_->update();
+        break;
+    case sys::vkPrior:
+        vertical_scroll().page_up();
+        break;
+    case sys::vkNext:
+        vertical_scroll().page_down();
         break;
     case sys::vkDelete:
         if (!impl_->readonly_)
         {
-            impl_->text_.erase(1);
+            if (ctrl)
+            {
+                if (!text.selected())
+                    text.move_similar(false, true);
+                text.erase();
+            }
+            else
+                text.erase(1);
             impl_->update();
         }
     default:
@@ -604,12 +709,27 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
 
 bool text_edit::onKeyPress(unsigned int chr)
 {
-    if (sys::key_pressed(sys::vkControl))
+    bool ctrl;
+    if (chr == 10)
+        ctrl = false;
+    else
+        ctrl = sys::key_pressed(sys::vkControl);
+
+    if (ctrl)
     {
         chr += 'a' - 1;
 
         switch (chr)
         {
+        case 223: // backspace
+            if (!impl_->readonly_)
+            {
+                if (!impl_->text_.selected())
+                    impl_->text_.move_similar(true, true);
+                impl_->text_.erase();
+                impl_->update();
+            }
+            break;
         case 'a':
             impl_->text_.select(0, impl_->text_.content().size());
             repaint();
@@ -641,13 +761,13 @@ bool text_edit::onKeyPress(unsigned int chr)
                             text.c_str(), text.size());
                     GlobalUnlock(data);
                     SetClipboardData(CF_TEXT, data);
-                    CloseClipboard();
                 }
                 if (!impl_->readonly_ && chr == 'x')
                 {
                     impl_->text_.erase(0);
                     impl_->update();
                 }
+                CloseClipboard();
             }
             break;
         case 'v':
@@ -684,7 +804,7 @@ bool text_edit::onKeyPress(unsigned int chr)
     if (!impl_->readonly_)
     {
         if (chr == 13) // enter
-            chr  = 10;
+            chr =  10;
         if (impl_->text_.typewrite(codec::gbk2unicode(chr)))
             impl_->update();
     }
@@ -692,12 +812,13 @@ bool text_edit::onKeyPress(unsigned int chr)
     return true;
 }
 
-bool text_edit::onMouseDown(sys::MouseButton button, int times, Point point)
+bool text_edit::onMouseDown(sys::Button button, int times, Point point)
 {
-    if (button == sys::mbLButton)
+    if (button == sys::btnLeft)
     {
-        unsigned int caret =
-                impl_->text_.hittest(point - impl_->text_.offset());
+        int caret = impl_->text_.hittest(point += impl_->text_.offset());
+
+        impl_->dragging_.underway = true;
 
         if (times == 1)
         {
@@ -705,71 +826,138 @@ bool text_edit::onMouseDown(sys::MouseButton button, int times, Point point)
             if (!shift)
                 impl_->text_.cancel_select();
             impl_->text_.move(caret, shift);
-            impl_->update();
-            capture(true);
+            impl_->dragging_.mode = 1;
         }
         else
         {
-            switch ((times - 2) % 2)
+            impl_->dragging_.mode = 2 + ((times - 2) % 2);
+
+            switch (impl_->dragging_.mode)
             {
-            case 0:
+            case 2:
                 impl_->text_.select_similar(caret);
                 break;
-            case 1:
+            case 3:
                 {
-                    unsigned int index  = impl_->text_.caret_paragraph(caret);
-                    unsigned int offset =
-                            impl_->text_.paragraph_range(index).first;
-                    unsigned int words  = impl_->text_.paragraph_words(index);
-                    impl_->text_.select(offset, offset + words);
-                    impl_->update();
+                    unsigned int lidx = impl_->text_.caret_line();
+                    struct text::line_info li = impl_->text_.line_info(lidx);
+                    impl_->text_.select(li.prange.offset,
+                                        li.prange.offset + li.prange.words);
                 }
                 break;
             }
-
-            impl_->update();
         }
+
+        impl_->dragging_.milestone = point;
+        impl_->update();
+
+        capture(true);
     }
 
     return true;
 }
 
-bool text_edit::onMouseUp(sys::MouseButton button, Point point)
+bool text_edit::onMouseUp(sys::Button button, Point point)
 {
     capture(false);
+    impl_->dragging_.underway = false;
 
     return true;
 }
 
 bool text_edit::onMouseMove(Point point)
 {
-    if (sys::key_pressed(sys::vkLButton))
+    if (impl_->dragging_.underway)
     {
-        point -= impl_->text_.offset();
-        impl_->text_.move(impl_->text_.hittest(point), true);
+        int oldc = impl_->text_.hittest(impl_->dragging_.milestone);
+        int nowc = impl_->text_.hittest(point + impl_->text_.offset());
+
+        switch (impl_->dragging_.mode)
+        {
+        case 1:
+            impl_->text_.move(nowc, true);
+            break;
+        case 2:
+            {
+                impl_->text_.select_similar(oldc);
+                std::pair<int, int> sela = impl_->text_.selection();
+                impl_->text_.select_similar(nowc);
+                std::pair<int, int> selb = impl_->text_.selection();
+                if (sela.first > selb.first)
+                    impl_->text_.select(sela.second, selb.first);
+                else
+                    impl_->text_.select(sela.first, selb.second);
+            }
+            break;
+        case 3:
+            {
+                struct text::line_info
+                    lia = impl_->text_.line_info(impl_->text_.caret_line(oldc)),
+                    lib = impl_->text_.line_info(impl_->text_.caret_line(nowc));
+                if (lia.p > lib.p)
+                    impl_->text_.select(lia.prange.offset + lia.prange.words,
+                                        lib.prange.offset);
+                else
+                    impl_->text_.select(lia.prange.offset,
+                                        lib.prange.offset + lib.prange.words);
+            }
+            break;
+        }
+
         impl_->update();
     }
 
     return true;
 }
 
-bool text_edit::onMouseWheel(int delta, Point point)
+edit_box& edit_box::pop(widget* father, const Rect& rect,
+                        const class text& text, const std::wstring& content)
 {
-    if (impl_->vscroll_.scrollable())
-    {
-        if (delta < 0)
-            impl_->vscroll_.step_down();
-        else
-            impl_->vscroll_.step_up();
-    }
+    static edit_box eb;
+
+    eb.horizontal_scroll().hide();
+    eb.vertical_scroll().hide();
+
+    eb.impl_->text_ = text;
+    eb.impl_->text_.offset(0, 0);
+    eb.impl_->text_.view(rect.width(), rect.height());
+    if (!content.empty())
+        eb.text(content);
     else
-    if (impl_->hscroll_.scrollable())
+        eb.select(0, eb.text().size());
+
+    if (father)
+        father->add(&eb, 0);
+    eb.rect(rect);
+    eb.focus(true);
+    eb.show();
+
+    return eb;
+}
+
+bool edit_box::onFocus(bool focus)
+{
+    if (!focus)
+        return onKeyPress(27);
+
+    return text_edit::onFocus(focus);
+}
+
+bool edit_box::onKeyPress(unsigned int chr)
+{
+    if (chr == 13 || chr == 27)
     {
-        if (delta < 0)
-            impl_->hscroll_.step_down();
-        else
-            impl_->hscroll_.step_up();
+        if (chr == 13)
+            onEditCompleteHandle(text());
+        onEditFinishHandle();
+
+        onEditCompleteReset();
+        onEditFinishReset();
+
+        father(nullptr);
+
+        return true;
     }
 
-    return true;
+    return text_edit::onKeyPress(chr);
 }

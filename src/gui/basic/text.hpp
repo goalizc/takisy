@@ -1,14 +1,11 @@
 #ifndef text_hpp_20151208
 #define text_hpp_20151208
 
-#include <tuple>
 #include <string>
 #include <vector>
 #include <numeric>
 #include <algorithm>
 #include <takisy/core/handler.h>
-#include <takisy/core/algorithm.h>
-#include <takisy/algorithm/stralgo.h>
 #include <takisy/cgl/basic/point.h>
 #include <takisy/cgl/basic/size.h>
 #include <takisy/cgl/basic/rect.h>
@@ -22,49 +19,153 @@ class text {
     static const unsigned int xxdo_limit = 16;
 
     struct action {
-        enum Type { atInsert, atErase, } type;
+        enum { atInsert, atErase, } type;
         unsigned int offset;
         std::wstring content;
     };
 
     struct isx {
-        typedef int (*isx_f)(int);
-        static int isvname(int c)
-            { return ::isalpha(c) || ::isdigit(c) || c == '_'; }
-        static int isfalse(int) { return false; }
+        typedef int (*isx_f)(wint_t);
+        static int isvname(wint_t c)
+            { return ::iswalpha(c) || ::iswdigit(c) || c == '_'; }
+        static int isfalse(wint_t) { return false; }
         static isx_f get_isx(int c) {
             if (isvname(c)) return isvname;
-            else if (::isblank(c)) return ::isblank;
-            else if (::ispunct(c)) return ::ispunct;
+            else if (::iswblank(c)) return ::iswblank;
+            else if (::iswpunct(c)) return ::iswpunct;
             else return isfalse;
         }
     };
 
-    DECLARE_HANDLER(onCaretPositionChanged);
+    class caret {
+    public:
+        DECLARE_HANDLER(onCaretChanged);
+        DECLARE_HANDLER(onSelected, bool /* yes */);
+        DECLARE_HANDLER(onSelectionChanged);
+
+    public:
+        caret(long s, long e) : s_(s), e_(e) {
+            onSelected(
+                [this](caret* self, bool) {
+                    onSelectionChangedHandle();
+                });
+        }
+
+    public:
+        long s             (void) const { return s_; }
+        long e             (void) const { return e_; }
+        long l /* lower */ (void) const { return std::min(s_, e_); }
+        long u /* upper */ (void) const { return std::max(s_, e_); }
+
+    public:
+        void s(long s) {
+            if (s_ != s) {
+                long olds = s_; s_ = s;
+                if (olds == -1 || olds == e_) {
+                    if (s_ != -1 && s_ != e_)
+                        onSelectedHandle(true);
+                } else {
+                    if (s_ == -1 || s_ == e_)
+                        onSelectedHandle(false);
+                    else
+                        onSelectionChangedHandle();
+                }
+            }
+        }
+
+        void e(long e) {
+            if (e_ != e) {
+                long olde = e_; e_ = e;
+                onCaretChangedHandle();
+                if (s_ == olde)
+                    onSelectedHandle(true);
+                else if (s_ == e_)
+                    onSelectedHandle(false);
+                else if (s_ != -1)
+                    onSelectionChangedHandle();
+            }
+        }
+
+    private:
+        long s_, e_;
+    };
+
+public:
+    DECLARE_HANDLER(onCaretPointChanged);
+    DECLARE_HANDLER(onCaretChanged);
+    DECLARE_HANDLER(onTypewriting, std::wstring& /* str */);
+    DECLARE_HANDLER(onErased, const std::wstring& /* str */);
+    DECLARE_HANDLER(onContentChanged);
+    DECLARE_HANDLER(onSelectionChanged);
+    DECLARE_HANDLER(onCopyAvailable, bool /* yes */);
+    DECLARE_HANDLER(onUndoAvailable, bool /* yes */);
+    DECLARE_HANDLER(onRedoAvailable, bool /* yes */);
 
 public:
     struct line {
-        int words, width;
+        unsigned int words, width;
+    };
+
+    struct line_info {
+        unsigned int p, l;
+        struct range { unsigned int offset, words; } prange, lrange;
     };
 
 public:
     text(void)
-        : text(L"")
+        : text(std::wstring())
     {}
 
     text(const std::wstring& content)
-        : content_(content), max_length_(~0u)
-        , caret_({-1, (long)content_.size()})
-        , world_(0, 0, 0, 0), view_(~0u >> 1, ~0u >> 1)
-        , fixed_brush_(true), margin_({0}), indent_(0), alignment_(aLeftTop)
+        : caret_(-1, content.size())
+        , content_(content), max_length_(~0u)
+        , world_(0, 0), view_(0, 0, ~0u >> 1, ~0u >> 1), margin_({0})
+        , indent_(0), alignment_(aLeftTop)
         , multiline_(true), word_wrap_(true)
         , line_spacing_(0), word_spacing_(0)
-        , font_(tfont_simple::get())
-        , selbrush_(make_color_brush_sptr(color::argb(0xff318dfd)))
-        , wrtbrush_(make_color_brush_sptr(color::argb(0xff000000)))
-        , actidx_(-1)
+        , font_(tfont_simple::get()), actptr_(0)
     {
+        caret_.onCaretChanged(
+            [this](class caret* self) {
+                onCaretChangedHandle();
+            });
+        caret_.onSelected(
+            [this](class caret* self, bool yes) {
+                onCopyAvailableHandle(yes);
+            });
+        caret_.onSelectionChanged(
+            [this](class caret* self) {
+                onSelectionChangedHandle();
+            });
+
         recalculate();
+    }
+
+    text(const text& text) : caret_(-1, 0) {
+        operator=(text);
+    }
+
+    text& operator=(const text& text) {
+        if (this != &text) {
+            caret_        = text.caret_;
+            content_      = text.content_;
+            max_length_   = text.max_length_;
+            world_        = text.world_;
+            view_         = text.view_;
+            margin_       = text.margin_;
+            indent_       = text.indent_;
+            alignment_    = text.alignment_;
+            multiline_    = text.multiline_;
+            word_wrap_    = text.word_wrap_;
+            line_spacing_ = text.line_spacing_;
+            word_spacing_ = text.word_spacing_;
+            font_         = text.font_;
+            paragraphs_   = text.paragraphs_;
+            actptr_       = text.actptr_;
+            actions_      = text.actions_;
+        }
+
+        return *this;
     }
 
 public:
@@ -72,11 +173,21 @@ public:
         return content_;
     }
 
+    bool selected(void) const {
+        return caret_.s() >= 0 && caret_.s() != caret_.e();
+    }
+
     std::wstring selected_content(void) const {
-        if (caret_.s >= 0 && caret_.s != caret_.e)
-            return content_.substr(caret_.lower(),
-                                   caret_.upper() - caret_.lower());
-        return L"";
+        if (selected())
+            return content_.substr(caret_.l(), caret_.u() - caret_.l());
+        return std::wstring();
+    }
+
+    std::pair<int, int> selection(void) const {
+        if (selected())
+            return std::pair<int, int>(caret_.l(), caret_.u());
+        else
+            return std::pair<int, int>(caret_.e(), caret_.e());
     }
 
     unsigned int max_length(void) const {
@@ -84,31 +195,27 @@ public:
     }
 
     unsigned int caret(void) const {
-        return caret_.e;
+        return caret_.e();
     }
 
-    rect world(void) const {
+    size world(void) const {
         return world_;
     }
 
-    point offset(void) const {
-        return world_.left_top();
-    }
-
     unsigned int width(void) const {
-        return world_.width();
+        return world_.width;
     }
 
     unsigned int height(void) const {
-        return world_.height();
+        return world_.height;
+    }
+
+    point offset(void) const {
+        return view_.left_top();
     }
 
     size view(void) const {
-        return view_;
-    }
-
-    bool fixed_brush(void) const {
-        return fixed_brush_;
+        return view_.size();
     }
 
     Margin margin(void) const {
@@ -119,7 +226,7 @@ public:
         return indent_;
     }
 
-    Alignment alignment(void) const {
+    unsigned int alignment(void) const {
         return alignment_;
     }
 
@@ -143,22 +250,15 @@ public:
         return word_spacing_;
     }
 
-    brush_sptr selection_brush(void) const {
-        return selbrush_;
-    }
-
-    brush_sptr writing_brush(void) const {
-        return wrtbrush_;
-    }
-
 public:
     void content(const std::wstring& content) {
-        if (!content_.empty()) {
-            select(0, content_.size());
-            erase();
-        }
-        typewrite(content);
         clear_actions();
+        content_ = content;
+        caret_.s(-1);
+        caret_.e(content_.size());
+        recalculate();
+        readapt();
+        onContentChangedHandle();
     }
 
     void max_length(unsigned int max_length) {
@@ -168,43 +268,29 @@ public:
     void offset(int left, int top) {
         if (word_wrap_)
             left = 0;
-        if (!fixed_brush_) {
-            selbrush_->offset(-left, -top);
-            wrtbrush_->offset(-left, -top);
-        }
-        world_ = world_.move(left, top);
+        view_ = view_.move(left, top);
+        onCaretPointChangedHandle();
     }
 
     void offset_left(int left) {
-        offset(left, world_.top);
+        offset(left, view_.top);
     }
 
     void offset_top(int top) {
-        offset(world_.left, top);
+        offset(view_.left, top);
     }
 
     void view(unsigned int width, unsigned int height) {
-        view_.height = height;
-        if (view_.width != (int)width) {
-            view_.width  = width;
-            if (word_wrap_ || (int)width < world_.width())
+        view_.height(height);
+        if (view_.width() != (int)width) {
+            view_.width(width);
+            if (word_wrap_)
                 recalculate();
         }
     }
 
-    void fixed_brush(bool fixed) {
-        fixed_brush_ = fixed;
-        if (fixed) {
-            selbrush_->offset(0, 0);
-            wrtbrush_->offset(0, 0);
-        } else {
-            selbrush_->offset(-world_.left, -world_.top);
-            wrtbrush_->offset(-world_.left, -world_.top);
-        }
-    }
-
-    void margin(int _margin) {
-        margin(_margin, _margin, _margin, _margin);
+    void margin(int ltrb) {
+        margin(ltrb, ltrb, ltrb, ltrb);
     }
 
     void margin(int left, int top, int right, int bottom) {
@@ -238,12 +324,14 @@ public:
         recalculate();
     }
 
-    void alignment(Alignment alignment) {
+    void alignment(unsigned int alignment) {
         alignment_ = alignment;
     }
 
     void font(const class font* font) {
-        if (font == font_)
+        if (!font)
+            font = tfont_simple::get();
+        if (font_ == font)
             return;
         font_ = font;
         recalculate();
@@ -278,91 +366,63 @@ public:
         recalculate();
     }
 
-    void selection_brush(const brush_sptr& selection_brush) {
-        if (selection_brush == selbrush_)
-            return;
-        selbrush_ = selection_brush;
-    }
-
-    void writing_brush(const brush_sptr& writing_brush) {
-        if (writing_brush == wrtbrush_)
-            return;
-        wrtbrush_ = writing_brush;
-    }
-
 public:
     bool typewrite(wchar_t chr) {
         return typewrite(std::wstring(&chr, 1));
     }
 
     bool typewrite(std::wstring str) {
-        erase();
+        onTypewritingHandle(str);
         if (!multiline_)
             str.erase(std::remove(str.begin(), str.end(), '\n'), str.end());
         if (str.empty())
             return false;
-        unsigned int count = action_insert(caret_.e, str.c_str(), str.size());
-        if (count > 0) {
-            caret_.e += count;
-            recalculate();
-            readapt();
-            return true;
-        }
-        return false;
+        return action_insert(str.c_str(), str.size());
     }
 
     void erase(int offset = 0) {
-        if (caret_.s == caret_.e)
-            caret_.s = -1;
-
-        if (caret_.s >= 0) {
-            action_erase(caret_.lower(), caret_.upper() - caret_.lower());
-            caret_.e = caret_.lower();
-            caret_.s = -1;
+        if (caret_.s() == caret_.e())
+            caret_.s(-1);
+        if (caret_.s() >= 0) {
+            long offset = caret_.l(), count = caret_.u() - caret_.l();
+            caret_.s(-1);
+            action_erase(offset, count);
         } else if (offset < 0) {
-            if (offset < -caret_.e)
-                offset = -caret_.e;
+            if (offset < -caret_.e())
+                offset = -caret_.e();
             if (offset < 0)
-                action_erase(caret_.e += offset, -offset);
-        } else if (offset == 0) {
-            return;
+                action_erase(caret_.e() + offset, -offset);
         } else if (offset > 0) {
-            if (offset > static_cast<long>(content_.size()) - caret_.e)
-                offset = static_cast<long>(content_.size()) - caret_.e;
+            if (offset > static_cast<long>(content_.size()) - caret_.e())
+                offset = static_cast<long>(content_.size()) - caret_.e();
             if (offset != 0)
-                action_erase(caret_.e, offset);
+                action_erase(caret_.e(), offset);
         }
-
-        recalculate();
-        readapt();
     }
 
-    void move(int caret_e, bool shift = false) {
-        int fix_e = caret_e;
-
-        if (caret_e < 0)
-            fix_e = 0;
-        else if (caret_e > static_cast<int>(content_.size()))
-            fix_e = content_.size();
-
-        if (caret_.s >= 0) {
+    void move(int caret, bool shift = false) {
+        int fixcaret = caret;
+        if (caret < 0)
+            fixcaret = 0;
+        else if (caret > static_cast<int>(content_.size()))
+            fixcaret = content_.size();
+        if (caret_.s() >= 0) {
             if (shift)
-                caret_.e = fix_e;
+                caret_.e(fixcaret);
             else {
-                caret_.e = caret_e > caret_.e ? caret_.upper() : caret_.lower();
-                caret_.s = -1;
+                caret_.e(caret > caret_.e() ? caret_.u() : caret_.l());
+                caret_.s(-1);
             }
         } else {
             if (shift)
-                caret_.s = caret_.e;
-            caret_.e = fix_e;
+                caret_.s(caret_.e());
+            caret_.e(fixcaret);
         }
-
         readapt();
     }
 
     void move_similar(bool negative, bool shift = false) {
-        int caret = caret_.e;
+        int caret = caret_.e();
         if (negative) {
             if (caret > 0) {
                 isx::isx_f isx = isx::get_isx(content_[--caret]);
@@ -376,25 +436,26 @@ public:
             }
         }
         if (shift) {
-            if (caret_.s < 0)
-                caret_.s = caret_.e;
+            if (caret_.s() < 0)
+                caret_.s(caret_.e());
         } else
-            caret_.s = -1;
-        caret_.e = caret;
+            caret_.s(-1);
+        caret_.e(caret);
+        readapt();
     }
 
     void select(int start, int end) {
-        caret_.s = start;
-        caret_.e = end;
-
-        if (caret_.s < 0)
-            caret_.s = -1;
-        if (caret_.e < 0)
-            caret_.e = 0;
-        else if (caret_.e > static_cast<long>(content_.size()))
-            caret_.e = content_.size();
-        if (caret_.s == caret_.e)
-            caret_.s = -1;
+        if (start < 0)
+            start = -1;
+        if (end < 0)
+            end = 0;
+        else if (end > (long)content_.size())
+            end = content_.size();
+        if (start == end)
+            start = -1;
+        caret_.e(end);
+        caret_.s(start);
+        readapt();
     }
 
     void select_similar(int caret) {
@@ -411,7 +472,7 @@ public:
     }
 
     void cancel_select(void) {
-        caret_.s = -1;
+        caret_.s(-1);
     }
 
     unsigned int hittest(point point) const {
@@ -422,13 +483,12 @@ public:
         if (point.y >= line_count() * line_height())
             return content_.size();
         else {
-            unsigned int index = point.y / line_height();
-            std::pair<unsigned int, line> range = line_range(index);
-            int x = margin_.left + line_offset(range.second);
-            unsigned int begin = range.first;
-            unsigned int end   = range.first + range.second.words;
+            struct line_info li = line_info(point.y / line_height());
+            int x = margin_.left + line_offset(paragraphs_[li.p][li.l]);
+            unsigned int begin = li.lrange.offset;
+            unsigned int end   = li.lrange.offset + li.lrange.words;
 
-            if (std::get<1>(line_location(index)) == 0)
+            if (li.l == 0)
                 x += indent_;
             for (unsigned int i = begin; i < end; ++i) {
                 int advance = font_->get_bitmap(content_[i])->advance;
@@ -441,67 +501,39 @@ public:
         }
     }
 
-    point caret_point(void) const {
-        return caret_point(caret_.e);
-    }
-
-    point caret_point(unsigned int caret) const {
-        unsigned int index = caret_line(caret);
-        std::pair<unsigned int, line> range = line_range(index);
-        int x = margin_.left + line_offset(range.second);
-        if (std::get<1>(line_location(index)) == 0)
-            x += indent_;
-        for (unsigned int i = range.first; i < caret; ++i)
-            x += font_->get_bitmap(content_[i])->advance + word_spacing_;
-        return point(x, index * line_height() + margin_.top);
-    }
-
     unsigned int caret_line(void) const {
-        return caret_line(caret_.e);
+        return caret_line(caret_.e());
     }
 
     unsigned int caret_line(unsigned int caret) const {
-        unsigned int offset = 0, index = 0;
+        unsigned int index = 0;
         for (const std::vector<line>& lines : paragraphs_) {
-            for (const line& line : lines)
-                if ((offset += line.words) >= caret) return index;
-                else ++index;
-            ++offset;
+            for (const line& line : lines) {
+                if (caret <= line.words) return index;
+                else caret -= line.words, ++index;
+            }
+            --caret;
         }
         return index;
     }
 
-    unsigned int caret_paragraph(void) const {
-        return caret_paragraph(caret_.e);
+    point caret_point(void) const {
+        return caret_point(caret_.e());
     }
 
-    unsigned int caret_paragraph(unsigned int caret) const {
-        unsigned int offset = 0;
-        for (unsigned int i = 0; i < paragraphs_.size(); ++i)
-            if ((offset += paragraph_words(i)) >= caret) return i;
-            else ++offset;
-        return paragraphs_.size();
+    point caret_point(unsigned int caret) const {
+        unsigned int line_index = caret_line(caret);
+        struct line_info li = line_info(line_index);
+        int x = margin_.left + line_offset(paragraphs_[li.p][li.l]);
+        if (li.l == 0)
+            x += indent_;
+        for (unsigned int i = li.lrange.offset; i < caret; ++i)
+            x += font_->get_bitmap(content_[i])->advance + word_spacing_;
+        return point(x, line_index * line_height() + margin_.top);
     }
 
-    std::tuple<unsigned int, unsigned int, unsigned int>
-            caret_location(void) const {
-        return caret_location(caret_.e);
-    }
-
-    std::tuple<unsigned int, unsigned int, unsigned int>
-            caret_location(int caret) const {
-        unsigned int paragraph, line;
-        for (paragraph = 0; paragraph < paragraphs_.size(); ++paragraph) {
-            unsigned int words = paragraph_words(paragraph);
-            if (caret - (int)words <= 0) break;
-            else caret -= words + 1;
-        }
-        for (line = 0; line < paragraphs_[paragraph].size(); ++line)
-            if (caret - (int)paragraphs_[paragraph][line].words <= 0)
-                return std::make_tuple(paragraph, line, caret);
-            else
-                caret -= paragraphs_[paragraph][line].words;
-        return std::make_tuple(paragraphs_.size(), 0, 0);
+    bool outside_caret(void) const {
+        return view_.outside(caret_point());
     }
 
     double line_height(void) const {
@@ -515,38 +547,6 @@ public:
                 });
     }
 
-    std::pair<unsigned int, line> line_range(unsigned int index) const {
-        unsigned int offset = 0, idx = 0;
-        for (const std::vector<line>& lines : paragraphs_) {
-            for (const line& line : lines)
-                if (idx == index) return std::make_pair(offset, line);
-                else offset += line.words, ++idx;
-            ++offset;
-        }
-        return std::make_pair(content_.size(), line {0, 0});
-    }
-
-    unsigned int line_paragraph(unsigned int line) const {
-        unsigned int offset = 0;
-        for (unsigned int i = 0; i < paragraphs_.size(); ++i)
-            if ((offset += paragraphs_[i].size()) >= line)
-                return i;
-        return paragraphs_.size();
-    }
-
-    std::tuple<unsigned int, unsigned int> line_location(int index) const {
-        for (unsigned int i = 0; i < paragraphs_.size(); ++i)
-            if (index - (int)paragraphs_[i].size() < 0)
-                return std::make_tuple(i, index);
-            else
-                index -= paragraphs_[i].size();
-        return std::make_tuple(paragraphs_.size(), 0);
-    }
-
-    unsigned int paragraph_count(void) const {
-        return paragraphs_.size();
-    }
-
     unsigned int paragraph_words(unsigned int index) const {
         return std::accumulate(
                 paragraphs_[index].begin(), paragraphs_[index].end(), 0,
@@ -555,289 +555,341 @@ public:
                 });
     }
 
-    std::pair<unsigned int, std::vector<line>>
-            paragraph_range(unsigned int index) const {
-        if (index >= paragraphs_.size())
-            return std::make_pair(content_.size(), std::vector<line>());
-        unsigned int offset = 0;
-        for (unsigned int i = 0; i < index; ++i)
-            offset += paragraph_words(i) + 1;
-        return std::make_pair(offset, paragraphs_[index]);
+    struct line_info line_info(unsigned int line) const {
+        struct line_info li = {0};
+        for (li.p = 0; li.p < paragraphs_.size(); ++li.p) {
+            li.prange.words = paragraph_words(li.p);
+            if (line < paragraphs_[li.p].size()) {
+                for (unsigned int i = 0; i < line; ++i)
+                    li.lrange.offset += paragraphs_[li.p][i].words;
+                li.lrange.words = paragraphs_[li.p][line].words;
+                li.l = line;
+                return li;
+            } else
+                line -= paragraphs_[li.p].size();
+            li.prange.offset = li.lrange.offset += li.prange.words + 1;
+        }
+        return li;
     }
 
-    void draw(graphics& graphics) {
-        rect drawing_area;
-        drawing_area.left   = margin_.left;
-        drawing_area.top    = margin_.top;
-        drawing_area.right  = view_.width - margin_.right;
-        drawing_area.bottom = view_.height - margin_.bottom;
-        draw(graphics, drawing_area);
-    }
+    template <bool First=true>
+    void draw(graphics& graphics, rect area, brush_sptr selbr, brush& wrtbr) {
+        if (First && !selbr)
+            return draw<false>(graphics, area, nullptr, wrtbr);
 
-    // TODO: 通过world_.top，可以计算出起始绘制行，从这一行开始绘制
-    void draw(graphics& graphics, rect drawing_area, bool first=true) {
-        unsigned int sel_end = caret_.upper();
-        unsigned int sel_start = caret_.s >= 0 ? caret_.lower() : sel_end;
-        unsigned int font_height = line_height();
+        unsigned int sel_end = caret_.u();
+        unsigned int sel_start = caret_.s() >= 0 ? caret_.l() : sel_end;
         unsigned int caret = 0;
-        int xx = world_.left + margin_.left, y = world_.top + margin_.top;
+        int line_height = this->line_height();
+        int xx = margin_.left - view_.left, y = margin_.top - view_.top;
 
         for (const std::vector<line>& lines : paragraphs_) {
-            int x = xx + (multiline_ ? indent_ : 0);
+            int x = xx + indent_;
             for (const line& line : lines) {
-                if (y >= drawing_area.bottom)
-                    goto End;
-                if (y + (int)font_height > drawing_area.top) {
-                    unsigned int line_height = font_height;
+                if (y >= area.bottom)
+                    goto END;
+                if (y + (int)line_height > area.top) {
+                    unsigned int lhoremheight = line_height;
                     if (caret + line.words >= sel_end)
-                        line_height = font_->emheight();
+                        lhoremheight = font_->emheight();
                     x += line_offset(line);
                     for (unsigned int i = caret; i < caret + line.words; ++i) {
-                        if (x >= drawing_area.right)
+                        if (x >= area.right)
                             continue;
                         const bitmap* bitmap = font_->get_bitmap(content_[i]);
-                        if (x + (int)bitmap->advance > drawing_area.left) {
-                            if (first) {
+                        if (x + (int)bitmap->advance > area.left) {
+                            if (First) {
                                 if (sel_start <= i && i < sel_end)
                                     graphics.fill_rectangle(x, y,
                                             x + bitmap->advance + word_spacing_,
-                                            y + line_height, *selbrush_);
+                                            y + lhoremheight, *selbr);
                             } else
                                 bitmap->render(graphics, x, y,
-                                               drawing_area.left,
-                                               drawing_area.top,
-                                               drawing_area.right,
-                                               drawing_area.bottom, *wrtbrush_);
+                                               area.left,
+                                               area.top,
+                                               area.right,
+                                               area.bottom, wrtbr);
                         }
                         x += bitmap->advance + word_spacing_;
                     }
-                    x = xx;
                 }
+                x = xx, y += line_height;
                 caret += line.words;
-                y += font_height;
+            }
+            if (First && sel_start <= caret && caret < sel_end) {
+                int x = xx + lines.back().width, yy = y - line_height;
+                if (lines.size() == 1)
+                    x += indent_;
+                graphics.fill_rectangle(x, yy,
+                                        x  + (int)font_->emheight() / 2,
+                                        yy + line_height, *selbr);
             }
             caret++;
         }
 
-    End:
-        if (first)
-            draw(graphics, drawing_area, false);
+    END:
+        if (First)
+            draw<false>(graphics, area, selbr, wrtbr);
     }
 
     bool undo(void) {
-        if (actidx_ == -1)
+        if (actptr_ == 0)
             return false;
-        const action& action = actions_[actidx_--];
-        if (action.type == action::Type::atInsert) {
+        const action& action = actions_[--actptr_];
+        if (action.type == action::atInsert) {
             content_.erase(action.offset, action.content.size());
-            select(-1, action.offset);
-        } else if (action.type == action::Type::atErase) {
+            caret_.s(-1); caret_.e(action.offset);
+            recalculate_erase(action.offset, action.content.size());
+            onContentChangedHandle();
+        } else if (action.type == action::atErase) {
             content_.insert(action.offset, action.content);
-            select(action.offset, action.offset + action.content.size());
+            caret_.s(action.offset);
+            caret_.e(action.offset + action.content.size());
+            recalculate_typewrite(action.offset, action.content.size());
+            onContentChangedHandle();
         }
-        recalculate();
+        if (actptr_ == 0)
+            onUndoAvailableHandle(false);
+        if (actptr_ == actions_.size() - 1)
+            onRedoAvailableHandle(true);
         return true;
     }
 
     bool redo(void) {
-        if (actidx_ >= (int)actions_.size() - 1)
+        if (actptr_ == actions_.size())
             return false;
-        const action& action = actions_[++actidx_];
-        if (action.type == action::Type::atInsert) {
+        const action& action = actions_[actptr_++];
+        if (action.type == action::atInsert) {
             content_.insert(action.offset, action.content);
-            select(action.offset, action.offset + action.content.size());
-        } else if (action.type == action::Type::atErase) {
+            caret_.s(action.offset);
+            caret_.e(action.offset + action.content.size());
+            recalculate_typewrite(action.offset, action.content.size());
+            onContentChangedHandle();
+        } else if (action.type == action::atErase) {
             content_.erase(action.offset, action.content.size());
-            select(-1, action.offset);
+            caret_.s(-1); caret_.e(action.offset);
+            recalculate_erase(action.offset, action.content.size());
+            onContentChangedHandle();
         }
-        recalculate();
+        if (actptr_ == actions_.size())
+            onRedoAvailableHandle(false);
+        if (actptr_ == 1)
+            onUndoAvailableHandle(true);
         return true;
     }
 
 private:
+    int margin_hsum(void) const {
+        return margin_.left + margin_.right;
+    }
+
     int line_offset(const line& line) const {
-        int width  = algorithm::max(world_.width(), view_.width);
-            width -= margin_.left + margin_.right;
+        int width = view_.width() - margin_hsum();
 
         switch (alignment_ & aHorizontal)
         {
         default:
         case aLeft:   return  0;
-        case aCenter: return (width - line.width) / 2;
-        case aRight:  return  width - line.width;
+        case aCenter: return (width - (int)line.width) / 2;
+        case aRight:  return  width - (int)line.width;
         }
     }
 
-    void push_line(int words, int width) {
-        paragraphs_.back().push_back(line {words, width - (int)word_spacing_});
+    void push_line(std::vector<line>& paragraph,
+                   unsigned int words, unsigned int width) {
+        if (words != 0)
+            width -= word_spacing_;
+        paragraph.push_back(line {words, width});
     }
 
     void clear_actions(void) {
-        actions_.clear();
-        actidx_ = actions_.size() - 1;
+        bool undo = actptr_ > 0, redo = actptr_ < actions_.size();
+        actions_.clear(), actptr_ = 0;
+        if (undo) onUndoAvailableHandle(false);
+        if (redo) onRedoAvailableHandle(false);
     }
 
     void push_action(const action& action) {
-        if (actidx_ + 1 < (int)actions_.size())
-            actions_.resize(actidx_ + 1);
-        actions_.push_back(action);
-        actidx_++;
+        actions_.insert(actions_.begin() + actptr_++, action);
+        if (actptr_ == 1)
+            onUndoAvailableHandle(true);
+        if (actptr_ != actions_.size()) {
+            actions_.resize(actptr_);
+            onRedoAvailableHandle(false);
+        }
     }
 
-    unsigned int action_insert(unsigned int offset,
-                               const wchar_t* str, unsigned int count) {
+    bool action_insert(const wchar_t* str, unsigned int count) {
+        erase();
         if (content_.size() + count > max_length_) {
             int c = (int)max_length_ - (int)content_.size();
-            if (c <= 0) return 0;
+            if (c <= 0) return false;
             else count = c;
         }
-        if (actidx_ < 0
-            || actions_[actidx_].content.size() > xxdo_limit
-            || actions_[actidx_].type != action::Type::atInsert
-            || actions_[actidx_].offset + actions_[actidx_].content.size()
-                    != offset)
+        int index = actptr_ - 1;
+        if (index < 0
+            || actions_[index].content.size() > xxdo_limit
+            || actions_[index].type != action::atInsert
+            || actions_[index].offset + actions_[index].content.size()
+                    != static_cast<unsigned long>(caret_.e()))
         {
             action action;
-            action.type    = action::Type::atInsert;
-            action.offset  = offset;
+            action.type    = action::atInsert;
+            action.offset  = caret_.e();
             action.content = std::wstring(str, count);
             push_action(action);
         }
         else
-            actions_[actidx_].content.append(str, count);
-        content_.insert(offset, str, count);
-        return count;
+            actions_[index].content.append(str, count);
+        content_.insert(caret_.e(), std::wstring(str, count));
+        caret_.e(caret_.e() + count);
+        recalculate_typewrite(caret_.e() - count, count);
+        readapt();
+        onContentChangedHandle();
+        return true;
     }
 
     void action_erase(unsigned int offset, unsigned int count) {
         bool dealed = false;
-        if (actidx_ >= 0
-            && actions_[actidx_].content.size() < xxdo_limit
-            && actions_[actidx_].type == action::Type::atErase) {
-            action& act = actions_[actidx_];
+        std::wstring str = content_.substr(offset, count);
+        int index = actptr_ - 1;
+        if (index >= 0
+            && actions_[index].type == action::atErase
+            && actions_[index].content.size() < xxdo_limit) {
+            action& act = actions_[index];
             if (offset + count == act.offset) {
                 act.offset   = offset;
-                act.content  = content_.substr(offset, count) + act.content;
+                act.content  = str + act.content;
                 dealed       = true;
             } else if (act.offset == offset) {
-                act.content += content_.substr(offset, count);
+                act.content += str;
                 dealed       = true;
             }
         }
         if (!dealed) {
             action action;
-            action.type    = action::Type::atErase;
+            action.type    = action::atErase;
             action.offset  = offset;
-            action.content = content_.substr(offset, count);
+            action.content = str;
             push_action(action);
         }
         content_.erase(offset, count);
+        caret_.e(offset);
+        recalculate_erase(offset, str.size());
+        readapt();
+        onContentChangedHandle();
+        onErasedHandle(str);
+    }
+
+    void calculate(std::vector<std::vector<line>>& paragraphs,
+                   unsigned int start,
+                   unsigned int stop) {
+        int right = word_wrap_ ? (view_.right - margin_hsum()) : (~0u >> 1);
+        int x     = indent_;
+
+        paragraphs.clear();
+        paragraphs.push_back(std::vector<line>());
+
+        for (unsigned int i = start ; i < stop; ++i) {
+            if (content_[i] != '\n' || !multiline_) {
+                int advance = font_->get_bitmap(content_[i])->advance;
+                if (x + advance > right) {
+                    push_line(paragraphs.back(), i - start, x);
+                    start = i;
+                    x = advance + word_spacing_;
+                } else
+                    x += advance + word_spacing_;
+            } else {
+                push_line(paragraphs.back(), i - start, x);
+                paragraphs.push_back(std::vector<line>());
+                start = i + 1;
+                x = indent_;
+            }
+        }
+        push_line(paragraphs.back(), stop - start, x);
+    }
+
+    void refresh_world_size(void) {
+        if (word_wrap_)
+            world_.width = view_.width();
+        else {
+            unsigned int max_width = 0;
+            for (std::vector<line>& lines : paragraphs_) {
+                for (line& line : lines) {
+                    if (max_width < line.width)
+                        max_width = line.width;
+                }
+            }
+            world_.width = max_width + margin_hsum();
+        }
+        unsigned int
+            count = line_count(),
+            height = margin_.top + count * line_height() + margin_.bottom;
+        if (count != 0)
+            height -= line_height() - font_->emheight();
+        world_.height = height;
     }
 
     void recalculate(void) {
-        unsigned int line_start = 0;
-        int right = word_wrap_ ? (view_.width - margin_.right) : (~0u >> 1);
-        int line_beginning = world_.left + margin_.left;
-        int paragraph_beginning = line_beginning + (multiline_ ? indent_ : 0);
-        int x = paragraph_beginning;
-
-        world_.right = x;
-        paragraphs_.clear();
-        paragraphs_.push_back(std::vector<line>());
-
-        for (unsigned int i = 0; i < content_.size(); ++i) {
-            if (!multiline_ || content_[i] != '\n') {
-                int advance = font_->get_bitmap(content_[i])->advance;
-                if (x + advance > right) {
-                    if (world_.right < x)
-                        world_.right = x;
-                    push_line(i - line_start, x - line_beginning);
-                    line_start = i;
-                    x = line_beginning + advance + word_spacing_;
-                }
-                else
-                    x += advance + word_spacing_;
-            } else {
-                if (world_.right < x)
-                    world_.right = x;
-                push_line(i - line_start, x - line_beginning);
-                paragraphs_.push_back(std::vector<line>());
-                line_start = i + 1;
-                x = paragraph_beginning;
-            }
-        }
-
-        if (world_.right < x)
-            world_.right = x;
-        push_line(content_.size() - line_start, x - line_beginning);
-
-        world_.right += margin_.right;
-        world_.bottom = world_.top + margin_.top
-                      + line_count() * line_height() - line_spacing_
-                      + margin_.bottom;
+        calculate(paragraphs_, 0, content_.size());
+        refresh_world_size();
     }
 
-    // TODO: 根据所在行的变化，不用重新计算所有文本内容。
-    //       但需要考虑更多的变化情况，比如（共8种情况）：
-    //          1、单字输入/删除，非换行符
-    //          2、单字输入/删除，换行符
-    //          3、多字输入/删除，其中不包括换行符 （可使用通用算法）
-    //          4、多字输入/删除，其中包括换行符   （可使用通用算法）
-    void recalculate(unsigned int caret) {
-        ;
+    void recalculate_typewrite(unsigned int offset, unsigned int count) {
+        struct line_info li = line_info(caret_line(offset));
+        std::vector<std::vector<line>> paragraphs;
+        calculate(paragraphs, li.prange.offset,
+                  li.prange.offset + li.prange.words + count);
+        paragraphs_.erase (paragraphs_.begin() + li.p);
+        paragraphs_.insert(paragraphs_.begin() + li.p,
+                           paragraphs .begin(), paragraphs.end());
+        refresh_world_size();
     }
 
-    void readapt(void) {
-        point offset = world_.left_top();
-        if (world_.right < view_.width) {
-            offset.x += view_.width - world_.right;
-            if (offset.x > 0)
-                offset.x = 0;
-        }
-        if (world_.bottom < view_.height) {
-            offset.y += view_.height - world_.bottom;
-            if (offset.y > 0)
-                offset.y = 0;
-        }
+    void recalculate_erase(unsigned int offset, unsigned int count) {
+        struct line_info lis = line_info(caret_line(offset));
+        struct line_info lie = line_info(caret_line(offset + count));
+        std::vector<std::vector<line>> paragraphs;
+        calculate(paragraphs, lis.prange.offset,
+                  lie.prange.offset + lie.prange.words - count);
+        paragraphs_.erase (paragraphs_.begin() + lis.p,
+                           paragraphs_.begin() + lie.p + 1);
+        paragraphs_.insert(paragraphs_.begin() + lis.p,
+                           paragraphs .begin(), paragraphs.end());
+        refresh_world_size();
+    }
 
-        rect mv;
-        mv.left   = margin_.left;
-        mv.top    = margin_.top;
-        mv.right  = view_.width  - margin_.right;
-        mv.bottom = view_.height - margin_.bottom - font_->emheight();
+    void readapt() {
+        point cp = caret_point(), cpoffset(0, 0);
+        rect  cv = view_;
 
-        point caret = caret_point() + offset;
-             if (caret.x < mv.left)   offset.x += mv.left   - caret.x;
-        else if (caret.x > mv.right)  offset.x += mv.right  - caret.x;
-             if (caret.y < mv.top)    offset.y += mv.top    - caret.y;
-        else if (caret.y > mv.bottom) offset.y += mv.bottom - caret.y;
+        cv.left   += margin_.left;
+        cv.top    += margin_.top;
+        cv.right  -= margin_.right;
+        cv.bottom -= margin_.bottom + font_->emheight();
 
-        this->offset(offset.x, offset.y);
+        if (cp.x < cv.left)   cpoffset.x = cp.x - cv.left;  else
+        if (cp.x > cv.right)  cpoffset.x = cp.x - cv.right;
+        if (cp.y < cv.top)    cpoffset.y = cp.y - cv.top;   else
+        if (cp.y > cv.bottom) cpoffset.y = cp.y - cv.bottom;
 
-        onCaretPositionChanged();
+        offset(view_.left + cpoffset.x, view_.top + cpoffset.y);
     }
 
 private:
+    class caret caret_;
     std::wstring content_;
     unsigned int max_length_;
-    struct {
-        long s, e;
-    public:
-        inline long lower(void) const { return s < e ? s : e; }
-        inline long upper(void) const { return s > e ? s : e; }
-    } caret_;
-    rect world_;
-    size view_;
-    bool fixed_brush_;
+    size world_;
+    rect view_;
     Margin margin_;
     unsigned int indent_;
-    Alignment alignment_;
+    unsigned int alignment_;
     bool multiline_, word_wrap_;
     unsigned int line_spacing_, word_spacing_;
     const class font* font_;
-    brush_sptr selbrush_, wrtbrush_;
     std::vector<std::vector<line>> paragraphs_;
-    int actidx_;
+    unsigned int actptr_;
     std::vector<action> actions_;
 };
 

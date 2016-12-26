@@ -50,7 +50,7 @@ class freetype::implement
         }
     };
 
-    typedef std::map<unsigned int, bitmap> cache;
+    typedef std::map<unsigned int, bitmap> cache_type;
 
 public:
     implement(void)
@@ -85,7 +85,7 @@ public:
         return glyph;
     }
 
-    inline cache& get_cache(void)
+    inline cache_type& get_cache(void)
     {
         return cache_[property_];
     }
@@ -93,7 +93,7 @@ public:
 private:
     FT_Face face_;
     property property_;
-    std::map<property, cache> cache_;
+    std::map<property, cache_type> cache_;
 };
 
 class freetype::implement::library freetype::implement::library;
@@ -129,6 +129,36 @@ freetype::freetype(const freetype& freetype)
 freetype& freetype::operator=(const freetype& freetype)
 {
     throw std::logic_error("class freetype is noncopyable class.");
+}
+
+double freetype::ascender(void) const
+{
+    return REAL(impl_->face_->size->metrics.ascender, 6);
+}
+
+double freetype::descender(void) const
+{
+    return REAL(impl_->face_->size->metrics.descender, 6);
+}
+
+double freetype::height(void) const
+{
+    return REAL(impl_->face_->size->metrics.height, 6);
+}
+
+double freetype::emheight(void) const
+{
+    return impl_->face_->size->metrics.y_ppem;
+}
+
+freetype::RenderMode freetype::render_mode(void) const
+{
+    switch (impl_->property_.render_mode)
+    {
+    default:                   return rmNormal;
+    case FT_RENDER_MODE_LIGHT: return rmLight;
+    case FT_RENDER_MODE_MONO:  return rmMono;
+    }
 }
 
 void freetype::render_mode(RenderMode _render_mode)
@@ -201,41 +231,14 @@ void freetype::italic(double lean)
     FT_Set_Transform(impl_->face_, &matrix, 0);
 }
 
-double freetype::ascender(void) const
-{
-    return REAL(impl_->face_->size->metrics.ascender, 6);
-}
-
-double freetype::descender(void) const
-{
-    return REAL(impl_->face_->size->metrics.descender, 6);
-}
-
-double freetype::height(void) const
-{
-    return REAL(impl_->face_->size->metrics.height, 6);
-}
-
-double freetype::emheight(void) const
-{
-    return impl_->face_->size->metrics.y_ppem;
-}
-
-freetype::RenderMode freetype::render_mode(void) const
-{
-    switch (impl_->property_.render_mode)
-    {
-    default:                   return rmNormal;
-    case FT_RENDER_MODE_LIGHT: return rmLight;
-    case FT_RENDER_MODE_MONO:  return rmMono;
-    }
-}
-
 const bitmap* freetype::get_bitmap(unsigned int char_code) const
 {
-    implement::cache& cache = impl_->get_cache();
-    if (cache.find(char_code) != cache.end())
-        return &cache[char_code];
+    implement::cache_type& cache = impl_->get_cache();
+
+    try
+        { return &cache.at(char_code); }
+    catch (const std::out_of_range&)
+        {}
 
     FT_GlyphSlot glyph = impl_->load_glyph(char_code);
     if (!glyph || 0 != FT_Render_Glyph(glyph, impl_->property_.render_mode))

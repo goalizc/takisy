@@ -104,7 +104,7 @@ class png::implement
     struct plte_data
     {
         unsigned int size = 0;
-        pf_rgb8*     data = nullptr;
+        pixfmt_rgb8* data = nullptr;
 
     public:
         ~plte_data(void)
@@ -120,14 +120,14 @@ class png::implement
                 return false;
 
             size = chunk.length / 3;
-            data = reinterpret_cast<pf_rgb8*>(chunk.chunk_data);
+            data = reinterpret_cast<pixfmt_rgb8*>(chunk.chunk_data);
 
             chunk.chunk_data = nullptr;
 
             return true;
         }
 
-        pf_rgb8 operator[](unsigned int index)
+        pixfmt_rgb8 operator[](unsigned int index)
         {
             return index < size ? data[index] : data[0];
         }
@@ -258,7 +258,7 @@ public:
         canvas->resize(ihdr.width, ihdr.height);
 
         plte_data plte;
-        zlib::buffer_t data;
+        zlib::buffer_type data;
 
         while (true)
         {
@@ -276,9 +276,8 @@ public:
                 break;
 
             case ct_IDAT:
-                data.append(reinterpret_cast<zlib::buffer_t::element_type*>(
-                                chunk.chunk_data),
-                            chunk.length);
+                data.append(reinterpret_cast<zlib::buffer_type::element_type*>
+                                (chunk.chunk_data), chunk.length);
                 break;
 
             default:
@@ -286,7 +285,7 @@ public:
             }
         }
 
-        zlib::buffer_t rawdata = zlib::decompress(data.data(), data.size());
+        zlib::buffer_type rawdata = zlib::decompress(data.data(), data.size());
         if (rawdata.null())
             throw "fail to decompress IDAT chunk data";
 
@@ -335,10 +334,10 @@ public:
     static bool dump(const canvas_adapter::pointer& canvas, stream& stream)
     {
         static const etbe_uint64 png_flag = kPngFlag;
-        typedef pf_rgba8 pf_type;
+        typedef pixfmt_rgba8 pixel_format;
         typedef struct {
             unsigned char filter_type;
-            pf_type       pixels[1];
+            pixel_format  pixels[1];
         } filter_row_t;
 
         // write png flag
@@ -349,7 +348,7 @@ public:
         ihdr_data* ihdr = new ihdr_data {
             .width              = canvas->width(),
             .height             = canvas->height(),
-            .bit_depth          = pf_type::channel_bits(),
+            .bit_depth          = pixel_format::channel_bits(),
             .color_type         = 6,
             .method_compression = 0,
             .method_filter      = 0,
@@ -364,7 +363,7 @@ public:
             return false;
 
         // write idat chunk
-        unsigned int rlen = ihdr->width  * pf_type::pixel_bytes() + 1;
+        unsigned int rlen = ihdr->width  * pixel_format::pixel_bytes() + 1;
         unsigned int tlen = ihdr->height * rlen;
         stretchy_buffer<unsigned char> flt_data(tlen);
         filter_row_t* filter_row;
@@ -379,7 +378,8 @@ public:
             filter_row->filter_type = 0;
         }
 
-        zlib::buffer_t data = zlib::compress(flt_data.data(), flt_data.size());
+        zlib::buffer_type data =
+                zlib::compress(flt_data.data(), flt_data.size());
 
         chunk chunk_idat;
         chunk_idat.length     = data.size();
@@ -410,7 +410,7 @@ bool png::load(stream& stream, frames& frames) const
 
         if (canvas)
         {
-            frames.append(frame{.canvas = canvas, .interval = 0});
+            frames.append({.canvas = canvas, .interval = 0});
             return true;
         }
 

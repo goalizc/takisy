@@ -4,31 +4,30 @@
 #include <takisy/algorithm/zlib.h>
 #include "rfc1951.h"
 
-zlib::buffer_t zlib::compress(const buffer_t& buffer)
+zlib::buffer_type zlib::compress(const buffer_type& buffer)
 {
     return compress(buffer.data(), buffer.size(), clFixedHuffman);
 }
 
-zlib::buffer_t zlib::compress(const void* buffer, unsigned int length)
+zlib::buffer_type zlib::compress(const void* buffer, unsigned int length)
 {
     return compress(buffer, length, clFixedHuffman);
 }
 
-zlib::buffer_t zlib::compress(const buffer_t& buffer, CompressLevel level)
+zlib::buffer_type zlib::compress(const buffer_type& buffer, CompressLevel level)
 {
     return compress(buffer.data(), buffer.size(), level);
 }
 
-zlib::buffer_t zlib::compress(const void* buffer, unsigned int length,
-                              CompressLevel level)
+zlib::buffer_type zlib::compress(const void* buffer, unsigned int length,
+                                 CompressLevel level)
 {
-    bit_buffer_o output;
+    bit_buffer::output output;
 
     output.write(0x78, 8);
     output.write(0x5e, 8);
 
-    rfc1951::deflate(reinterpret_cast<const unsigned char*>(buffer),
-                     length, output, level);
+    rfc1951::deflate((const unsigned char*)(buffer), length, output, level);
 
     unsigned int adler = adler32(buffer, length).digest();
 
@@ -38,20 +37,20 @@ zlib::buffer_t zlib::compress(const void* buffer, unsigned int length,
     return output.buffer();
 }
 
-zlib::buffer_t zlib::decompress(const buffer_t& buffer)
+zlib::buffer_type zlib::decompress(const buffer_type& buffer)
 {
     return decompress(buffer.data(), buffer.size());
 }
 
-zlib::buffer_t zlib::decompress(const void* buffer, unsigned int length)
+zlib::buffer_type zlib::decompress(const void* buffer, unsigned int length)
 {
-    bit_buffer_i input(reinterpret_cast<const unsigned char*>(buffer), length);
+    bit_buffer::input input((const unsigned char*)(buffer), length);
 
     unsigned char flag = input.read(8);
     if (flag != 0x78 || ((flag << 8) | input.read(8)) % 31 != 0)
-        return buffer_t();
+        return buffer_type();
 
-    buffer_t output = rfc1951::inflate(input);
+    buffer_type output = rfc1951::inflate(input);
     if (output.null())
         return output;
 
@@ -60,7 +59,7 @@ zlib::buffer_t zlib::decompress(const void* buffer, unsigned int length)
         adler = (adler << 8) | input.read(8);
 
     if (adler != adler32(output.data(), output.size()).digest())
-        return buffer_t();
+        return buffer_type();
 
     return output;
 }

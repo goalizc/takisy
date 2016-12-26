@@ -1,6 +1,7 @@
 #ifndef pixel_format_h_20131106
 #define pixel_format_h_20131106
 
+#include <array>
 #include <initializer_list>
 #include <takisy/core/endian_type.h>
 #include <takisy/cgl/basic/color.h>
@@ -25,8 +26,12 @@ template <typename T = unsigned char,
           ChannelType _4th_channel = none>
 class pixel_format
 {
+    static constexpr unsigned int kChannels
+            = !!_1st_channel + !!_2nd_channel + !!_3rd_channel + !!_4th_channel;
+
 public:
-    typedef T data_type;
+    typedef T value_type;
+    typedef std::array<value_type, kChannels> data_type;
 
 public:
     pixel_format(void) = default;
@@ -37,7 +42,7 @@ public:
         operator=(color);
     }
 
-    pixel_format(std::initializer_list<data_type> lst)
+    pixel_format(std::initializer_list<value_type> lst)
     {
         unsigned int i = 0;
 
@@ -64,8 +69,10 @@ public:
             if (exist_r_channel()) r(c2p(color.r));
             if (exist_g_channel()) g(c2p(color.g));
             if (exist_b_channel()) b(c2p(color.b));
-            if (exist_a_channel()) a(c2p(color.a));
         }
+
+        if (exist_a_channel())
+            a(c2p(color.a));
 
         return *this;
     }
@@ -73,15 +80,14 @@ public:
 public:
     static inline constexpr unsigned int flag(void)
     {
-        return (channel_bits() << 24) & (channels()   << 16)
-             & (_1st_channel   << 12) & (_2nd_channel <<  8)
-             & (_3rd_channel   <<  4) & (_4th_channel <<  0);
+        return (channel_bits() << 24) | (channels()   << 16)
+             | (_1st_channel   << 12) | (_2nd_channel <<  8)
+             | (_3rd_channel   <<  4) | (_4th_channel <<  0);
     }
 
     static inline constexpr unsigned int channels(void)
     {
-        return (_1st_channel != none ? 1 : 0) + (_2nd_channel != none ? 1 : 0)
-             + (_3rd_channel != none ? 1 : 0) + (_4th_channel != none ? 1 : 0);
+        return kChannels;
     }
 
     template <unsigned int index>
@@ -93,7 +99,7 @@ public:
 
     static inline constexpr unsigned int channel_bytes(void)
     {
-        return sizeof(data_type);
+        return sizeof(value_type);
     }
 
     static inline constexpr unsigned int channel_bits(void)
@@ -128,7 +134,7 @@ public:
             || _3rd_channel == channel_type || _4th_channel == channel_type;
     }
 
-#define EXIST_X_CHANNEL(channel_name)                               \
+#define EXIST_X_CHANNEL(channel_name)                                 \
     static inline constexpr bool exist_##channel_name##_channel(void) \
     {                                                                 \
         return exist_channel<ChannelType::channel_name>();            \
@@ -150,10 +156,10 @@ public:
                _4th_channel == channel_type ? 3 : -1;
     }
 
-#define CHANNEL_INDEX(channel_name)                        \
-    static inline constexpr int channel_name##_index(void) \
-    {                                                      \
-        return channel_index<ChannelType::channel_name>(); \
+#define CHANNEL_INDEX(channel_name)                                  \
+    static inline constexpr int channel_##channel_name##_index(void) \
+    {                                                                \
+        return channel_index<ChannelType::channel_name>();           \
     }
 
     CHANNEL_INDEX(G)
@@ -163,12 +169,13 @@ public:
     CHANNEL_INDEX(a)
 #undef CHANNEL_INDEX
 
-    inline data_type* data(void)
+public:
+    inline data_type& data(void)
     {
         return data_;
     }
 
-    inline const data_type* data(void) const
+    inline const data_type& data(void) const
     {
         return data_;
     }
@@ -178,6 +185,18 @@ public:
     {
         if (exist_channel<channel_type>())
             data_[channel_index<channel_type>()] = value;
+    }
+
+    inline void grayscale(unsigned int grayscale)
+    {
+        if (exist_G_channel())
+            G(grayscale);
+        else
+        {
+            if (exist_r_channel()) r(grayscale);
+            if (exist_g_channel()) g(grayscale);
+            if (exist_b_channel()) b(grayscale);
+        }
     }
 
 #define SET_CHANNEL(channel_name)                  \
@@ -193,66 +212,43 @@ public:
     SET_CHANNEL(a)
 #undef SET_CHANNEL
 
-    template <ChannelType channel_type>
+    template <ChannelType channel_type, unsigned int default_value = 0>
     inline unsigned int channel(void) const
     {
         return exist_channel<channel_type>()
-            ? static_cast<unsigned int>(data_[channel_index<channel_type>()])
-            : 0;
+             ? static_cast<unsigned int>(data_[channel_index<channel_type>()])
+             : default_value;
     }
 
-#define GET_CHANNEL(channel_name)                    \
-    inline unsigned int channel_name(void) const     \
-    {                                                \
-        return channel<ChannelType::channel_name>(); \
+    inline unsigned int grayscale(void) const
+    {
+        static constexpr unsigned int chs = channels() - exist_a_channel();
+
+        return exist_G_channel() ? G() : ((r() + g() + b()) / chs);
     }
 
-    GET_CHANNEL(G)
-    GET_CHANNEL(r)
-    GET_CHANNEL(g)
-    GET_CHANNEL(b)
-    GET_CHANNEL(a)
+#define GET_CHANNEL(channel_name, default_value)                    \
+    inline unsigned int channel_name(void) const                    \
+    {                                                               \
+        return channel<ChannelType::channel_name, default_value>(); \
+    }
+
+    GET_CHANNEL(G, 0)
+    GET_CHANNEL(r, 0)
+    GET_CHANNEL(g, 0)
+    GET_CHANNEL(b, 0)
+    GET_CHANNEL(a, channel_mask())
 #undef GET_CHANNEL
 
 public:
     inline operator color(void) const
     {
         return exist_G_channel()
-             ? color(p2c(G()),
-                     exist_a_channel() ? p2c(a()) : color::channel_mask)
-             : color(p2c(r()), p2c(g()), p2c(b()),
-                     exist_a_channel() ? p2c(a()) : color::channel_mask);
-    }
-
-    inline color to_color(void) const
-    {
-        return operator color();
-    }
-
-    inline color::channel_type grayscale(void) const
-    {
-        return exist_G_channel()
-             ? p2c(G()) : p2c((r() + g() + g() + b()) >> 2);
-    }
-
-    inline color grayscale_color(void) const
-    {
-        return color(grayscale(), a());
+             ? color(p2c(G()), p2c(a()))
+             : color(p2c(r()), p2c(g()), p2c(b()), p2c(a()));
     }
 
 public:
-    inline void grayscale(color::channel_type grayscale)
-    {
-        if (exist_G_channel())
-            G(c2p(grayscale));
-        else
-        {
-            if (exist_r_channel()) r(c2p(grayscale));
-            if (exist_g_channel()) g(c2p(grayscale));
-            if (exist_b_channel()) b(c2p(grayscale));
-        }
-    }
-
     inline void premultiply(void)
     {
         if (exist_a_channel())
@@ -353,79 +349,79 @@ private:
     }
 
 private:
-    data_type data_[channels()];
+    data_type data_;
 };
 
-typedef pixel_format<etlc_uint8, G>          pf_G8;
-typedef pixel_format<etlc_uint8, G, a>       pf_Ga8;
-typedef pixel_format<etlc_uint8, a, G>       pf_aG8;
-typedef pixel_format<etlc_uint8, r, g, b>    pf_rgb8;
-typedef pixel_format<etlc_uint8, b, g, r>    pf_bgr8;
-typedef pixel_format<etlc_uint8, r, g, b, a> pf_rgba8;
-typedef pixel_format<etlc_uint8, b, g, r, a> pf_bgra8;
-typedef pixel_format<etlc_uint8, a, r, g, b> pf_argb8;
-typedef pixel_format<etlc_uint8, a, b, g, r> pf_abgr8;
-typedef pixel_format<etlc_uint8, a>          pf_a8;
-typedef pf_a8                                pf_mask8;
+typedef pixel_format<etlc_uint8, G>          pixfmt_G8;
+typedef pixel_format<etlc_uint8, G, a>       pixfmt_Ga8;
+typedef pixel_format<etlc_uint8, a, G>       pixfmt_aG8;
+typedef pixel_format<etlc_uint8, r, g, b>    pixfmt_rgb8;
+typedef pixel_format<etlc_uint8, b, g, r>    pixfmt_bgr8;
+typedef pixel_format<etlc_uint8, r, g, b, a> pixfmt_rgba8;
+typedef pixel_format<etlc_uint8, b, g, r, a> pixfmt_bgra8;
+typedef pixel_format<etlc_uint8, a, r, g, b> pixfmt_argb8;
+typedef pixel_format<etlc_uint8, a, b, g, r> pixfmt_abgr8;
+typedef pixel_format<etlc_uint8, a>          pixfmt_a8;
+typedef pixfmt_a8                            pixfmt_mask8;
 
-typedef pixel_format<etbe_uint8, G>          pf_G8be;
-typedef pixel_format<etbe_uint8, G, a>       pf_Ga8be;
-typedef pixel_format<etbe_uint8, a, G>       pf_aG8be;
-typedef pixel_format<etbe_uint8, r, g, b>    pf_rgb8be;
-typedef pixel_format<etbe_uint8, b, g, r>    pf_bgr8be;
-typedef pixel_format<etbe_uint8, r, g, b, a> pf_rgba8be;
-typedef pixel_format<etbe_uint8, b, g, r, a> pf_bgra8be;
-typedef pixel_format<etbe_uint8, a, r, g, b> pf_argb8be;
-typedef pixel_format<etbe_uint8, a, b, g, r> pf_abgr8be;
-typedef pixel_format<etbe_uint8, a>          pf_a8be;
-typedef pf_a8be                              pf_mask8be;
+typedef pixel_format<etbe_uint8, G>          pixfmt_G8be;
+typedef pixel_format<etbe_uint8, G, a>       pixfmt_Ga8be;
+typedef pixel_format<etbe_uint8, a, G>       pixfmt_aG8be;
+typedef pixel_format<etbe_uint8, r, g, b>    pixfmt_rgb8be;
+typedef pixel_format<etbe_uint8, b, g, r>    pixfmt_bgr8be;
+typedef pixel_format<etbe_uint8, r, g, b, a> pixfmt_rgba8be;
+typedef pixel_format<etbe_uint8, b, g, r, a> pixfmt_bgra8be;
+typedef pixel_format<etbe_uint8, a, r, g, b> pixfmt_argb8be;
+typedef pixel_format<etbe_uint8, a, b, g, r> pixfmt_abgr8be;
+typedef pixel_format<etbe_uint8, a>          pixfmt_a8be;
+typedef pixfmt_a8be                          pixfmt_mask8be;
 
-typedef pixel_format<etle_uint8, G>          pf_G8le;
-typedef pixel_format<etle_uint8, G, a>       pf_Ga8le;
-typedef pixel_format<etle_uint8, a, G>       pf_aG8le;
-typedef pixel_format<etle_uint8, r, g, b>    pf_rgb8le;
-typedef pixel_format<etle_uint8, b, g, r>    pf_bgr8le;
-typedef pixel_format<etle_uint8, r, g, b, a> pf_rgba8le;
-typedef pixel_format<etle_uint8, b, g, r, a> pf_bgra8le;
-typedef pixel_format<etle_uint8, a, r, g, b> pf_argb8le;
-typedef pixel_format<etle_uint8, a, b, g, r> pf_abgr8le;
-typedef pixel_format<etle_uint8, a>          pf_a8le;
-typedef pf_a8le                              pf_mask8le;
+typedef pixel_format<etle_uint8, G>          pixfmt_G8le;
+typedef pixel_format<etle_uint8, G, a>       pixfmt_Ga8le;
+typedef pixel_format<etle_uint8, a, G>       pixfmt_aG8le;
+typedef pixel_format<etle_uint8, r, g, b>    pixfmt_rgb8le;
+typedef pixel_format<etle_uint8, b, g, r>    pixfmt_bgr8le;
+typedef pixel_format<etle_uint8, r, g, b, a> pixfmt_rgba8le;
+typedef pixel_format<etle_uint8, b, g, r, a> pixfmt_bgra8le;
+typedef pixel_format<etle_uint8, a, r, g, b> pixfmt_argb8le;
+typedef pixel_format<etle_uint8, a, b, g, r> pixfmt_abgr8le;
+typedef pixel_format<etle_uint8, a>          pixfmt_a8le;
+typedef pixfmt_a8le                          pixfmt_mask8le;
 
-typedef pixel_format<etlc_uint16, G>          pf_G16;
-typedef pixel_format<etlc_uint16, G, a>       pf_Ga16;
-typedef pixel_format<etlc_uint16, a, G>       pf_aG16;
-typedef pixel_format<etlc_uint16, r, g, b>    pf_rgb16;
-typedef pixel_format<etlc_uint16, b, g, r>    pf_bgr16;
-typedef pixel_format<etlc_uint16, r, g, b, a> pf_rgba16;
-typedef pixel_format<etlc_uint16, b, g, r, a> pf_bgra16;
-typedef pixel_format<etlc_uint16, a, r, g, b> pf_argb16;
-typedef pixel_format<etlc_uint16, a, b, g, r> pf_abgr16;
-typedef pixel_format<etlc_uint16, a>          pf_a16;
-typedef pf_a16                                pf_mask16;
+typedef pixel_format<etlc_uint16, G>          pixfmt_G16;
+typedef pixel_format<etlc_uint16, G, a>       pixfmt_Ga16;
+typedef pixel_format<etlc_uint16, a, G>       pixfmt_aG16;
+typedef pixel_format<etlc_uint16, r, g, b>    pixfmt_rgb16;
+typedef pixel_format<etlc_uint16, b, g, r>    pixfmt_bgr16;
+typedef pixel_format<etlc_uint16, r, g, b, a> pixfmt_rgba16;
+typedef pixel_format<etlc_uint16, b, g, r, a> pixfmt_bgra16;
+typedef pixel_format<etlc_uint16, a, r, g, b> pixfmt_argb16;
+typedef pixel_format<etlc_uint16, a, b, g, r> pixfmt_abgr16;
+typedef pixel_format<etlc_uint16, a>          pixfmt_a16;
+typedef pixfmt_a16                            pixfmt_mask16;
 
-typedef pixel_format<etbe_uint16, G>          pf_G16be;
-typedef pixel_format<etbe_uint16, G, a>       pf_Ga16be;
-typedef pixel_format<etbe_uint16, a, G>       pf_aG16be;
-typedef pixel_format<etbe_uint16, r, g, b>    pf_rgb16be;
-typedef pixel_format<etbe_uint16, b, g, r>    pf_bgr16be;
-typedef pixel_format<etbe_uint16, r, g, b, a> pf_rgba16be;
-typedef pixel_format<etbe_uint16, b, g, r, a> pf_bgra16be;
-typedef pixel_format<etbe_uint16, a, r, g, b> pf_argb16be;
-typedef pixel_format<etbe_uint16, a, b, g, r> pf_abgr16be;
-typedef pixel_format<etbe_uint16, a>          pf_a16be;
-typedef pf_a16be                              pf_mask16be;
+typedef pixel_format<etbe_uint16, G>          pixfmt_G16be;
+typedef pixel_format<etbe_uint16, G, a>       pixfmt_Ga16be;
+typedef pixel_format<etbe_uint16, a, G>       pixfmt_aG16be;
+typedef pixel_format<etbe_uint16, r, g, b>    pixfmt_rgb16be;
+typedef pixel_format<etbe_uint16, b, g, r>    pixfmt_bgr16be;
+typedef pixel_format<etbe_uint16, r, g, b, a> pixfmt_rgba16be;
+typedef pixel_format<etbe_uint16, b, g, r, a> pixfmt_bgra16be;
+typedef pixel_format<etbe_uint16, a, r, g, b> pixfmt_argb16be;
+typedef pixel_format<etbe_uint16, a, b, g, r> pixfmt_abgr16be;
+typedef pixel_format<etbe_uint16, a>          pixfmt_a16be;
+typedef pixfmt_a16be                          pixfmt_mask16be;
 
-typedef pixel_format<etle_uint16, G>          pf_G16le;
-typedef pixel_format<etle_uint16, G, a>       pf_Ga16le;
-typedef pixel_format<etle_uint16, a, G>       pf_aG16le;
-typedef pixel_format<etle_uint16, r, g, b>    pf_rgb16le;
-typedef pixel_format<etle_uint16, b, g, r>    pf_bgr16le;
-typedef pixel_format<etle_uint16, r, g, b, a> pf_rgba16le;
-typedef pixel_format<etle_uint16, b, g, r, a> pf_bgra16le;
-typedef pixel_format<etle_uint16, a, r, g, b> pf_argb16le;
-typedef pixel_format<etle_uint16, a, b, g, r> pf_abgr16le;
-typedef pixel_format<etle_uint16, a>          pf_a16le;
-typedef pf_a16le                              pf_mask16le;
+typedef pixel_format<etle_uint16, G>          pixfmt_G16le;
+typedef pixel_format<etle_uint16, G, a>       pixfmt_Ga16le;
+typedef pixel_format<etle_uint16, a, G>       pixfmt_aG16le;
+typedef pixel_format<etle_uint16, r, g, b>    pixfmt_rgb16le;
+typedef pixel_format<etle_uint16, b, g, r>    pixfmt_bgr16le;
+typedef pixel_format<etle_uint16, r, g, b, a> pixfmt_rgba16le;
+typedef pixel_format<etle_uint16, b, g, r, a> pixfmt_bgra16le;
+typedef pixel_format<etle_uint16, a, r, g, b> pixfmt_argb16le;
+typedef pixel_format<etle_uint16, a, b, g, r> pixfmt_abgr16le;
+typedef pixel_format<etle_uint16, a>          pixfmt_a16le;
+typedef pixfmt_a16le                          pixfmt_mask16le;
 
 #endif //pixel_format_h_20131106

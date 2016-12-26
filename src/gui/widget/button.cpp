@@ -1,6 +1,5 @@
 #include <takisy/core/sys.h>
 #include <takisy/algorithm/stralgo.h>
-#include <takisy/gui/widget/label.h>
 #include <takisy/gui/widget/button.h>
 
 class button::implement
@@ -14,41 +13,79 @@ public:
     };
 
 public:
-    implement(void)
-        : state_(bsIdle)
+    implement(widget* content)
+        : content_(content), state_(bsIdle)
     {}
 
 private:
+    widget* content_;
     ButtonState state_;
 };
 
 button::button(void)
-    : impl_(new implement)
+    : button(nullptr)
 {}
+
+button::button(widget* content)
+    : impl_(new implement(content))
+{
+    if (content)
+        add(content);
+}
 
 button::~button(void)
 {
     delete impl_;
 }
 
-void button::onPaint(graphics graphics, Rect rect)
+widget* button::content(void) const
 {
-    class color color = color_scheme()->main();
-
-    switch (impl_->state_)
-    {
-    case implement::bsInside:  color.blend(color::white(85)); break;
-    case implement::bsPressed: color.blend(color::black(85)); break;
-    case implement::bsIdle:
-    default: break;
-    }
-
-    graphics.fill_rectangle(rect, color);
+    return impl_->content_;
 }
 
-bool button::onMouseDown(sys::MouseButton button, int times, Point point)
+Size button::optimal_size(OptimalPolicy policy) const
 {
-    if (button == sys::mbLButton)
+    if (impl_->content_)
+        return impl_->content_->optimal_size(policy);
+    else
+        return optimal_size();
+}
+
+void button::content(widget* content)
+{
+    remove(impl_->content_);
+    add((impl_->content_ = content));
+
+    onSize();
+}
+
+void button::onSize(void)
+{
+    if (impl_->content_)
+    {
+        impl_->content_->size(size());
+        impl_->content_->x((width() - impl_->content_->width()) / 2);
+        impl_->content_->y((height() - impl_->content_->height()) / 2);
+    }
+}
+
+void button::onPaint(graphics graphics, Rect rect)
+{
+    graphics.fill_rectangle(rect, color_scheme().theme());
+}
+
+void button::onEndPaint(graphics graphics, Rect rect)
+{
+    if (impl_->state_ == implement::bsInside)
+        graphics.fill_rectangle(rect, color::white(85));
+    else
+    if (impl_->state_ == implement::bsPressed)
+        graphics.fill_rectangle(rect, color::black(85));
+}
+
+bool button::onMouseDown(sys::Button button, int times, Point point)
+{
+    if (button == sys::btnLeft)
     {
         impl_->state_ = implement::bsPressed;
         repaint();
@@ -57,12 +94,12 @@ bool button::onMouseDown(sys::MouseButton button, int times, Point point)
     return true;
 }
 
-bool button::onMouseUp(sys::MouseButton button, Point point)
+bool button::onMouseUp(sys::Button button, Point point)
 {
-    if (button == sys::mbLButton)
+    if (button == sys::btnLeft)
     {
         if (impl_->state_ == implement::bsPressed)
-            onClick();
+            onClickHandle();
 
         impl_->state_ = implement::bsInside;
         repaint();
@@ -110,14 +147,13 @@ text_button::text_button(const std::string& caption, const std::string& codec)
 text_button::text_button(const std::wstring& caption)
     : button(), impl_(new implement)
 {
-    impl_->label_.xy(0, 0);
     impl_->label_.text(caption);
     impl_->label_.margin(3);
     impl_->label_.word_wrap(true);
     impl_->label_.alignment(aCenter);
     impl_->label_.show();
 
-    add(&impl_->label_);
+    content(&impl_->label_);
 }
 
 text_button::~text_button(void)
@@ -125,62 +161,17 @@ text_button::~text_button(void)
     delete impl_;
 }
 
-std::wstring text_button::caption(void) const
+label& text_button::text(void)
 {
-    return impl_->label_.text();
+    return impl_->label_;
 }
 
-unsigned int text_button::margin(void) const
+const label& text_button::text(void) const
 {
-    return impl_->label_.margin().left;
+    return impl_->label_;
 }
 
-const class font& text_button::font(void) const
+Size text_button::optimal_size(OptimalPolicy policy) const
 {
-    return impl_->label_.font();
-}
-
-brush_sptr text_button::foreground_brush(void) const
-{
-    return impl_->label_.foreground_brush();
-}
-
-Size text_button::optimal_size(void) const
-{
-    return impl_->label_.optimal_size();
-}
-
-void text_button::caption(const std::string& caption)
-{
-    impl_->label_.text(stralgo::decode(caption, sys::default_codec()));
-}
-
-void text_button::caption(const std::string& caption, const std::string& codec)
-{
-    impl_->label_.text(stralgo::decode(caption, codec));
-}
-
-void text_button::caption(const std::wstring& caption)
-{
-    impl_->label_.text(caption);
-}
-
-void text_button::margin(unsigned int margin)
-{
-    impl_->label_.margin(margin);
-}
-
-void text_button::font(const class font& font)
-{
-    impl_->label_.font(font);
-}
-
-void text_button::foreground_color(const class color& foreground_color)
-{
-    impl_->label_.foreground_color(foreground_color);
-}
-
-void text_button::onSize(void)
-{
-    impl_->label_.size(size());
+    return impl_->label_.optimal_size(policy);
 }

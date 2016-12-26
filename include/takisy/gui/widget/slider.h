@@ -9,6 +9,7 @@ class slider : public widget
 protected:
     class implement;
 
+public:
     DECLARE_HANDLER(onSlide);
 
 public:
@@ -21,19 +22,22 @@ public:
     double min(void) const;
     double max(void) const;
     double value(void) const;
+    double radius(void) const;
 
 public:
     void range(double min, double max);
     void min(double min);
     void max(double max);
     void value(double value);
+    void radius(double radius);
 
 public:
     void home(void);
     void end(void);
 
 public:
-    bool onMouseUp(sys::MouseButton button, Point point) override;
+    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
 
 protected:
     class implement* impl_;
@@ -46,7 +50,6 @@ public:
 
 public:
     void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
     bool onMouseMove(Point point) override;
 };
 
@@ -57,7 +60,6 @@ public:
 
 public:
     void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
     bool onMouseMove(Point point) override;
 };
 

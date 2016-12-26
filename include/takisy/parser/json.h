@@ -64,6 +64,7 @@ public: // only for array
     json operator[](int index) const;
 
 public: // only for dict
+    bool exists(const char* key) const;
     std::vector<std::string> keys(void) const;
     json operator[](const char* key) const;
 
@@ -73,6 +74,8 @@ public:
     bool        as_bool  (void) const;
     double      as_number(void) const;
     const char* as_string(void) const;
+
+    std::string repr     (void) const;
 
 public:
     const char* error_info(void) const;

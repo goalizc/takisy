@@ -1,0 +1,10 @@
+/cygdrive/z/takisy/src/cgl/path/builder/dashed_line.cygo /cygdrive/z/takisy/src/cgl/path/builder/dashed_line.cygd: /cygdrive/z/takisy/src/cgl/path/builder/dashed_line.cpp \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices_wrapper.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/builder/dashed_line.h

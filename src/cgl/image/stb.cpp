@@ -33,7 +33,7 @@ bool stb::load(stream& stream, frames& frames) const
     }
 
     memcpy(ca->buffer(), data, ca->bytes());
-    frames.append(frame {.canvas = ca, .interval = 0});
+    frames.append({.canvas = ca, .interval = 0});
     stbi_image_free(data);
 
     return true;

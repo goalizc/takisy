@@ -26,9 +26,35 @@ enum Alignment
     aHorizontal  = aLeft  | aRight,
     aVertical    = aTop   | aBottom,
 
-    // for class layout
+    // for layout
     aPrepose     = aLeftTop,
     aPostpose    = aRightBottom,
+};
+
+enum SelectionMode
+{
+    smNoSelection,
+    smSingleSelection,
+    smMultiSelection,
+    smExtendedSelection,
+    smContiguousSelection,
+};
+
+enum SelectionBehavior
+{
+    sbSelectItems,
+    sbSelectRows,
+    sbSelectColumns,
+};
+
+enum EditTrigger
+{
+    etNoEditTrigger   = 0x0000,
+    etDoubleClicked   = 0x0001,
+    etSelectedClicked = 0x0002,
+    etEnterPressed    = 0x0004,
+    etAnyKeyPressed   = 0x0008,
+    etAllEditTriggers = 0x000f,
 };
 
 struct Margin

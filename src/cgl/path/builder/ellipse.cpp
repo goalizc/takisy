@@ -1,5 +1,4 @@
 #include <takisy/core/math.h>
-#include <takisy/cgl/path/vertex_set.h>
 #include <takisy/cgl/path/builder/ellipse.h>
 
 class ellipse::implement
@@ -27,15 +26,12 @@ public:
         height_ = math::abs(height);
     }
 
-    void build(double angle_from, double angle_to, bool is_sector)
+    vertices build(double angle_from, double angle_to, bool is_sector)
     {
-        result_.clear();
+        vertices result;
 
         if ((width_ == 0 && height_ == 0) || angle_from == angle_to)
-        {
-            result_.append(center_);
-            return;
-        }
+            return result;
 
         if (math::abs(angle_to - angle_from) >= math::deg2rad(360))
         {
@@ -49,15 +45,17 @@ public:
         double angle;
         if (angle_from < angle_to)
             for (angle = angle_from; angle < angle_to; angle += step)
-                result_.append(edge_vertex(angle));
+                result.append(edge_vertex(angle));
         else
             for (angle = angle_from; angle > angle_to; angle -= step)
-                result_.append(edge_vertex(angle));
+                result.append(edge_vertex(angle));
 
-        result_.append(edge_vertex(angle_to));
+        result.append(edge_vertex(angle_to));
 
         if (is_sector)
-            result_.append(center_);
+            result.append(center_);
+
+        return result;
     }
 
     inline double calculate_angle_to(double angle_from, double segment_length)
@@ -74,7 +72,6 @@ private:
     }
 
 private:
-    vertex_set        result_;
     path::vertex_type center_;
     double            width_, height_;
 };
@@ -151,41 +148,29 @@ double ellipse::height(void) const
     return impl_->height_;
 }
 
-const path& ellipse::build(void)
+vertices ellipse::build(void)
 {
-    impl_->build(0, math::deg2rad(360), false);
-
-    return impl_->result_;
+    return impl_->build(0, math::deg2rad(360), false);
 }
 
-const path& ellipse::build_sector(double angle_from, double angle_to)
+vertices ellipse::build_sector(double angle_from, double angle_to)
 {
-    impl_->build(angle_from, angle_to, true);
-
-    return impl_->result_;
+    return impl_->build(angle_from, angle_to, true);
 }
 
-const path& ellipse::build_sector_v2(double angle_from,
-                                     double segment_length)
+vertices ellipse::build_sector_v2(double angle_from, double segment_length)
 {
-    build_sector(angle_from,
-                 impl_->calculate_angle_to(angle_from, segment_length));
-
-    return impl_->result_;
+    return build_sector
+        (angle_from, impl_->calculate_angle_to(angle_from, segment_length));
 }
 
-const path& ellipse::build_segment(double angle_from, double angle_to)
+vertices ellipse::build_segment(double angle_from, double angle_to)
 {
-    impl_->build(angle_from, angle_to, false);
-
-    return impl_->result_;
+    return impl_->build(angle_from, angle_to, false);
 }
 
-const path& ellipse::build_segment_v2(double angle_from,
-                                      double segment_length)
+vertices ellipse::build_segment_v2(double angle_from, double segment_length)
 {
-    build_segment(angle_from,
-                  impl_->calculate_angle_to(angle_from, segment_length));
-
-    return impl_->result_;
+    return build_segment
+        (angle_from, impl_->calculate_angle_to(angle_from, segment_length));
 }

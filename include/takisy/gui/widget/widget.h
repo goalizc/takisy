@@ -13,23 +13,30 @@ class widget
     class implement;
 
 public:
+    enum OptimalPolicy
+    {
+        opUnset,
+        opFixedWidth,
+        opFixedHeight
+    };
+
+public:
     widget(void);
-    widget(widget* father);
     virtual ~widget(void);
 
 private:
     widget(const widget&);
-    void operator=(const widget&);
+    widget& operator=(const widget&);
 
 public:
-    unsigned int id(void) const;
-    widget*      father(void) const;
-    widget*      forefather(void);
-    const widget* forefather(void) const;
-    std::vector<widget*> children(void) const;
+    unsigned int                id(void) const;
+    widget*                     father(void) const;
+    widget*                     forefather(void);
+    const widget*               forefather(void) const;
+    const std::vector<widget*>& children(void) const;
     template <typename ReturnType>
-    ReturnType   attribute(const std::string& name) const;
-    class color_scheme* color_scheme(void);
+    ReturnType                  property(const std::string& name) const;
+    class color_scheme          color_scheme(void);
 
     int          x(void) const;
     int          y(void) const;
@@ -38,7 +45,10 @@ public:
     unsigned int height(void) const;
     Size         size(void) const;
     Rect         rect(void) const;
+    bool         enabled(void) const;
+    bool         disabled(void) const;
     bool         visible(void) const;
+    bool         focused(void) const;
     Rect         client_rect(void) const;
     int          window_x(void) const;
     int          window_y(void) const;
@@ -50,24 +60,22 @@ public:
     Rect         screen_rect(void) const;
 
 public:
-    unsigned int minimal_width(void) const;
-    unsigned int minimal_height(void) const;
-    Size         minimal_size(void) const;
-    unsigned int maximal_width(void) const;
-    unsigned int maximal_height(void) const;
-    Size         maximal_size(void) const;
-    virtual Size optimal_size(void) const;
-
-public:
-    bool pure(void);
+    unsigned int lower_width(void) const;
+    unsigned int lower_height(void) const;
+    Size         lower_size(void) const;
+    unsigned int upper_width(void) const;
+    unsigned int upper_height(void) const;
+    Size         upper_size(void) const;
+    virtual Size optimal_size(OptimalPolicy policy=opUnset) const;
 
 public:
     bool father(widget* father);
     bool add(widget* widget);
+    bool add(widget* widget, unsigned int index);
     bool remove(widget* widget);
     template <typename ValueType>
-    void attribute(const std::string& name, const ValueType& value);
-    class color_scheme* color_scheme(const class color_scheme* color_scheme);
+    void property(const std::string& name, const ValueType& value);
+    class color_scheme& color_scheme(const class color_scheme* color_scheme);
 
     void x(int x);
     void y(int y);
@@ -80,19 +88,22 @@ public:
     void rect(int x, int y, unsigned int width, unsigned int height);
     void rect(const Point& xy, const Size& size);
     void rect(const Rect& rect);
+    void enable(void);
+    void disable(void);
     void visible(bool visible);
     void show(void);
     void hide(void);
+    void focus(bool focused);
 
 public:
-    void minimal_width(unsigned int minimal_width);
-    void minimal_height(unsigned int minimal_height);
-    void minimal_size(unsigned int minimal_width, unsigned int minimal_height);
-    void minimal_size(const Size& minimal_size);
-    void maximal_width(unsigned int maximal_width);
-    void maximal_height(unsigned int maximal_height);
-    void maximal_size(unsigned int maximal_width, unsigned int maximal_height);
-    void maximal_size(const Size& maximal_size);
+    void lower_width(unsigned int lower_width);
+    void lower_height(unsigned int lower_height);
+    void lower_size(unsigned int lower_width, unsigned int lower_height);
+    void lower_size(const Size& lower_size);
+    void upper_width(unsigned int upper_width);
+    void upper_height(unsigned int upper_height);
+    void upper_size(unsigned int upper_width, unsigned int upper_height);
+    void upper_size(const Size& upper_size);
     void absolute_width(unsigned int width);
     void absolute_height(unsigned int height);
     void absolute_size(unsigned int width, unsigned int height);
@@ -106,7 +117,7 @@ public:
     void capture(bool capture);
 
 public:
-    bool exists_attribute(const std::string& name) const;
+    bool exists_property(const std::string& name) const;
     bool is_child(widget* widget) const;
     bool is_senior(widget* widget) const;
     bool is_junior(widget* widget) const;
@@ -114,8 +125,8 @@ public:
 
 public:
     bool as_window(void);
-    bool as_window(bool enable_alpha_channel);
-    bool as_window(const cross_platform_window& cpw);
+    bool as_window(unsigned long wndstyle);
+    bool as_window(const cross_platform_window& window);
     bool as_window(cross_platform_window::Handle handle);
     bool is_window(void) const;
     cross_platform_window window(void) const;
@@ -130,6 +141,10 @@ public:
     virtual void onMove(void);
     virtual bool onSizing(Size& size);
     virtual void onSize(void);
+    virtual bool onEnabling(void);
+    virtual void onEnable(void);
+    virtual bool onDisabling(void);
+    virtual void onDisable(void);
     virtual bool onShowing(void);
     virtual void onShown(void);
     virtual bool onHiding(void);
@@ -139,6 +154,10 @@ public:
     virtual void onChildMove(widget* child);
     virtual bool onChildSizing(widget* child, Size& size);
     virtual void onChildSize(widget* child);
+    virtual bool onChildEnabling(widget* child);
+    virtual void onChildEnable(widget* child);
+    virtual bool onChildDisabling(widget* child);
+    virtual void onChildDisable(widget* child);
     virtual bool onChildShowing(widget* child);
     virtual void onChildShown(widget* child);
     virtual bool onChildHiding(widget* child);
@@ -151,50 +170,49 @@ public:
     virtual bool onKeyDown(sys::VirtualKey vkey);
     virtual bool onKeyPress(unsigned int chr);
     virtual bool onKeyUp(sys::VirtualKey vkey);
-    virtual bool onMouseDown(sys::MouseButton button, int times, Point point);
-    virtual bool onClick(sys::MouseButton button, int times, Point point);
-    virtual bool onMouseUp(sys::MouseButton button, Point point);
+    virtual bool onMouseDown(sys::Button button, int times, Point point);
+    virtual bool onMouseUp(sys::Button button, Point point);
     virtual bool onMouseMove(Point point);
     virtual bool onMouseEnter(void);
     virtual bool onMouseLeave(void);
     virtual bool onMouseWheel(int delta, Point point);
 
 private:
-    void* attribute(const std::string& name) const;
-    void  attribute(const std::string& name,
-                    const void* value, unsigned int length);
+    void* property(const std::string& name) const;
+    void  property(const std::string& name,
+                   const void* value, unsigned int length);
 
 public:
     class implement* impl_;
 };
 
 template <typename ReturnType>
-ReturnType widget::attribute(const std::string& name) const
+ReturnType widget::property(const std::string& name) const
 {
-    void*  value = attribute(name);
+    void*  value = property(name);
     return value ? *reinterpret_cast<ReturnType*>(value) : ReturnType();
 }
 
 template <>
-char* widget::attribute<char*>(const std::string& name) const;
+char* widget::property<char*>(const std::string& name) const;
 template <>
-const char* widget::attribute<const char*>(const std::string& name) const;
+const char* widget::property<const char*>(const std::string& name) const;
 template <>
-std::string widget::attribute<std::string>(const std::string& name) const;
+std::string widget::property<std::string>(const std::string& name) const;
 
 template <typename ValueType>
-inline void widget::attribute(const std::string& name, const ValueType& value)
+inline void widget::property(const std::string& name, const ValueType& value)
 {
-    attribute(name, &value, sizeof(value));
+    property(name, &value, sizeof(value));
 }
 
 template <>
-void widget::attribute<char*>(const std::string& name, char* const& value);
+void widget::property<char*>(const std::string& name, char* const& value);
 template <>
-void widget::attribute<const char*>(
+void widget::property<const char*>(
         const std::string& name, const char* const& value);
 template <>
-void widget::attribute<std::string>(
+void widget::property<std::string>(
         const std::string& name, const std::string& value);
 
 #endif // widget_h_20150715

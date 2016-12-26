@@ -13,7 +13,7 @@ public:
               typename Canvas::pixels_type& dst_pixels = dst.pixels();
 
         for (unsigned int i = 0; i < src_pixels.size(); ++i)
-            dst_pixels[i] = src_pixels[i].grayscale_color();
+            dst_pixels[i].grayscale(src_pixels[i].grayscale());
     }
 };
 

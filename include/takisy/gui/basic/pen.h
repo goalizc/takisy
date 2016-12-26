@@ -11,6 +11,9 @@ class pen
     class implement;
 
 public:
+    typedef std::initializer_list<double> initlist_type;
+
+public:
     enum Cap
         { cButt, cSquare, cRound };
     enum Joint
@@ -18,11 +21,14 @@ public:
 
 public:
     pen(void);
-    explicit pen(double width);
-    pen(const color& color);
-    pen(const brush_sptr& brush);
+    explicit
+    pen(double width);
     pen(double width, const color& color);
     pen(double width, const brush_sptr& brush);
+    pen(double width, const color& color, initlist_type initlist);
+    pen(double width, const brush_sptr& brush, initlist_type initlist);
+    pen(const color& color);
+    pen(const brush_sptr& brush);
     pen(const pen& pen);
    ~pen(void);
 
@@ -43,7 +49,7 @@ public:
     void brush(const brush_sptr& brush);
     void cap(Cap cap);
     void joint(Joint joint);
-    void dash_array(std::initializer_list<double> il);
+    void dash_array(initlist_type il);
     void dash_array(const double* dash_array, unsigned int size);
     void offset(double offset);
 

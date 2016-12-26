@@ -3,11 +3,17 @@
 
 #include <takisy/core/stream.h>
 #include <takisy/core/stretchy_buffer.h>
-#include <takisy/cgl/image/frame.h>
+#include <takisy/cgl/image/canvas_adapter.h>
 
 class format
 {
 public:
+    struct frame
+    {
+        canvas_adapter::pointer canvas;
+        unsigned int interval;
+    };
+
     typedef stretchy_buffer<frame, true> frames;
 
 public:

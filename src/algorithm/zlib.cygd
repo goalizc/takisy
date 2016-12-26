@@ -1,0 +1,6 @@
+/cygdrive/z/takisy/src/algorithm/zlib.cygo /cygdrive/z/takisy/src/algorithm/zlib.cygd: /cygdrive/z/takisy/src/algorithm/zlib.cpp \
+ /cygdrive/z/takisy/include/takisy/core/bit_buffer.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
+ /cygdrive/z/takisy/include/takisy/algorithm/adler.h \
+ /cygdrive/z/takisy/include/takisy/algorithm/zlib.h \
+ /cygdrive/z/takisy/src/algorithm/rfc1951.h

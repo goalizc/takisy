@@ -1,6 +1,5 @@
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/path/vertices_wrapper.h>
-#include <takisy/cgl/path/vertex_set.h>
 #include <takisy/cgl/path/builder/bspline.h>
 
 class bspline::implement
@@ -31,21 +30,21 @@ public:
     }
 
 public:
-    const path& build(const path& path)
+    vertices build(const path& path)
     {
-        result_.clear();
+        vertices result;
 
         switch (path.size())
         {
-        case  2: result_ = path;
+        case  2: result = path;
         case  0:
-        case  1: return result_;
+        case  1: return result;
         default: break;
         }
 
         stretchy_buffer<path::vertex_type> vertices;
         for (unsigned int i = 0; i < path.size(); ++i)
-            vertices.append(path.fetch_vertex(i));
+            vertices.append(path.at(i));
 
         unsigned int degree = degree_;
         if (degree > vertices.size() - 1)
@@ -64,12 +63,12 @@ public:
             double step = (knots[i + 1] - knots[i]) / intermediate_point_count_;
 
             for (double u = knots[i]; u < knots[i + 1]; u += step)
-                result_.append(deBoor(u, i, degree, degree, knots, vertices));
+                result.append(deBoor(u, i, degree, degree, knots, vertices));
         }
 
-        result_.append(deBoor(last_u, l - 1, degree, degree, knots, vertices));
+        result.append(deBoor(last_u, l - 1, degree, degree, knots, vertices));
 
-        return result_;
+        return result;
     }
 
 private:
@@ -112,7 +111,6 @@ private:
     }
 
 private:
-    vertex_set    result_;
     unsigned int  degree_;
     bspline::Type type_;
     double        intermediate_point_count_;
@@ -211,13 +209,12 @@ double bspline::intermediate_point_count(void) const
     return impl_->intermediate_point_count_;
 }
 
-const path& bspline::build(const path& path)
+vertices bspline::build(const path& path)
 {
     return impl_->build(path);
 }
 
-const path& bspline::build(const path::vertex_type* vertices,
-                           unsigned int size)
+vertices bspline::build(const path::vertex_type* vertices, unsigned int size)
 {
     return impl_->build(vertices_wrapper(vertices, size));
 }

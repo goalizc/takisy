@@ -1,0 +1,3 @@
+/cygdrive/z/takisy/src/core/os.cygo /cygdrive/z/takisy/src/core/os.cygd: /cygdrive/z/takisy/src/core/os.cpp \
+ /cygdrive/z/takisy/include/takisy/core/macro.h \
+ /cygdrive/z/takisy/include/takisy/core/os.h

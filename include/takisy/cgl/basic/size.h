@@ -4,29 +4,29 @@
 #include <takisy/cgl/basic/point.h>
 
 template <typename T>
-struct t_size
+struct base_size
 {
-    typedef t_size self_type;
-    typedef T      value_type;
+    typedef base_size self_type;
+    typedef T         value_type;
 
     value_type width, height;
 
 public:
-    inline t_size(void)
+    inline base_size(void)
         : width(0), height(0)
     {}
 
-    inline t_size(value_type width, value_type height)
+    inline base_size(value_type width, value_type height)
         : width(width), height(height)
     {}
 
     template <typename TT, typename TTT>
-    inline t_size(const t_point<TT>& lt, const t_point<TTT>& rb)
+    inline base_size(const base_point<TT>& lt, const base_point<TTT>& rb)
         : width(rb.x - lt.x), height(rb.y - lt.y)
     {}
 
     template <typename Size>
-    inline t_size(const Size& size)
+    inline base_size(const Size& size)
         : width(size.width), height(size.height)
     {}
 
@@ -52,13 +52,13 @@ public:
 
 public:
     template <typename TT>
-    inline bool operator==(const t_size<TT>& size) const
+    inline bool operator==(const base_size<TT>& size) const
     {
         return width == size.width && height == size.height;
     }
 
     template <typename TT>
-    inline bool operator!=(const t_size<TT>& size) const
+    inline bool operator!=(const base_size<TT>& size) const
     {
         return width != size.width || height != size.height;
     }
@@ -77,7 +77,7 @@ public:
     }
 
     template <typename TT>
-    inline void expand(const t_size<TT>& dsize)
+    inline void expand(const base_size<TT>& dsize)
     {
         width  += dsize.width;
         height += dsize.height;
@@ -85,13 +85,13 @@ public:
 
 public:
     template <typename TT>
-    inline self_type operator+(const t_size<TT>& size) const
+    inline self_type operator+(const base_size<TT>& size) const
     {
         return self_type(width + size.width, height + size.height);
     }
 
     template <typename TT>
-    inline self_type operator-(const t_size<TT>& size) const
+    inline self_type operator-(const base_size<TT>& size) const
     {
         return self_type(width - size.width, height - size.height);
     }
@@ -109,7 +109,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type& operator+=(const t_size<TT>& size)
+    inline self_type& operator+=(const base_size<TT>& size)
     {
         width  += size.width;
         height += size.height;
@@ -118,7 +118,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type& operator-=(const t_size<TT>& size)
+    inline self_type& operator-=(const base_size<TT>& size)
     {
         width  -= size.width;
         height -= size.height;
@@ -146,13 +146,13 @@ public:
 };
 
 template <typename NumbericType, typename T>
-inline t_size<T> operator*(NumbericType ratio, t_size<T> size)
+inline base_size<T> operator*(NumbericType ratio, base_size<T> size)
 {
     return size * ratio;
 }
 
-typedef t_size<int>          size;
-typedef t_size<unsigned int> sizeu;
-typedef t_size<double>       sizef;
+typedef base_size<int>          size;
+typedef base_size<unsigned int> sizeu;
+typedef base_size<double>       sizef;
 
 #endif //size_h_20130722

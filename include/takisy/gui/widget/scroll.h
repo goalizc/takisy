@@ -9,22 +9,23 @@ class scroll : public widget
 protected:
     class implement;
 
+public:
     DECLARE_HANDLER(onScroll);
 
 public:
     scroll(void);
     scroll(double min, double max);
     scroll(double min, double max, double value);
-    scroll(double min, double max, double value, double step, double page);
    ~scroll(void);
 
 public:
-    double min(void) const;
-    double max(void) const;
-    double value(void) const;
-    double step(void) const;
-    double page(void) const;
-    bool   scrollable(void) const;
+    double    min(void) const;
+    double    max(void) const;
+    double    value(void) const;
+    long long valued(void) const;
+    double    step(void) const;
+    double    page(void) const;
+    bool      scrollable(void) const;
 
 public:
     void range(double min, double max);
@@ -44,8 +45,7 @@ public:
 
 public:
     bool onSetCursor(void) override;
-    bool onClick(sys::MouseButton button, int times, Point point) override;
-    bool onMouseUp(sys::MouseButton button, Point point) override;
+    bool onMouseUp(sys::Button button, Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
     bool onMouseWheel(int delta, Point point) override;
@@ -61,7 +61,7 @@ public:
 
 public:
     void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
 };
 
@@ -72,8 +72,34 @@ public:
 
 public:
     void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
+};
+
+class scroll_area : public widget
+{
+    class implement;
+
+public:
+    scroll_area(void);
+   ~scroll_area(void);
+
+public:
+          class vertical_scroll&   vertical_scroll(void);
+    const class vertical_scroll&   vertical_scroll(void) const;
+          class horizontal_scroll& horizontal_scroll(void);
+    const class horizontal_scroll& horizontal_scroll(void) const;
+
+public:
+    void onSize(void) override;
+    bool onSetCursor(void) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
+    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseMove(Point point) override;
+    bool onMouseWheel(int delta, Point point) override;
+
+private:
+    class implement* impl_;
 };
 
 #endif // scroll_h_20151229

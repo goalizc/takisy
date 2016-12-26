@@ -1,0 +1,9 @@
+list            done
+tree
+table           done
+group box
+tab
+combo
+spin
+line
+menu

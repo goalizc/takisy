@@ -4,21 +4,37 @@
 #include <string>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/widget.h>
+#include <takisy/gui/widget/label.h>
 
 class button : public widget
 {
     class implement;
 
+public:
     DECLARE_HANDLER(onClick);
 
 public:
     button(void);
+    button(widget* content);
    ~button(void);
 
+private:
+    using widget::add;
+    using widget::remove;
+
 public:
+    widget* content(void) const;
+    Size    optimal_size(OptimalPolicy policy=opUnset) const override;
+
+public:
+    void content(widget* content);
+
+public:
+    void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
-    bool onMouseDown(sys::MouseButton button, int times, Point point) override;
-    bool onMouseUp(sys::MouseButton button, Point point) override;
+    void onEndPaint(graphics graphics, Rect rect) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
+    bool onMouseUp(sys::Button button, Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
 
@@ -38,22 +54,9 @@ public:
    ~text_button(void);
 
 public:
-    std::wstring      caption(void) const;
-    unsigned int      margin(void) const;
-    const class font& font(void) const;
-    brush_sptr        foreground_brush(void) const;
-    Size              optimal_size(void) const override;
-
-public:
-    void caption(const std::string& caption);
-    void caption(const std::string& caption, const std::string& codec);
-    void caption(const std::wstring& caption);
-    void margin(unsigned int margin);
-    void font(const class font& font);
-    void foreground_color(const class color& foreground_color);
-
-public:
-    void onSize(void) override;
+    label&       text(void);
+    const label& text(void) const;
+    Size         optimal_size(OptimalPolicy policy=opUnset) const override;
 
 private:
     class implement* impl_;

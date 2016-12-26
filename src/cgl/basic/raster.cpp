@@ -8,7 +8,6 @@ class raster::implement
 {
     friend class raster;
 
-private:
     struct subpixel
     {
         enum
@@ -296,7 +295,7 @@ private:
 
     inline unsigned char calculate_coverage(int cover, int area)
     {
-        constexpr unsigned int shift = subpixel::shift + 1;
+        static constexpr unsigned int shift = subpixel::shift + 1;
         int coverage = ((cover << shift) - area) >> shift;
 
         if (coverage < 0)
@@ -304,8 +303,8 @@ private:
 
         if (evenodd_)
         {
-            constexpr unsigned int scale_x2 = subpixel::scale << 1;
-            constexpr unsigned int mask_x2  = scale_x2 - 1;
+            static constexpr unsigned int scale_x2 = subpixel::scale << 1;
+            static constexpr unsigned int mask_x2  = scale_x2 - 1;
 
             coverage &= mask_x2;
             if (coverage > subpixel::scale)
@@ -334,14 +333,14 @@ raster::~raster(void)
     delete impl_;
 }
 
-void raster::evenodd(bool evenodd)
-{
-    impl_->evenodd_ = evenodd;
-}
-
 bool raster::evenodd(void) const
 {
     return impl_->evenodd_;
+}
+
+void raster::evenodd(bool evenodd)
+{
+    impl_->evenodd_ = evenodd;
 }
 
 void raster::rasterize(const path& path)
@@ -353,8 +352,7 @@ void raster::rasterize(const path& path)
         vertex_fetcher vf(path);
 
         for (unsigned int i = 0; i < vf.size(); ++i)
-            impl_->build_edge_cells(vf.fetch_vertex(i + 0),
-                                    vf.fetch_vertex(i + 1));
+            impl_->build_edge_cells(vf[i + 0], vf[i + 1]);
 
         impl_->normalize();
     }
@@ -366,12 +364,11 @@ void raster::rasterize(const paths& paths)
 
     for (unsigned int i = 0; i < paths.size(); ++i)
     {
-        vertex_fetcher vf(*paths.fetch_path(i));
+        vertex_fetcher vf(*paths[i]);
 
         if (vf.size() >= 3)
             for (unsigned int j = 0; j < vf.size(); ++j)
-                impl_->build_edge_cells(vf.fetch_vertex(j + 0),
-                                        vf.fetch_vertex(j + 1));
+                impl_->build_edge_cells(vf[j + 0], vf[j + 1]);
     }
 
     impl_->normalize();

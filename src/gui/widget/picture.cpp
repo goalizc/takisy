@@ -8,47 +8,49 @@ class picture::implement
     friend class picture;
 
 public:
-    implement(picture* _this)
-        : this_(_this), scalable_(false), keep_ratio_(true), frame_index_(0)
+    implement(picture& self)
+        : self(self), scalable_(false), keep_ratio_(true), frame_index_(0)
     {
         timer_.onTimer(
-            [this](timer& timer)
+            [this, &self](timer* timer)
             {
-                unsigned int index = image_.seek(timer.elapse());
+                unsigned int index = image_.seek(timer->elapse());
 
                 if (frame_index_ != index)
                 {
                     frame_index_  = index;
-                    this_->repaint();
+                    self.repaint();
                 }
             });
     }
 
 public:
-    inline bool load_image(bool success)
+    inline void refresh(void)
     {
-        if (success)
-        {
-            frame_index_ = 0;
-            timer_.restart();
-            this_->dynamic(image_.count() > 1);
-            this_->repaint();
-        }
+        frame_index_ = 0;
+        timer_.restart();
+        self.dynamic(image_.count() > 1);
+        self.repaint();
+    }
 
-        return success;
+public:
+    static void disable_canvas(canvas_bgra8& canvas)
+    {
+        for (canvas_bgra8::pixel_format& pixel : canvas.pixels())
+            pixel.a(pixel.a() >> 1);
     }
 
 private:
+    picture& self;
     timer timer_;
     class image image_;
-    picture* this_;
     bool scalable_;
     bool keep_ratio_;
     unsigned int frame_index_;
 };
 
 picture::picture(void)
-    : impl_(new implement(this))
+    : impl_(new implement(*this))
 {}
 
 picture::picture(const char* uri)
@@ -86,7 +88,14 @@ bool picture::load_uri(const char* uri)
 
 bool picture::load_stream(stream& stream)
 {
-    return impl_->load_image(impl_->image_.load_stream(stream));
+    if (impl_->image_.load_stream(stream))
+    {
+        impl_->refresh();
+        onLoadedHandle();
+        return true;
+    }
+
+    return false;
 }
 
 bool picture::scalable(void) const
@@ -114,17 +123,21 @@ const class image& picture::image(void) const
     return impl_->image_;
 }
 
-Size picture::optimal_size(void) const
+Size picture::optimal_size(OptimalPolicy policy) const
 {
-    Size optimal(0, 0);
-
     if (impl_->frame_index_ < impl_->image_.count())
     {
-        optimal.width  = impl_->image_.frame(impl_->frame_index_).width();
-        optimal.height = impl_->image_.frame(impl_->frame_index_).height();
+        const canvas_adapter& frame = impl_->image_.frame(impl_->frame_index_);
+
+        if (policy == opUnset || !scalable())
+            return Size(frame.width(), frame.height());
+        else if (policy == opFixedWidth)
+            return Size(width(), frame.height() * width() / frame.width());
+        else if (policy == opFixedHeight)
+            return Size(frame.width() * height() / frame.height(), height());
     }
 
-    return optimal;
+    return Size(0, 0);
 }
 
 void picture::scalable(bool scalable)
@@ -153,7 +166,7 @@ void picture::dynamic(bool dynamic)
 void picture::image(const class image& image)
 {
     impl_->image_ = image;
-    impl_->load_image(true);
+    impl_->refresh();
 }
 
 void picture::onPaint(graphics graphics, Rect rect)
@@ -161,12 +174,9 @@ void picture::onPaint(graphics graphics, Rect rect)
     if (impl_->image_.count() == 0)
         return;
 
-    unsigned int index = impl_->image_.seek(impl_->timer_.elapse());
-    if (impl_->frame_index_ != index)
-        impl_->frame_index_  = index;
-
+    impl_->frame_index_ = impl_->image_.seek(impl_->timer_.elapse());
+    const canvas_adapter& frame = impl_->image_.frame(impl_->frame_index_);
     typedef derived_canvas_adapter<canvas_bgra8&> canvas_adapter;
-    const auto& frame = impl_->image_.frame(index);
 
     if (impl_->scalable_)
     {
@@ -177,20 +187,22 @@ void picture::onPaint(graphics graphics, Rect rect)
             double wratio = static_cast<double>(width()) / height();
             double fratio = static_cast<double>(frame.width()) / frame.height();
 
-            if (wratio < fratio && width() != frame.width())
+            if (width() != frame.width() && wratio < fratio)
             {
                 canvas_bgra8 canvas = frame;
                 unsigned int height = frame.height() * width() / frame.width();
                 scale(width(), height).filter(canvas, canvas);
+                if (disabled()) implement::disable_canvas(canvas);
                 register int y = ((int)this->height() - (int)height) / 2;
                 return graphics.draw_image(0, y, canvas_adapter(canvas));
             }
             else
-            if (wratio >= fratio && height() != frame.height())
+            if (height() != frame.height() && wratio >= fratio)
             {
                 canvas_bgra8 canvas = frame;
                 unsigned int width = frame.width() * height() / frame.height();
                 scale(width, height()).filter(canvas, canvas);
+                if (disabled()) implement::disable_canvas(canvas);
                 register int x = ((int)this->width() - (int)width) / 2;
                 return graphics.draw_image(x, 0, canvas_adapter(canvas));
             }
@@ -200,6 +212,7 @@ void picture::onPaint(graphics graphics, Rect rect)
         {
             canvas_bgra8 canvas = frame;
             scale(width(), height()).filter(canvas, canvas);
+            if (disabled()) implement::disable_canvas(canvas);
             return graphics.draw_image(canvas_adapter(canvas));
         }
     }
@@ -207,5 +220,12 @@ void picture::onPaint(graphics graphics, Rect rect)
     int x = ((int)width()  - (int)frame.width())  / 2;
     int y = ((int)height() - (int)frame.height()) / 2;
 
-    graphics.draw_image(x, y, frame);
+    if (disabled())
+    {
+        canvas_bgra8 canvas = frame;
+        implement::disable_canvas(canvas);
+        graphics.draw_image(x, y, canvas_adapter(canvas));
+    }
+    else
+        graphics.draw_image(x, y, frame);
 }

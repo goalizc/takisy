@@ -4,24 +4,24 @@
 #include <takisy/core/math.h>
 
 template <typename T>
-struct t_point
+struct base_point
 {
-    typedef t_point self_type;
-    typedef T       axis_type;
+    typedef base_point self_type;
+    typedef T          axis_type;
 
     axis_type x, y;
 
 public:
-    inline t_point(void)
+    inline base_point(void)
         : x(0), y(0)
     {}
 
-    inline t_point(axis_type x, axis_type y)
+    inline base_point(axis_type x, axis_type y)
         : x(x), y(y)
     {}
 
     template <typename Point>
-    inline t_point(const Point& point)
+    inline base_point(const Point& point)
         : x(point.x), y(point.y)
     {}
 
@@ -47,13 +47,13 @@ public:
 
 public:
     template <typename TT>
-    inline bool operator==(const t_point<TT>& point) const
+    inline bool operator==(const base_point<TT>& point) const
     {
         return x == point.x && y == point.y;
     }
 
     template <typename TT>
-    inline bool operator!=(const t_point<TT>& point) const
+    inline bool operator!=(const base_point<TT>& point) const
     {
         return x != point.x || y != point.y;
     }
@@ -77,7 +77,7 @@ public:
 
 public:
     template <typename TT>
-    inline double distance(const t_point<TT>& point) const
+    inline double distance(const base_point<TT>& point) const
     {
         return math::sqrt(math::sqr(x - point.x) + math::sqr(y - point.y));
     }
@@ -94,13 +94,13 @@ public:
     }
 
     template <typename TT>
-    inline self_type operator+(const t_point<TT>& point) const
+    inline self_type operator+(const base_point<TT>& point) const
     {
         return self_type(x + point.x, y + point.y);
     }
 
     template <typename TT>
-    inline self_type operator-(const t_point<TT>& point) const
+    inline self_type operator-(const base_point<TT>& point) const
     {
         return self_type(x - point.x, y - point.y);
     }
@@ -118,7 +118,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type& operator+=(const t_point<TT>& point)
+    inline self_type& operator+=(const base_point<TT>& point)
     {
         x += point.x;
         y += point.y;
@@ -127,7 +127,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type& operator-=(const t_point<TT>& point)
+    inline self_type& operator-=(const base_point<TT>& point)
     {
         x -= point.x;
         y -= point.y;
@@ -155,13 +155,13 @@ public:
 };
 
 template <typename NumbericType, typename T>
-inline t_point<T> operator*(NumbericType ratio, const t_point<T>& point)
+inline base_point<T> operator*(NumbericType ratio, const base_point<T>& point)
 {
     return point * ratio;
 }
 
-typedef t_point<int>          point;
-typedef t_point<unsigned int> pointu;
-typedef t_point<double>       pointf;
+typedef base_point<int>          point;
+typedef base_point<unsigned int> pointu;
+typedef base_point<double>       pointf;
 
 #endif //point_h_20130722

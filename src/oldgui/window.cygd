@@ -1,0 +1,15 @@
+/cygdrive/z/takisy/src/oldgui/window.cygo /cygdrive/z/takisy/src/oldgui/window.cygd: /cygdrive/z/takisy/src/oldgui/window.cpp \
+ /cygdrive/z/takisy/include/takisy/core/macro.h \
+ /cygdrive/z/takisy/include/takisy/core/dynamic_linking_loader.h \
+ /cygdrive/z/takisy/include/takisy/oldgui/exception.h \
+ /cygdrive/z/takisy/include/takisy/algorithm/stralgo.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/font/font.h \
+ /cygdrive/z/takisy/include/takisy/oldgui/window.h \
+ /cygdrive/z/takisy/include/takisy/oldgui/define.h \
+ /cygdrive/z/takisy/include/takisy/oldgui/typedef.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/color.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h

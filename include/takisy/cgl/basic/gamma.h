@@ -12,16 +12,16 @@ public:
 };
 
 template <unsigned int GammaLutSize>
-class t_gamma
+class gamma_lut
 {
 public:
-    t_gamma(void)
+    gamma_lut(void)
     {
         refresh_gamma_lut(1);
     }
 
     template <typename GammeFunction>
-    t_gamma(const GammeFunction& gamma_function)
+    gamma_lut(const GammeFunction& gamma_function)
     {
         refresh_gamma_lut(gamma_function);
     }
@@ -34,9 +34,10 @@ public:
 
     inline void refresh_gamma_lut(double gamma_seed)
     {
-        refresh_gamma_lut([&](double x) -> double {
-            return math::pow(x, gamma_seed);
-        });
+        refresh_gamma_lut(
+            [&](double x) -> double {
+                return math::pow(x, gamma_seed);
+            });
     }
 
     template <typename GammeFunction>
@@ -57,6 +58,6 @@ private:
     unsigned int gamma_lut_[GammaLutSize];
 };
 
-typedef t_gamma<256> gamma_256, gamma_uint8, gamma_u8, gamma_byte;
+typedef gamma_lut<256> gamma_256, gamma_uint8, gamma_u8, gamma_byte;
 
 #endif //gamma_h_20131119

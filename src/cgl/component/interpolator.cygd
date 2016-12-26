@@ -1,0 +1,4 @@
+/cygdrive/z/takisy/src/cgl/component/interpolator.cygo /cygdrive/z/takisy/src/cgl/component/interpolator.cygd: /cygdrive/z/takisy/src/cgl/component/interpolator.cpp \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/component/interpolator.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h

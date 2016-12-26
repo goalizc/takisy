@@ -1,9 +1,11 @@
-#ifdef __ow_win__
-
 #include <map>
 #include <list>
 #include <vector>
 #include <algorithm>
+#include <takisy/core/macro.h>
+
+#ifdef __os_win__
+
 #include <takisy/core/dynamic_linking_loader.h>
 #include <takisy/oldgui/exception.h>
 #include <takisy/oldgui/window.h>

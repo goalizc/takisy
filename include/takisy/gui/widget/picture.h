@@ -2,12 +2,16 @@
 #define picture_h_20160105
 
 #include <takisy/core/stream.h>
+#include <takisy/core/handler.h>
 #include <takisy/cgl/image/image.h>
 #include <takisy/gui/widget/widget.h>
 
 class picture : public widget
 {
     class implement;
+
+public:
+    DECLARE_HANDLER(onLoaded);
 
 public:
     picture(void);
@@ -27,7 +31,9 @@ public:
     bool               dynamic(void) const;
     class image&       image(void);
     const class image& image(void) const;
-    Size               optimal_size(void) const override;
+
+public:
+    Size optimal_size(OptimalPolicy policy=opUnset) const override;
 
 public:
     void scalable(bool scalable);

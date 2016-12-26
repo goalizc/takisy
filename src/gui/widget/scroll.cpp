@@ -1,5 +1,6 @@
-#include <tuple>
 #include <utility>
+#include <takisy/core/math.h>
+#include <takisy/core/algorithm.h>
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/scroll.h>
 
@@ -9,15 +10,21 @@ class scroll::implement
     friend class vertical_scroll;
     friend class horizontal_scroll;
 
-    static constexpr int slider_radius = 3;
+    static constexpr double radius = 3;
 
 public:
-    implement(void)
+    implement(double min, double max, double value, double step, double page)
         : in_scroll_(false)
-        , scrolling_(std::make_tuple(false, 0, Point(0, 0)))
+        , min_(min), max_(max), value_(value), step_(step), page_(page)
+        , dragging_({.underway = false})
     {}
 
 public:
+    inline int sign(void) const
+    {
+        return min_ <= max_ ? 1 : -1;
+    }
+
     std::pair<double, double> slider_range(double length) const
     {
         double a = max_ - min_;
@@ -31,7 +38,13 @@ public:
 private:
     bool in_scroll_;
     double min_, max_, value_, step_, page_;
-    std::tuple<bool, double, Point> scrolling_;
+    struct {
+        bool underway;
+        struct {
+            double value;
+            Point point;
+        } milestone;
+    } dragging_;
 };
 
 scroll::scroll(void)
@@ -43,18 +56,8 @@ scroll::scroll(double min, double max)
 {}
 
 scroll::scroll(double min, double max, double value)
-    : scroll(min, max, value, (max - min) / 100, (max - min) / 10)
+    : impl_(new implement(min, max, value, (max - min) / 100, (max - min) / 10))
 {}
-
-scroll::scroll(double min, double max, double value, double step, double page)
-    : impl_(new implement)
-{
-    impl_->min_   = min;
-    impl_->max_   = max;
-    impl_->value_ = value;
-    impl_->step_  = step;
-    impl_->page_  = page;
-}
 
 scroll::~scroll(void)
 {
@@ -76,6 +79,11 @@ double scroll::value(void) const
     return impl_->value_;
 }
 
+long long scroll::valued(void) const
+{
+    return impl_->value_ + 0.5;
+}
+
 double scroll::step(void) const
 {
     return impl_->step_;
@@ -88,58 +96,62 @@ double scroll::page(void) const
 
 bool scroll::scrollable(void) const
 {
-    return impl_->page_ < impl_->max_ - impl_->min_;
+    return math::abs(impl_->page_) < math::abs(impl_->max_ - impl_->min_);
 }
 
-void scroll::range(double _min, double _max)
+void scroll::range(double min, double max)
 {
-    min(_min);
-    max(_max);
+    if (impl_->min_ == min && impl_->max_ == max)
+        return;
+
+    if (impl_->min_ != min)
+        impl_->min_ = min;
+    if (impl_->max_ != max)
+        impl_->max_ = max;
+
+    step(step());
+    page(page());
+    value(value());
+    repaint();
 }
 
 void scroll::min(double min)
 {
-    if (impl_->min_ != min)
-    {
-        impl_->min_ = min;
-        value(value());
-        repaint();
-    }
+    range(min, max());
 }
 
 void scroll::max(double max)
 {
-    if (impl_->max_ != max)
-    {
-        impl_->max_ = max;
-        value(value());
-        repaint();
-    }
+    range(min(), max);
 }
 
 void scroll::value(double value)
 {
-    if (value > impl_->max_ - impl_->page_)
-        value = impl_->max_ - impl_->page_;
-    if (value < impl_->min_)
+    if (scrollable())
+        value = algorithm::clamp(value, impl_->min_, impl_->max_ - page());
+    else
         value = impl_->min_;
 
     if (impl_->value_ != value)
     {
         impl_->value_ = value;
-        onScroll();
+        onScrollHandle();
         repaint();
     }
 }
 
 void scroll::step(double step)
 {
+    step = impl_->sign() * math::abs(step);
+
     if (impl_->step_ != step)
         impl_->step_ = step;
 }
 
 void scroll::page(double page)
 {
+    page = impl_->sign() * math::abs(page);
+
     if (impl_->page_ != page)
     {
         impl_->page_ = page;
@@ -175,7 +187,7 @@ void scroll::home(void)
 
 void scroll::end(void)
 {
-    value(max());
+    value(max() - page());
 }
 
 bool scroll::onSetCursor(void)
@@ -189,17 +201,12 @@ bool scroll::onSetCursor(void)
     return false;
 }
 
-bool scroll::onClick(sys::MouseButton, int, Point)
-{
-    return scrollable();
-}
-
-bool scroll::onMouseUp(sys::MouseButton button, Point point)
+bool scroll::onMouseUp(sys::Button button, Point point)
 {
     if (!scrollable())
         return false;
 
-    std::get<0>(impl_->scrolling_) = false;
+    impl_->dragging_.underway = false;
     capture(false);
 
     return true;
@@ -246,26 +253,25 @@ void vertical_scroll::onPaint(graphics graphics, Rect rect)
     if (!scrollable())
         return;
 
-    color color = color_scheme()->main();
+    constexpr double radius = implement::radius;
+    color color = color_scheme().theme();
     std::pair<double, double> pair = impl_->slider_range(height());
-    Rect block_rect = client_rect();
-    register int radius = implement::slider_radius;
-    block_rect.top    = pair.first;
-    block_rect.bottom = pair.second;
+    rectf slider_rect  = client_rect();
+    slider_rect.top    = pair.first;
+    slider_rect.bottom = pair.second;
 
     if (impl_->in_scroll_)
     {
         graphics.fill_round_rectangle(client_rect(), radius, color * 100);
-        graphics.fill_round_rectangle(block_rect,    radius, color);
+        graphics.fill_round_rectangle(slider_rect,   radius, color);
     }
     else
-        graphics.fill_round_rectangle(block_rect,    radius, color * 128);
+        graphics.fill_round_rectangle(slider_rect,   radius, color * 128);
 }
 
-bool vertical_scroll::onMouseDown(sys::MouseButton button, int times,
-                                  Point point)
+bool vertical_scroll::onMouseDown(sys::Button button, int times, Point point)
 {
-    if (button != sys::mbLButton || !scrollable())
+    if (button != sys::btnLeft || !scrollable())
         return false;
 
     std::pair<double, double> pair = impl_->slider_range(height());
@@ -277,9 +283,9 @@ bool vertical_scroll::onMouseDown(sys::MouseButton button, int times,
         page_down();
     else
     {
-        std::get<0>(impl_->scrolling_) = true;
-        std::get<1>(impl_->scrolling_) = value();
-        std::get<2>(impl_->scrolling_) = point;
+        impl_->dragging_.underway = true;
+        impl_->dragging_.milestone.value = value();
+        impl_->dragging_.milestone.point = point;
         capture(true);
     }
 
@@ -291,14 +297,15 @@ bool vertical_scroll::onMouseMove(Point point)
     if (!scrollable())
         return false;
 
-    if (!std::get<0>(impl_->scrolling_))
+    if (!impl_->dragging_.underway)
         return true;
 
-    double delta;
+    double
+        delta  = point.y - impl_->dragging_.milestone.point.y;
+        delta /= height();
+        delta *= impl_->max_ - impl_->min_;
 
-    delta  = ((double)point.y - std::get<2>(impl_->scrolling_).y) / height();
-    delta *= impl_->max_ - impl_->min_;
-    value(std::get<1>(impl_->scrolling_) + delta);
+    value(impl_->dragging_.milestone.value + delta);
 
     return true;
 }
@@ -308,26 +315,25 @@ void horizontal_scroll::onPaint(graphics graphics, Rect rect)
     if (!scrollable())
         return;
 
-    color color = color_scheme()->main();
+    constexpr double radius = implement::radius;
+    color color = color_scheme().theme();
     std::pair<double, double> pair = impl_->slider_range(width());
-    Rect block_rect = client_rect();
-    register int radius = implement::slider_radius;
-    block_rect.left  = pair.first;
-    block_rect.right = pair.second;
+    rectf slider_rect = client_rect();
+    slider_rect.left  = pair.first;
+    slider_rect.right = pair.second;
 
     if (impl_->in_scroll_)
     {
         graphics.fill_round_rectangle(client_rect(), radius, color * 100);
-        graphics.fill_round_rectangle(block_rect,    radius, color);
+        graphics.fill_round_rectangle(slider_rect,   radius, color);
     }
     else
-        graphics.fill_round_rectangle(block_rect,    radius, color * 128);
+        graphics.fill_round_rectangle(slider_rect,   radius, color * 128);
 }
 
-bool horizontal_scroll::onMouseDown(sys::MouseButton button, int times,
-                                    Point point)
+bool horizontal_scroll::onMouseDown(sys::Button button, int times, Point point)
 {
-    if (button != sys::mbLButton || !scrollable())
+    if (button != sys::btnLeft || !scrollable())
         return false;
 
     std::pair<double, double> pair = impl_->slider_range(width());
@@ -339,9 +345,9 @@ bool horizontal_scroll::onMouseDown(sys::MouseButton button, int times,
         page_down();
     else
     {
-        std::get<0>(impl_->scrolling_) = true;
-        std::get<1>(impl_->scrolling_) = value();
-        std::get<2>(impl_->scrolling_) = point;
+        impl_->dragging_.underway = true;
+        impl_->dragging_.milestone.value = value();
+        impl_->dragging_.milestone.point = point;
         capture(true);
     }
 
@@ -353,14 +359,157 @@ bool horizontal_scroll::onMouseMove(Point point)
     if (!scrollable())
         return false;
 
-    if (!std::get<0>(impl_->scrolling_))
+    if (!impl_->dragging_.underway)
         return true;
 
-    double delta;
+    double
+        delta  = point.x - impl_->dragging_.milestone.point.x;
+        delta /= width();
+        delta *= impl_->max_ - impl_->min_;
 
-    delta  = ((double)point.x - std::get<2>(impl_->scrolling_).x) / width();
-    delta *= impl_->max_ - impl_->min_;
-    value(std::get<1>(impl_->scrolling_) + delta);
+    value(impl_->dragging_.milestone.value + delta);
 
     return true;
+}
+
+class scroll_area::implement
+{
+    friend class scroll_area;
+
+public:
+    implement(void)
+        : dragging_({.underway = false})
+    {
+        vscroll_.show();
+        hscroll_.show();
+    }
+
+private:
+    class vertical_scroll vscroll_;
+    class horizontal_scroll hscroll_;
+    struct {
+        bool underway;
+        struct {
+            int vvalue, hvalue;
+            Point point;
+        } milestone;
+    } dragging_;
+};
+
+scroll_area::scroll_area(void)
+    : impl_(new implement)
+{}
+
+scroll_area::~scroll_area(void)
+{
+    delete impl_;
+}
+
+class vertical_scroll& scroll_area::vertical_scroll(void)
+{
+    return impl_->vscroll_;
+}
+
+const class vertical_scroll& scroll_area::vertical_scroll(void) const
+{
+    return impl_->vscroll_;
+}
+
+class horizontal_scroll& scroll_area::horizontal_scroll(void)
+{
+    return impl_->hscroll_;
+}
+
+const class horizontal_scroll& scroll_area::horizontal_scroll(void) const
+{
+    return impl_->hscroll_;
+}
+
+void scroll_area::onSize(void)
+{
+    impl_->vscroll_.rect(width() - 7, 0, 7, height() - 7);
+    impl_->vscroll_.page(height());
+    impl_->hscroll_.rect(0, height() - 7, width() - 7, 7);
+    impl_->hscroll_.page(width());
+}
+
+bool scroll_area::onSetCursor(void)
+{
+    if (impl_->dragging_.underway)
+    {
+        cursor::set(cursor::ctSizeAll);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool scroll_area::onMouseDown(sys::Button button, int times, Point point)
+{
+    if (button != sys::btnLeft)
+        return false;
+    if (!vertical_scroll().scrollable() && !horizontal_scroll().scrollable())
+        return false;
+
+    impl_->dragging_.underway = true;
+    impl_->dragging_.milestone.vvalue = vertical_scroll().value();
+    impl_->dragging_.milestone.hvalue = horizontal_scroll().value();
+    impl_->dragging_.milestone.point = point;
+    capture(true);
+
+    return true;
+}
+
+bool scroll_area::onMouseUp(sys::Button button, Point point)
+{
+    if (impl_->dragging_.underway)
+    {
+        impl_->dragging_.underway = false;
+        capture(false);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool scroll_area::onMouseMove(Point point)
+{
+    if (impl_->dragging_.underway)
+    {
+        Point offset = point - impl_->dragging_.milestone.point;
+
+        vertical_scroll().value(impl_->dragging_.milestone.vvalue - offset.y);
+        horizontal_scroll().value(impl_->dragging_.milestone.hvalue - offset.x);
+
+        return true;
+    }
+
+    return false;
+}
+
+bool scroll_area::onMouseWheel(int delta, Point point)
+{
+    if (impl_->vscroll_.scrollable())
+    {
+        if (delta < 0)
+            impl_->vscroll_.step_down();
+        else
+            impl_->vscroll_.step_up();
+
+        return true;
+    }
+    else
+    if (impl_->hscroll_.scrollable())
+    {
+        if (delta < 0)
+            impl_->hscroll_.step_down();
+        else
+            impl_->hscroll_.step_up();
+
+        return true;
+    }
+
+    return false;
 }

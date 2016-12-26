@@ -1,0 +1,3 @@
+/cygdrive/z/takisy/src/core/bit_buffer.cygo /cygdrive/z/takisy/src/core/bit_buffer.cygd: /cygdrive/z/takisy/src/core/bit_buffer.cpp \
+ /cygdrive/z/takisy/include/takisy/core/bit_buffer.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h

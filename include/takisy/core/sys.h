@@ -67,16 +67,23 @@ public:
         vkBrowserFavorites  = 0xAB, vkExsel      = 0xF8, vkEreof       = 0xF9,
         vkBrowserRefresh    = 0xA8, vkZoom       = 0xFB, vkNoname      = 0xFC,
         vkLaunchMediaSelect = 0xB5, vkPa1        = 0xFD,
+
+        // alias virtual key
+        vkCtrl      = vkControl,
+        vkLeftCtrl  = vkLControl,
+        vkRightCtrl = vkRControl,
+        vkPageUp    = vkPrior,
+        vkPageDown  = vkNext,
     };
 
-    enum MouseButton
+    enum Button
     {
-        mbNone     = 0x00,
-        mbLButton  = 0x01,
-        mbMButton  = 0x02,
-        mbRButton  = 0x04,
-        mbXButton1 = 0x08,
-        mbXButton2 = 0x10,
+        btnNone   = 0x00,
+        btnLeft   = 0x01,
+        btnMiddle = 0x02,
+        btnRight  = 0x04,
+        btnX1     = 0x08,
+        btnX2     = 0x10,
     };
 
 public:

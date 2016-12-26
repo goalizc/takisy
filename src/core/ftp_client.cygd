@@ -1,0 +1,11 @@
+/cygdrive/z/takisy/src/core/ftp_client.cygo /cygdrive/z/takisy/src/core/ftp_client.cygd: /cygdrive/z/takisy/src/core/ftp_client.cpp \
+ /cygdrive/z/takisy/include/takisy/core/os.h \
+ /cygdrive/z/takisy/include/takisy/algorithm/stralgo.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/font/font.h \
+ /cygdrive/z/takisy/include/takisy/core/ftp_client.h \
+ /cygdrive/z/takisy/include/takisy/core/stream.h \
+ /cygdrive/z/takisy/include/takisy/core/file.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h

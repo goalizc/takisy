@@ -1,0 +1,13 @@
+/cygdrive/z/takisy/src/gui/basic/pen.cygo /cygdrive/z/takisy/src/gui/basic/pen.cygd: /cygdrive/z/takisy/src/gui/basic/pen.cpp \
+ /cygdrive/z/takisy/include/takisy/gui/basic/pen.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/color.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/brush.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/src/gui/basic/impl/pen.hpp \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/builder/contour.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/builder/dashed_line.h

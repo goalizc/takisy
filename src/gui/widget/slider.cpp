@@ -8,19 +8,29 @@ class slider::implement
 
 public:
     implement(double min, double max)
-        : min_(min), max_(max), value_(min)
-        , scrolling_(std::make_tuple(false, 0, Point(0, 0)))
+        : dragging_(false), radius_(6), min_(min), max_(max), value_(min)
     {}
 
 public:
-    double foo(double length) const
+    inline double value(double position, double length) const
     {
-        return (value_ - min_) * (length - 5) / (max_ - min_) + 2;
+        if (length < radius_ * 2)
+            return min_;
+        else
+            length -= radius_ * 2;
+
+        return (position - radius_) / length * (max_ - min_) + min_;
+    }
+
+    inline double position(double length) const
+    {
+        return (value_ - min_) * (length - radius_ * 2) / (max_ - min_);
     }
 
 private:
+    bool dragging_;
+    double radius_;
     double min_, max_, value_;
-    std::tuple<bool, double, Point> scrolling_;
 };
 
 slider::slider(void)
@@ -34,8 +44,6 @@ slider::slider(double min, double max)
 slider::slider(double min, double max, double _value)
     : impl_(new implement(min, max))
 {
-    attribute("intercept.onClick", true);
-
     value(_value);
 }
 
@@ -59,43 +67,54 @@ double slider::value(void) const
     return impl_->value_;
 }
 
-void slider::range(double _min, double _max)
+double slider::radius(void) const
 {
-    min(_min);
-    max(_max);
+    return impl_->radius_;
+}
+
+void slider::range(double min, double max)
+{
+    if (impl_->min_ == min && impl_->max_ == max)
+        return;
+
+    if (impl_->min_ != min)
+        impl_->min_ = min;
+    if (impl_->max_ != max)
+        impl_->max_ = max;
+
+    value(value());
+    repaint();
 }
 
 void slider::min(double min)
 {
-    if (impl_->min_ != min)
-    {
-        impl_->min_ = min;
-        value(value());
-        repaint();
-    }
+    range(min, max());
 }
 
 void slider::max(double max)
 {
-    if (impl_->max_ != max)
-    {
-        impl_->max_ = max;
-        value(value());
-        repaint();
-    }
+    range(min(), max);
 }
 
 void slider::value(double value)
 {
-    if (value > impl_->max_)
-        value = impl_->max_;
-    if (value < impl_->min_)
-        value = impl_->min_;
+    value = algorithm::clamp(value, impl_->min_, impl_->max_);
 
     if (impl_->value_ != value)
     {
         impl_->value_ = value;
-        onSlide();
+        onSlideHandle();
+        repaint();
+    }
+}
+
+void slider::radius(double radius)
+{
+    radius = algorithm::clamp(radius, 1.0, 24.0);
+
+    if (impl_->radius_ != radius)
+    {
+        impl_->radius_ = radius;
         repaint();
     }
 }
@@ -110,98 +129,68 @@ void slider::end(void)
     value(max());
 }
 
-bool slider::onMouseUp(sys::MouseButton button, Point point)
+bool slider::onMouseUp(sys::Button button, Point point)
 {
-    std::get<0>(impl_->scrolling_) = false;
+    impl_->dragging_ = false;
     capture(false);
+
+    return true;
+}
+
+bool slider::onMouseDown(sys::Button button, int times, Point point)
+{
+    if (button != sys::btnLeft)
+        return false;
+
+    impl_->dragging_ = true;
+    capture(true);
+    onMouseMove(point);
 
     return true;
 }
 
 void vertical_slider::onPaint(graphics graphics, Rect rect)
 {
-    double left = ((int)width() - 3) / 2, right = left + 3;
-    double bar  = impl_->foo(height());
-    double top  = bar - 2, bottom = bar + 3;
+    double left = (width() - impl_->radius_) / 2, right = left + impl_->radius_;
+    double position = impl_->position(height()) + impl_->radius_;
+    double half_radius = impl_->radius_ / 2;
+    color color = color_scheme().theme();
 
-    graphics.fill_rectangle(left, 0, right, height(), color_scheme()->main());
-    graphics.fill_rectangle(left - 3, top, right + 3, bottom,
-                            color_scheme()->cool());
-}
+    graphics.fill_round_rectangle
+        (left, 0, right, height(), half_radius, color * 50);
+    graphics.fill_round_rectangle
+        (left, 0, right, position, half_radius, color * 150);
 
-bool vertical_slider::onMouseDown(sys::MouseButton button, int times,
-                                  Point point)
-{
-    if (button != sys::mbLButton)
-        return false;
-
-    double y = impl_->foo(height());
-
-    if (y - 2 <= point.y && point.y < y + 3)
-    {
-        std::get<0>(impl_->scrolling_) = true;
-        std::get<1>(impl_->scrolling_) = value();
-        std::get<2>(impl_->scrolling_) = point;
-        capture(true);
-    }
-
-    return true;
+    graphics.fill_circle(width() / 2, position, impl_->radius_, color);
 }
 
 bool vertical_slider::onMouseMove(Point point)
 {
-    if (std::get<0>(impl_->scrolling_))
-    {
-        double delta;
-
-        delta = ((double)point.y - std::get<2>(impl_->scrolling_).y) / height();
-        delta *= impl_->max_ - impl_->min_;
-        value(std::get<1>(impl_->scrolling_) + delta);
-    }
+    if (impl_->dragging_)
+        value(impl_->value(point.y, height()));
 
     return true;
 }
 
 void horizontal_slider::onPaint(graphics graphics, Rect rect)
 {
-    double top  = ((int)height() - 3) / 2, bottom = top + 3;
-    double bar  = impl_->foo(width());
-    double left = bar - 2, right = bar + 3;
+    double top = (height() - impl_->radius_) / 2, bottom = top + impl_->radius_;
+    double position = impl_->position(width()) + impl_->radius_;
+    double half_radius = impl_->radius_ / 2;
+    color color = color_scheme().theme();
 
-    graphics.fill_rectangle(0, top, width(), bottom, color_scheme()->main());
-    graphics.fill_rectangle(left, top - 3, right, bottom + 3,
-                            color_scheme()->cool());
-}
+    graphics.fill_round_rectangle
+        (0, top, width(),  bottom, half_radius, color * 50);
+    graphics.fill_round_rectangle
+        (0, top, position, bottom, half_radius, color * 150);
 
-bool horizontal_slider::onMouseDown(sys::MouseButton button, int times,
-                                  Point point)
-{
-    if (button != sys::mbLButton)
-        return false;
-
-    double x = impl_->foo(width());
-
-    if (x - 2 <= point.x && point.x < x + 3)
-    {
-        std::get<0>(impl_->scrolling_) = true;
-        std::get<1>(impl_->scrolling_) = value();
-        std::get<2>(impl_->scrolling_) = point;
-        capture(true);
-    }
-
-    return true;
+    graphics.fill_circle(position, height() / 2, impl_->radius_, color);
 }
 
 bool horizontal_slider::onMouseMove(Point point)
 {
-    if (std::get<0>(impl_->scrolling_))
-    {
-        double delta;
-
-        delta = ((double)point.x - std::get<2>(impl_->scrolling_).x) / width();
-        delta *= impl_->max_ - impl_->min_;
-        value(std::get<1>(impl_->scrolling_) + delta);
-    }
+    if (impl_->dragging_)
+        value(impl_->value(point.x, width()));
 
     return true;
 }

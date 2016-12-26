@@ -1,8 +1,8 @@
 #include <takisy/core/bit_buffer.h>
 
-class bit_buffer_i::implement
+class bit_buffer::input::implement
 {
-    friend class bit_buffer_i;
+    friend class bit_buffer::input;
 
 public:
     implement(const unsigned char* buffer, unsigned int size)
@@ -10,26 +10,28 @@ public:
     {}
 
 private:
-    const unsigned char* buffer_;
+    const
+    unsigned char* buffer_;
     unsigned int size_;
     unsigned int Bi_;
     unsigned int bi_;
 };
 
-bit_buffer_i::bit_buffer_i(const unsigned char* buffer, unsigned int size)
+bit_buffer::input::input(const unsigned char* buffer,
+                                     unsigned int size)
     : impl_(new implement(buffer, size))
 {}
 
-bit_buffer_i::bit_buffer_i(const bit_buffer_i& bbi)
-    : bit_buffer_i(bbi.impl_->buffer_, bbi.impl_->size_)
+bit_buffer::input::input(const bit_buffer::input& bbi)
+    : bit_buffer::input(bbi.impl_->buffer_, bbi.impl_->size_)
 {}
 
-bit_buffer_i::~bit_buffer_i(void)
+bit_buffer::input::~input(void)
 {
     delete impl_;
 }
 
-bit_buffer_i& bit_buffer_i::operator=(const bit_buffer_i& bbi)
+bit_buffer::input& bit_buffer::input::operator=(const bit_buffer::input& bbi)
 {
     if (this != &bbi)
     {
@@ -42,13 +44,13 @@ bit_buffer_i& bit_buffer_i::operator=(const bit_buffer_i& bbi)
     return *this;
 }
 
-void bit_buffer_i::align(void)
+void bit_buffer::input::align(void)
 {
     if (impl_->bi_)
         ++impl_->Bi_, impl_->bi_ = 0;
 }
 
-unsigned int bit_buffer_i::read(register unsigned int n)
+unsigned int bit_buffer::input::read(register unsigned int n)
 {
     static const unsigned int kMask[] =
         { 0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff, };
@@ -61,7 +63,7 @@ unsigned int bit_buffer_i::read(register unsigned int n)
     while (n)
     {
         if (Bi >= impl_->size_)
-            throw bit_buffer_exception_code::kOutOfBuffer;
+            throw ecOutOfBuffer;
 
         register unsigned int r_bi = 8 - bi;
 
@@ -81,7 +83,7 @@ unsigned int bit_buffer_i::read(register unsigned int n)
     return result;
 }
 
-unsigned int bit_buffer_i::peek(register unsigned int n)
+unsigned int bit_buffer::input::peek(register unsigned int n)
 {
     unsigned int Bi = impl_->Bi_, bi = impl_->bi_;
     unsigned int ret = read(n);
@@ -92,9 +94,9 @@ unsigned int bit_buffer_i::peek(register unsigned int n)
     return ret;
 }
 
-class bit_buffer_o::implement
+class bit_buffer::output::implement
 {
-    friend class bit_buffer_o;
+    friend class bit_buffer::output;
 
 public:
     implement(void) : bit_buffer_(0), bit_count_(0) {}
@@ -105,22 +107,22 @@ private:
     unsigned int bit_count_;
 };
 
-bit_buffer_o::bit_buffer_o(void)
+bit_buffer::output::output(void)
     : impl_(new implement)
 {}
 
-bit_buffer_o::bit_buffer_o(const bit_buffer_o& bbo)
-    : bit_buffer_o()
+bit_buffer::output::output(const bit_buffer::output& bbo)
+    : bit_buffer::output()
 {
     operator=(bbo);
 }
 
-bit_buffer_o::~bit_buffer_o(void)
+bit_buffer::output::~output(void)
 {
     delete impl_;
 }
 
-bit_buffer_o& bit_buffer_o::operator=(const bit_buffer_o& bbo)
+bit_buffer::output& bit_buffer::output::operator=(const bit_buffer::output& bbo)
 {
     if (this != & bbo)
     {
@@ -132,13 +134,13 @@ bit_buffer_o& bit_buffer_o::operator=(const bit_buffer_o& bbo)
     return *this;
 }
 
-void bit_buffer_o::align(void)
+void bit_buffer::output::align(void)
 {
     if (impl_->bit_count_)
         write(0, 8 - impl_->bit_count_);
 }
 
-void bit_buffer_o::write(unsigned int bits, unsigned int count)
+void bit_buffer::output::write(unsigned int bits, unsigned int count)
 {
     impl_->bit_buffer_ |= bits << impl_->bit_count_;
     impl_->bit_count_  += count;
@@ -151,8 +153,7 @@ void bit_buffer_o::write(unsigned int bits, unsigned int count)
     }
 }
 
-stretchy_buffer<unsigned char> bit_buffer_o::buffer(void) const
+stretchy_buffer<unsigned char> bit_buffer::output::buffer(void) const
 {
     return impl_->buffer_;
 }
-

@@ -13,12 +13,12 @@ protected:
    ~layout(void);
 
 public:
-    Alignment    alignment(void) const;
+    unsigned int alignment(void) const;
     Margin       margin(void) const;
     unsigned int spacing(void) const;
 
 public:
-    void alignment(Alignment alignment);
+    void alignment(unsigned int alignment);
     void margin(const Margin& margin);
     void margin(unsigned int margin);
     void margin(unsigned int left, unsigned int top,
@@ -55,7 +55,7 @@ protected:
 public:
     void add_spacer(void);
     void add_spacer(unsigned int size);
-    void add_spacer(unsigned int min_size, unsigned int max_size);
+    void add_spacer(unsigned int lower_size, unsigned int upper_size);
 
 protected:
     class implement* impl_;

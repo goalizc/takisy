@@ -33,9 +33,8 @@ public:
                       pixel_format* drow = dst.row(y);
 
                 for (unsigned int x = 0; x < src.width();  ++x)
-                    drow[x] = color(srow[x].grayscale() < drow[x].grayscale()
-                                        ? 0 : color::channel_mask,
-                                    srow[x].a());
+                    drow[x].grayscale(srow[x].grayscale() < drow[x].grayscale()
+                                      ? 0 : pixel_format::channel_mask());
             }
         }
     }

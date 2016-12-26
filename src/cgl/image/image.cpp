@@ -153,16 +153,15 @@ bool image::load_stream(stream& stream)
 bool image::load_stream(stream& stream, const format& format)
 {
     format::frames frames;
+    bool loaded = format.load(stream, frames);
 
-    if (format.load(stream, frames))
+    if (loaded || impl_->frames_.empty())
     {
         impl_->frames_         = frames;
         impl_->load_timestamp_ = clock();
-
-        return true;
     }
 
-    return false;
+    return loaded;
 }
 
 bool image::dump_uri(const char* uri) const
@@ -210,12 +209,10 @@ canvas_adapter& image::new_frame(const canvas_adapter::pointer& canvas)
 canvas_adapter& image::new_frame(const canvas_adapter::pointer& canvas,
                                  unsigned int interval)
 {
-    typedef struct frame frame_t;
-
     if (!impl_->frames_.empty() && interval == 0)
         impl_->frames_.back().canvas = canvas;
     else
-        impl_->frames_.append(frame_t{.canvas = canvas, .interval = interval});
+        impl_->frames_.append({.canvas = canvas, .interval = interval});
 
     return *impl_->frames_.back().canvas;
 }
@@ -229,7 +226,7 @@ unsigned int image::duration(void) const
 {
     unsigned int duration = 1;
 
-    for (const class frame& frame : impl_->frames_)
+    for (const format::frame& frame : impl_->frames_)
         duration += frame.interval;
 
     return duration;

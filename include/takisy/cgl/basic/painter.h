@@ -154,7 +154,32 @@ template <typename Font, typename Brush>
 void painter<Canvas>::text(rect area, const wchar_t* string,
                            const Font& font, const Brush& brush)
 {
-    text(area.left, area.top, area.right, area.bottom, string, font, brush);
+    rect r = area.normalize(),
+        lr = r.intersect(rect(canvas_.width(), canvas_.height()));
+    long x = r.left, y = r.top;
+    long c = 0;
+
+    #define NEXT_LINE() \
+        { x = r.left; y += font.height(); if (y >= lr.bottom) return; }
+
+    while ((c = *string++))
+        if (c != '\n')
+        {
+            const bitmap* bitmap = font.get_bitmap(c);
+            long c_left = x + bitmap->left, c_right = c_left + bitmap->width;
+            long c_bottom = x + bitmap->top + bitmap->height;
+            if (c_right >= r.right)
+                NEXT_LINE()
+            if (lr.left < c_right && c_left < lr.right && c_bottom > lr.top)
+                bitmap->render(canvas_, x, y,
+                               lr.left, lr.top, lr.right, lr.bottom,
+                               brush);
+            x += bitmap->advance;
+        }
+        else
+            NEXT_LINE()
+
+    #undef NEXT_LINE
 }
 
 template <typename Canvas>
@@ -163,31 +188,7 @@ void painter<Canvas>::text(int left, int top, int right, int bottom,
                            const wchar_t* string,
                            const Font& font, const Brush& brush)
 {
-    int x = left, y = top;
-    int c = 0;
-    auto next_line = [&](void) -> bool {
-        return x = left, (y += font.height()) < bottom;
-    };
-
-    while ((c = *string++))
-    {
-        switch (c)
-        {
-        case '\n':
-            if (!next_line())
-                return;
-            break;
-        default:
-            {
-                const bitmap* bitmap = font.get_bitmap(c);
-                if (static_cast<int>(x + bitmap->left + bitmap->width) >= right)
-                    if (!next_line())
-                        return;
-                x = bitmap->render(canvas_, x, y, right, bottom, brush);
-            }
-            break;
-        }
-    }
+    text(rect(left, top, right, bottom), string, font, brush);
 }
 
 #endif // painter_h_20141030

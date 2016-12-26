@@ -17,9 +17,6 @@ class graphics
     class implement;
 
 public:
-    typedef canvas_mask8 mask_type;
-
-public:
     graphics(void);
     graphics(const graphics& graphics);
    ~graphics(void);
@@ -31,8 +28,6 @@ public:
     color pixel(const point& point) const;
 
 public:
-    void mask(const mask_type* mask);
-
     void clear(const color& color);
     void clear(const brush& brush);
 
@@ -45,21 +40,9 @@ public:
     void pixel(const point& point, const brush& brush);
     void pixel(const point& point, const brush& brush, unsigned char coverage);
 
-    void draw_line(const point& p1, const point& p2, const color& color);
-    void draw_line(int p1x, int p1y, int p2x, int p2y, const color& color);
-    void draw_line(const point& p1, const point& p2, const brush& brush);
-    void draw_line(int p1x, int p1y, int p2x, int p2y, const brush& brush);
     void draw_line(const pointf& p1, const pointf& p2, const pen& pen);
     void draw_line(double p1x, double p1y, double p2x, double p2y, const pen& pen);
 
-    void draw_rectangle(const rect& rect, const color& color);
-    void draw_rectangle(const point& p1, const point& p2, const color& color);
-    void draw_rectangle(const point& point, const size& size, const color& color);
-    void draw_rectangle(int p1x, int p1y, int p2x, int p2y, const color& color);
-    void draw_rectangle(const rect& rect, const brush& brush);
-    void draw_rectangle(const point& p1, const point& p2, const brush& brush);
-    void draw_rectangle(const point& point, const size& size, const brush& brush);
-    void draw_rectangle(int p1x, int p1y, int p2x, int p2y, const brush& brush);
     void draw_rectangle(const rectf& rect, const pen& pen);
     void draw_rectangle(const pointf& p1, const pointf& p2, const pen& pen);
     void draw_rectangle(const pointf& point, const sizef& size, const pen& pen);
@@ -138,14 +121,10 @@ public:
     void draw_image(const point& xy, const canvas_adapter& canvas, const point& point, const size& size);
     void draw_image(const point& xy, const canvas_adapter& canvas, const rect& rect);
 
-    void fill_rectangle(const rect& rect, const color& color);
-    void fill_rectangle(const point& p1, const point& p2, const color& color);
-    void fill_rectangle(const point& point, const size& size, const color& color);
-    void fill_rectangle(int p1x, int p1y, int p2x, int p2y, const color& color);
-    void fill_rectangle(const rect& rect, const brush& brush);
-    void fill_rectangle(const point& p1, const point& p2, const brush& brush);
-    void fill_rectangle(const point& point, const size& size, const brush& brush);
-    void fill_rectangle(int p1x, int p1y, int p2x, int p2y, const brush& brush);
+    void fill_rectangle(const rectf& rect, const color& color);
+    void fill_rectangle(const pointf& p1, const pointf& p2, const color& color);
+    void fill_rectangle(const pointf& point, const sizef& size, const color& color);
+    void fill_rectangle(double p1x, double p1y, double p2x, double p2y, const color& color);
     void fill_rectangle(const rectf& rect, const brush& brush);
     void fill_rectangle(const pointf& p1, const pointf& p2, const brush& brush);
     void fill_rectangle(const pointf& point, const sizef& size, const brush& brush);

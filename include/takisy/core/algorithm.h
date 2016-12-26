@@ -19,9 +19,12 @@ public:
     }
 
     template <typename T>
-    static inline T clamp(const T& n, const T& low, const T& high)
+    static inline T clamp(const T& n, const T& aside, const T& bside)
     {
-        return min(max(n, low), high);
+        if (aside < bside)
+            return min(max(n, aside), bside);
+        else
+            return min(max(n, bside), aside);
     }
 
     template <typename T>

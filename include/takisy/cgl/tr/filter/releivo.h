@@ -34,16 +34,27 @@ public:
         }
         else
         {
+            typedef typename Canvas::pixel_format pixel_format;
+            constexpr int channel_mask = pixel_format::channel_mask();
+
             dst.resize(src.width(), src.height());
 
             for (unsigned int y = 0; y < dst.height(); ++y)
             for (unsigned int x = 0; x < dst.width();  ++x)
+            {
+                int g1 = src.unsafe_pixel(x, y).grayscale();
+                int g2 = src.pixel(x + offset_x, y + offset_y).grayscale();
+
                 dst.unsafe_pixel(x, y).grayscale(
-                    algorithm::clamp<int>(
-                            (src.unsafe_pixel(x, y).grayscale() -
-                             src.pixel(x + offset_x, y + offset_y).grayscale())
-                                * ratio + surface, 0, color::channel_mask));
+                    clamp((g1 - g2) * ratio + surface, 0, channel_mask));
+            }
         }
+    }
+
+private:
+    static inline int clamp(int n, int lower, int upper)
+    {
+        return n < lower ? lower : (n > upper ? upper : n);
     }
 
 private:

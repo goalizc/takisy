@@ -35,18 +35,19 @@ public:
     gradient& operator=(const gradient& lg);
 
 public:
+    GradientType gradient_type(void) const;
+    pointf       center(void) const;
+    double       radius(void) const;
+    double       angle(void) const;
+    FnCalculator custom_calculator(void) const;
+
+public:
     gradient& gradient_type(GradientType gradient_type);
     gradient& center(const pointf& center);
     gradient& center(pointf::axis_type center_x, pointf::axis_type center_y);
     gradient& radius(double radius);
     gradient& angle(double angle);
     gradient& custom_calculator(FnCalculator calculator);
-
-    GradientType gradient_type(void) const;
-    pointf       center(void) const;
-    double       radius(void) const;
-    double       angle(void) const;
-    FnCalculator custom_calculator(void) const;
 
 public:
     double gradual_value(const pointf& dott) const;

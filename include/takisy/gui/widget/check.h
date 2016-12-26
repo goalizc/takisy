@@ -4,11 +4,13 @@
 #include <string>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/widget.h>
+#include <takisy/gui/widget/label.h>
 
 class check : public widget
 {
     class implement;
 
+public:
     DECLARE_HANDLER(onChecked);
 
 public:
@@ -24,7 +26,7 @@ private:
 public:
     widget* content(void) const;
     bool    checked(void) const;
-    Size    optimal_size(void) const override;
+    Size    optimal_size(OptimalPolicy policy=opUnset) const override;
 
 public:
     void content(widget* content);
@@ -33,7 +35,7 @@ public:
 public:
     void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
-    bool onClick(sys::MouseButton button, int times, Point point) override;
+    bool onMouseDown(sys::Button button, int times, Point point) override;
 
 protected:
     class implement* impl_;
@@ -56,16 +58,8 @@ private:
     using check::content;
 
 public:
-    bool              word_wrap(void) const;
-    std::wstring      text(void) const;
-    const class font& font(void) const;
-
-public:
-    void word_wrap(bool word_wrap);
-    void text(const std::string& text);
-    void text(const std::string& text, const std::string& codec);
-    void text(const std::wstring& text);
-    void font(const class font& font);
+    label&       text(void);
+    const label& text(void) const;
 
 private:
     class implement* impl_;

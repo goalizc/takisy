@@ -11,7 +11,7 @@ bin_dir         =
 ########################################################################
 # app, static, shared
 target_type     = static
-target          = takisy.cygwin
+target          = takisy.cyg
 
 ########################################################################
 # 外部库定义
@@ -46,8 +46,8 @@ ext_lib        := $(addprefix -l,$(ext_lib))
 # 相关文件
 ########################################################################
 srcs = $(shell find $(src_dir) -type f -name "*.cpp")
-objs = $(srcs:%.cpp=%.cygwin.o)
-dpds = $(srcs:%.cpp=%.cygwin.d)
+objs = $(srcs:%.cpp=%.cygo)
+dpds = $(srcs:%.cpp=%.cygd)
 
 ########################################################################
 # 规则定义
@@ -66,16 +66,16 @@ endif # app
 
 all: prebuild $(target) postbuild
 
-$(patsubst %.cpp,%.cygwin.o,$(srcs)): %.cygwin.o: %.cpp
+$(patsubst %.cpp,%.cygo,$(srcs)): %.cygo: %.cpp
 	@echo 'CPP_O   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -c "$<" -o $@
 
 -include $(dpds)
 
-$(patsubst %.cpp,%.cygwin.d,$(srcs)): %.cygwin.d: %.cpp
+$(patsubst %.cpp,%.cygd,$(srcs)): %.cygd: %.cpp
 	@echo 'CPP_D   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -MM "$<" | \
-	sed 's/^$(notdir $(basename $@)).cygwin.o/$(subst /,\/,$(basename $@)).cygwin.o $(subst /,\/,$(basename $@)).cygwin.d/' > $@
+	sed 's/^$(notdir $(basename $@)).o/$(subst /,\/,$(basename $@)).cygo $(subst /,\/,$(basename $@)).cygd/' > $@
 
 $(target): $(objs)
 ifeq ($(target_type),app)

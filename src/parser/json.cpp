@@ -1046,6 +1046,13 @@ json json::operator[](int index) const
     return impl_->obj()->element(index);
 }
 
+bool json::exists(const char* key) const
+{
+    implement::dict* dict = dynamic_cast<implement::dict*>(impl_->obj());
+
+    return dict->pairs.find(key) != dict->pairs.end();
+}
+
 std::vector<std::string> json::keys(void) const
 {
     if (type() != otDict)
@@ -1108,6 +1115,36 @@ const char* json::as_string(void) const
         throw("json object is not string type.");
 
     return dynamic_cast<implement::string*>(impl_->obj())->value.c_str();
+}
+
+std::string json::repr(void) const
+{
+    object* object = impl_->obj();
+    if (!object)
+        return "(null)";
+
+    switch (object->type())
+    {
+    case otUndefined:
+        return "undefined";
+    case otNull:
+        return "null";
+    case otBoolean:
+        if (dynamic_cast<implement::boolean*>(object)->value)
+            return "true";
+        else
+            return "false";
+    case otNumber:
+        return stralgo::format("%g",
+               dynamic_cast<implement::number*> (object)->value);
+    case otString:
+        return dynamic_cast<implement::string*> (object)->value;
+    case otArray:
+    case otDict:
+        return dump();
+    default:
+        throw("invalid object type.");
+    }
 }
 
 const char* json::error_info(void) const

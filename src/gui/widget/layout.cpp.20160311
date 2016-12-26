@@ -20,10 +20,10 @@ public:
     {}
 
 public:
-    Alignment get_alignment(widget* widget) const
+    unsigned int get_alignment(widget* widget) const
     {
-        if (widget->exists_attribute("alignment"))
-            return widget->attribute<Alignment>("alignment");
+        if (widget->exists_property("alignment"))
+            return widget->property<unsigned int>("alignment");
 
         return alignment_;
     }
@@ -62,11 +62,11 @@ public:
     virtual void readapt(void) = 0;
 
 protected:
-    layout*       this_;
-    bool          readapting_;
-    Alignment     alignment_;
-    struct margin margin_;
-    unsigned int  spacing_;
+    layout*      this_;
+    bool         readapting_;
+    unsigned int alignment_;
+    Margin       margin_;
+    unsigned int spacing_;
 };
 
 layout::layout(void)
@@ -78,12 +78,12 @@ layout::~layout(void)
     delete impl_;
 }
 
-Alignment layout::alignment(void) const
+unsigned int layout::alignment(void) const
 {
     return impl_->alignment_;
 }
 
-struct margin layout::margin(void) const
+Margin layout::margin(void) const
 {
     return impl_->margin_;
 }
@@ -93,13 +93,13 @@ unsigned int layout::spacing(void) const
     return impl_->spacing_;
 }
 
-void layout::alignment(Alignment alignment)
+void layout::alignment(unsigned int alignment)
 {
     impl_->alignment_ = alignment;
     impl_->readapt_safe();
 }
 
-void layout::margin(const struct margin& _margin)
+void layout::margin(const Margin& _margin)
 {
     margin(_margin.left, _margin.top, _margin.right, _margin.bottom);
 }
@@ -122,28 +122,28 @@ void layout::margin(unsigned int left, unsigned int top,
 
 void layout::margin_left(unsigned int left)
 {
-    struct margin _margin = margin();
+    Margin _margin = margin();
     _margin.left = left;
     margin(_margin);
 }
 
 void layout::margin_top(unsigned int top)
 {
-    struct margin _margin = margin();
+    Margin _margin = margin();
     _margin.top = top;
     margin(_margin);
 }
 
 void layout::margin_right(unsigned int right)
 {
-    struct margin _margin = margin();
+    Margin _margin = margin();
     _margin.right = right;
     margin(_margin);
 }
 
 void layout::margin_bottom(unsigned int bottom)
 {
-    struct margin _margin = margin();
+    Margin _margin = margin();
     _margin.bottom = bottom;
     margin(_margin);
 }
@@ -166,21 +166,19 @@ void layout::onRemove(widget* widget)
         impl_->readapt_safe();
 }
 
-void layout::onSize(Size)
+void layout::onSize(void)
 {
     impl_->readapt_safe();
 }
 
-void layout::onChildMove(widget* child)
+bool layout::onChildMoving(widget* child, Point& point)
 {
-    if (child->visible())
-        impl_->readapt_safe();
+    return impl_->readapting_;
 }
 
-void layout::onChildSize(widget* child)
+bool layout::onChildSizing(widget* child, Size& size)
 {
-    if (child->visible())
-        impl_->readapt_safe();
+    return impl_->readapting_;
 }
 
 void layout::onChildShown(widget* child)
@@ -228,20 +226,20 @@ void spacer_layout::add_spacer(unsigned int size)
     add_spacer(size, size);
 }
 
-void spacer_layout::add_spacer(unsigned int minimal, unsigned int maximal)
+void spacer_layout::add_spacer(unsigned int lower, unsigned int upper)
 {
     implement::spacer* spacer = new implement::spacer;
 
     if (!dynamic_cast<horizontal_layout*>(this))
     {
-        spacer->minimal_width(minimal);
-        spacer->maximal_width(maximal);
+        spacer->lower_width(lower);
+        spacer->upper_width(upper);
     }
     else
     if (!dynamic_cast<vertical_layout*>(this))
     {
-        spacer->minimal_height(minimal);
-        spacer->maximal_height(maximal);
+        spacer->lower_height(lower);
+        spacer->upper_height(upper);
     }
 
     spacer->show();
@@ -274,7 +272,7 @@ public:
         std::sort(sorted_children.begin(), sorted_children.end(),
                   [](widget* a, widget* b) -> bool
                   {
-                      return a->maximal_width() < b->maximal_width();
+                      return a->upper_width() < b->upper_width();
                   });
 
         for (widget* child : sorted_children)
@@ -353,7 +351,7 @@ public:
         std::sort(sorted_children.begin(), sorted_children.end(),
                   [](widget* a, widget* b) -> bool
                   {
-                      return a->maximal_height() < b->maximal_height();
+                      return a->upper_height() < b->upper_height();
                   });
 
         for (widget* child : sorted_children)
@@ -456,23 +454,23 @@ private:
             if (widget && widget->visible())
                 widgets.push_back(widget);
 
-        bool  exists_maxminimal = false;
-        unsigned int maxminimal = limit;
+        bool  exists_maxlower = false;
+        unsigned int maxlower = limit;
         for (class widget* widget : widgets)
-            if ((int)widget->minimal_width() > limit
-                  && widget->minimal_width() > maxminimal)
-                exists_maxminimal = true, maxminimal = widget->minimal_width();
-        if (exists_maxminimal)
-            return maxminimal;
+            if ((int)widget->lower_width() > limit
+                  && widget->lower_width() > maxlower)
+                exists_maxlower = true, maxlower = widget->lower_width();
+        if (exists_maxlower)
+            return maxlower;
 
-        bool  exists_maxmaximal = false;
-        unsigned int maxmaximal = 16;
+        bool  exists_maxupper = false;
+        unsigned int maxupper = 16;
         for (class widget* widget : widgets)
-            if ((int)widget->maximal_width() < limit
-                  && widget->maximal_width() > maxmaximal)
-                exists_maxmaximal = true, maxmaximal = widget->maximal_width();
-        if (exists_maxmaximal)
-            return maxmaximal;
+            if ((int)widget->upper_width() < limit
+                  && widget->upper_width() > maxupper)
+                exists_maxupper = true, maxupper = widget->upper_width();
+        if (exists_maxupper)
+            return maxupper;
 
         return limit;
     }
@@ -486,23 +484,23 @@ private:
             if (widget && widget->visible())
                 widgets.push_back(widget);
 
-        bool  exists_maxminimal = false;
-        unsigned int maxminimal = limit;
+        bool  exists_maxlower = false;
+        unsigned int maxlower = limit;
         for (class widget* widget : widgets)
-            if ((int)widget->minimal_height() > limit
-                  && widget->minimal_height() > maxminimal)
-                exists_maxminimal = true, maxminimal = widget->minimal_height();
-        if (exists_maxminimal)
-            return maxminimal;
+            if ((int)widget->lower_height() > limit
+                  && widget->lower_height() > maxlower)
+                exists_maxlower = true, maxlower = widget->lower_height();
+        if (exists_maxlower)
+            return maxlower;
 
-        bool  exists_maxmaximal = false;
-        unsigned int maxmaximal = 16;
+        bool  exists_maxupper = false;
+        unsigned int maxupper = 16;
         for (class widget* widget : widgets)
-            if ((int)widget->maximal_height() < limit
-                  && widget->maximal_height() > maxmaximal)
-                exists_maxmaximal = true, maxmaximal = widget->maximal_height();
-        if (exists_maxmaximal)
-            return maxmaximal;
+            if ((int)widget->upper_height() < limit
+                  && widget->upper_height() > maxupper)
+                exists_maxupper = true, maxupper = widget->upper_height();
+        if (exists_maxupper)
+            return maxupper;
 
         return limit;
     }
@@ -643,29 +641,20 @@ widget* grid_layout::item(unsigned int col, unsigned int row, widget* item)
     return impl_->item(col, row, item);
 }
 
-void grid_layout::onAdd(widget* widget)
+bool grid_layout::onAdding(widget* widget)
 {
     for (class widget*& item : impl_->items_)
-    {
         if (!item)
-        {
-            item = widget;
-            layout::onAdd(widget);
-            return;
-        }
-    }
+            return item = widget, true;
 
-    remove(widget);
+    return false;
 }
 
-void grid_layout::onRemove(widget* widget)
+bool grid_layout::onRemoving(widget* widget)
 {
     for (class widget*& item : impl_->items_)
-    {
         if (item == widget)
-        {
             item = nullptr;
-            layout::onRemove(widget);
-        }
-    }
+
+    return true;
 }

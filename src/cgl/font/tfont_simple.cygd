@@ -1,0 +1,4 @@
+/cygdrive/z/takisy/src/cgl/font/tfont_simple.cygo /cygdrive/z/takisy/src/cgl/font/tfont_simple.cygd: /cygdrive/z/takisy/src/cgl/font/tfont_simple.cpp \
+ /cygdrive/z/takisy/include/takisy/cgl/font/tfont_simple.h \
+ /cygdrive/z/takisy/include/takisy/cgl/font/font.h \
+ /cygdrive/z/takisy/src/cgl/font/tfont_chinese_bitmap.h

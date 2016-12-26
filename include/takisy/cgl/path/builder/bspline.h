@@ -2,6 +2,7 @@
 #define bspline_h_20140516
 
 #include <takisy/cgl/path/path.h>
+#include <takisy/cgl/path/vertices.h>
 
 class bspline
 {
@@ -31,8 +32,8 @@ public:
     double intermediate_point_count(void) const;
 
 public:
-    const path& build(const path& path);
-    const path& build(const path::vertex_type* vertices, unsigned int size);
+    vertices build(const path& path);
+    vertices build(const path::vertex_type* vertices, unsigned int size);
 
 private:
     class implement* impl_;

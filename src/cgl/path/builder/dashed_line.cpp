@@ -1,7 +1,7 @@
 #include <takisy/core/math.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/path/vertices_wrapper.h>
-#include <takisy/cgl/path/vertex_set.h>
+#include <takisy/cgl/path/vertices.h>
 #include <takisy/cgl/path/builder/dashed_line.h>
 
 class dashed_line::implement
@@ -30,16 +30,16 @@ public:
             return;
 
         if (dash_array_.size() < 2)
-            paths_.append(new vertex_set(path));
+            paths_.append(new vertices(path));
         else
         {
             stretchy_buffer<vd> vds(path.size() + (closed_ ? 1 : 0));
 
             for (unsigned int i = 0; i < vds.size(); ++i)
             {
-                vds[i].vertex = path.fetch_vertex(i % path.size());
+                vds[i].vertex = path.at(i % path.size());
                 vds[i].distance_to_next_vertex = vds[i].vertex.distance(
-                        path.fetch_vertex((i + 1) % path.size()));
+                        path.at((i + 1) % path.size()));
             }
 
             unsigned int di     = 0;
@@ -99,10 +99,10 @@ private:
     }
 
     template <bool Malloc>
-    vertex_set* calculate_dash(double dash, const stretchy_buffer<vd>& vds,
-                               unsigned int& vi, double& offset)
+    vertices* calculate_dash(double dash, const stretchy_buffer<vd>& vds,
+                             unsigned int& vi, double& offset)
     {
-        vertex_set* segment = Malloc ? new vertex_set : nullptr;
+        vertices* segment = Malloc ? new vertices : nullptr;
 
         if (Malloc && offset > 0)
             segment->append(calc_vtx(offset, vds[vi - 1], vds[vi]));
@@ -259,7 +259,7 @@ double dashed_line::offset(void) const
     return impl_->offset_;
 }
 
-const paths& dashed_line::build(const path& path)
+paths dashed_line::build(const path& path)
 {
     impl_->paths_.clear();
 
@@ -268,23 +268,23 @@ const paths& dashed_line::build(const path& path)
     return impl_->paths_;
 }
 
-const paths& dashed_line::build(const path::vertex_type* vertices,
+paths dashed_line::build(const path::vertex_type* vertices,
                                 unsigned int size)
 {
     return build(vertices_wrapper(vertices, size));
 }
 
-const paths& dashed_line::build(const paths& paths)
+paths dashed_line::build(const paths& paths)
 {
     impl_->paths_.clear();
 
     for (unsigned int i = 0; i < paths.size(); ++i)
-        impl_->build(*paths.fetch_path(i));
+        impl_->build(*paths.at(i));
 
     return impl_->paths_;
 }
 
-const paths& dashed_line::build(const path* paths, unsigned int size)
+paths dashed_line::build(const path* paths, unsigned int size)
 {
     impl_->paths_.clear();
 

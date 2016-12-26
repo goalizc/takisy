@@ -61,9 +61,10 @@ public:
             || info_header.compression != 0)
             return nullptr;
 
-        typedef pixel_format<unsigned char, b, g, r, R> pf_bgrR;
+        typedef pixel_format<unsigned char, b, g, r, R> pixel_format;
+        static constexpr unsigned int pfsize = sizeof(pixel_format);
         canvas_adapter::pointer canvas;
-        stretchy_buffer<pf_bgrR> palette;
+        stretchy_buffer<pixel_format> palette;
         bool down2up = true;
 
         switch (info_header.bit_depth)
@@ -71,7 +72,7 @@ public:
         case  1: case  2: case  4:
         case  8: palette.resize(info_header.color_used > 0 ?
                     int(info_header.color_used) : 1 << info_header.bit_depth);
-                 stream.read(palette.data(), sizeof(pf_bgrR) * palette.size());
+                 stream.read(palette.data(), pfsize * palette.size());
         case 16:
         case 24: canvas = canvas_adapter::make<canvas_bgr8>(); break;
         case 32: canvas = canvas_adapter::make<canvas_bgra8>(); break;
@@ -170,7 +171,8 @@ public:
             return false;
 
         stretchy_buffer<unsigned char> row_buffer(row_bytes);
-        pf_bgra8* row_pixels = reinterpret_cast<pf_bgra8*>(row_buffer.data());
+        pixfmt_bgra8* row_pixels =
+                      reinterpret_cast<pixfmt_bgra8*>(row_buffer.data());
 
         for (int y = canvas->height() - 1; y >= 0; --y)
         {
@@ -191,7 +193,7 @@ bool bmp::load(stream& stream, frames& frames) const
 
     if (canvas)
     {
-        frames.append(frame{.canvas = canvas, .interval = 0});
+        frames.append({.canvas = canvas, .interval = 0});
 
         return true;
     }

@@ -72,27 +72,27 @@ double circle::radius(void) const
     return impl_->ellipse_.width();
 }
 
-const path& circle::build(void)
+vertices circle::build(void)
 {
     return impl_->ellipse_.build();
 }
 
-const path& circle::build_sector(double angle_from, double angle_to)
+vertices circle::build_sector(double angle_from, double angle_to)
 {
     return impl_->ellipse_.build_sector(angle_from, angle_to);
 }
 
-const path& circle::build_sector_v2(double angle_from, double segment_length)
+vertices circle::build_sector_v2(double angle_from, double segment_length)
 {
     return impl_->ellipse_.build_sector_v2(angle_from, segment_length);
 }
 
-const path& circle::build_segment(double angle_from, double angle_to)
+vertices circle::build_segment(double angle_from, double angle_to)
 {
     return impl_->ellipse_.build_segment(angle_from, angle_to);
 }
 
-const path& circle::build_segment_v2(double angle_from, double segment_length)
+vertices circle::build_segment_v2(double angle_from, double segment_length)
 {
     return impl_->ellipse_.build_segment_v2(angle_from, segment_length);
 }

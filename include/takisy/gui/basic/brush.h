@@ -148,10 +148,8 @@ public:
         register int w = pixel_matrix_.width();
         register int h = pixel_matrix_.height();
 
-        return pixel_matrix_.pixel(
-                    (w + (x + offset_.x) % w) % w,
-                    (h + (y + offset_.y) % h) % h
-        );
+        return pixel_matrix_.pixel((w + (x + offset_.x) % w) % w,
+                                   (h + (y + offset_.y) % h) % h);
     }
 
 private:

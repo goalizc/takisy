@@ -400,11 +400,11 @@ inline void graphics<Canvas>::play(HDC dc,
 
 #elif defined(unix)
 
-    // TODO：add unix play method here.
+    // add unix play method here.
 
 #elif defined(linux)
 
-    // TODO：add linux play method here.
+    // add linux play method here.
 
 #endif
 

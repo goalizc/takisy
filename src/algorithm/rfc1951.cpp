@@ -98,7 +98,7 @@ inline unsigned int hash(const unsigned char* data)
     return hash & (kHashTableSize - 1);
 }
 
-inline void push_fixed_huffcode(bit_buffer_o& buffer, unsigned int value)
+inline void push_fixed_huffcode(bit_buffer::output& buffer, unsigned int value)
 {
     return value <= 143 ? buffer.write(bit_reverse(value +  48, 8), 8)
          : value <= 255 ? buffer.write(bit_reverse(value + 256, 9), 9)
@@ -106,7 +106,7 @@ inline void push_fixed_huffcode(bit_buffer_o& buffer, unsigned int value)
                         : buffer.write(bit_reverse(value -  88, 8), 8);
 }
 
-inline void push_fixed_length(bit_buffer_o& buffer, unsigned int length)
+inline void push_fixed_length(bit_buffer::output& buffer, unsigned int length)
 {
     unsigned int i = 0;
 
@@ -118,7 +118,8 @@ inline void push_fixed_length(bit_buffer_o& buffer, unsigned int length)
         buffer.write(length - kCPlens[i], kCPlext[i]);
 }
 
-inline void push_fixed_distance(bit_buffer_o& buffer, unsigned int distance)
+inline void push_fixed_distance(bit_buffer::output& buffer,
+                                unsigned int distance)
 {
     unsigned int i = 0;
 
@@ -131,7 +132,7 @@ inline void push_fixed_distance(bit_buffer_o& buffer, unsigned int distance)
 }
 
 void deflate_store(const unsigned char* buffer, unsigned int length,
-                   bit_buffer_o& output)
+                   bit_buffer::output& output)
 {
     while (length)
     {
@@ -153,7 +154,7 @@ void deflate_store(const unsigned char* buffer, unsigned int length,
 }
 
 void deflate_fixed(const unsigned char* buffer, int length,
-                    bit_buffer_o& output)
+                   bit_buffer::output& output)
 {
     output.write(1, 1);
     output.write(1, 2);
@@ -189,13 +190,13 @@ void deflate_fixed(const unsigned char* buffer, int length,
 }
 
 inline void deflate_dynamic(const unsigned char* buffer, unsigned int length,
-                            bit_buffer_o& output)
+                            bit_buffer::output& output)
 {
     return deflate_fixed(buffer, length, output);
 }
 
 void deflate(const unsigned char* buffer, unsigned int length,
-             bit_buffer_o& output, unsigned int level)
+             bit_buffer::output& output, unsigned int level)
 {
     switch (level)
     {
@@ -253,7 +254,7 @@ void free_huffman_tree(huffman_tree* huft)
     }
 }
 
-int inflate_code(bit_buffer_i& input, huffman_tree* huft)
+int inflate_code(bit_buffer::input& input, huffman_tree* huft)
 {
     unsigned int last_clen = 0;
     unsigned int code      = 0;
@@ -273,7 +274,7 @@ int inflate_code(bit_buffer_i& input, huffman_tree* huft)
     return -1;
 }
 
-void inflate_codes(bit_buffer_i& input, buffer_t& output,
+void inflate_codes(bit_buffer::input& input, buffer_type& output,
                    huffman_tree* lhuft, huffman_tree* dhuft)
 {
     while (true)
@@ -314,7 +315,7 @@ void inflate_codes(bit_buffer_i& input, buffer_t& output,
     }
 }
 
-void inflate_store(bit_buffer_i& input, buffer_t& output)
+void inflate_store(bit_buffer::input& input, buffer_type& output)
 {
     input.align();
 
@@ -327,7 +328,7 @@ void inflate_store(bit_buffer_i& input, buffer_t& output)
         output.append(input.read(8));
 }
 
-void inflate_fixed(bit_buffer_i& input, buffer_t& output)
+void inflate_fixed(bit_buffer::input& input, buffer_type& output)
 {
     unsigned int lengths[288];
 
@@ -346,7 +347,7 @@ void inflate_fixed(bit_buffer_i& input, buffer_t& output)
     free_huffman_tree(lhuft);
 }
 
-void inflate_dynamic(bit_buffer_i& input, buffer_t& output)
+void inflate_dynamic(bit_buffer::input& input, buffer_type& output)
 {
     unsigned int HLIT  = input.read(5) + 257;
     unsigned int HDIST = input.read(5) +   1;
@@ -405,7 +406,7 @@ void inflate_dynamic(bit_buffer_i& input, buffer_t& output)
     free_huffman_tree(chuft);
 }
 
-bool inflate_block(bit_buffer_i& input, buffer_t& output)
+bool inflate_block(bit_buffer::input& input, buffer_type& output)
 {
     unsigned int BFINAL = input.read(1);
     unsigned int BTYPE  = input.read(2);
@@ -421,9 +422,9 @@ bool inflate_block(bit_buffer_i& input, buffer_t& output)
     return BFINAL;
 }
 
-buffer_t inflate(bit_buffer_i& input)
+buffer_type inflate(bit_buffer::input& input)
 {
-    buffer_t output(0);
+    buffer_type output(0);
 
     try
     {
@@ -433,7 +434,7 @@ buffer_t inflate(bit_buffer_i& input)
     }
     catch (ExceptionCode ec)
     {
-        return buffer_t();
+        return buffer_type();
     }
 
     return output;

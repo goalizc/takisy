@@ -1,0 +1,26 @@
+/cygdrive/z/takisy/src/gui/widget/layout.cygo /cygdrive/z/takisy/src/gui/widget/layout.cygd: /cygdrive/z/takisy/src/gui/widget/layout.cpp \
+ /cygdrive/z/takisy/include/takisy/gui/widget/layout.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/define.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/gui/widget/widget.h \
+ /cygdrive/z/takisy/include/takisy/core/sys.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/color.h \
+ /cygdrive/z/takisy/include/takisy/gui/cross_platform_window.h \
+ /cygdrive/z/takisy/include/takisy/core/macro.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/color_scheme.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/graphics.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/canvas.h \
+ /cygdrive/z/takisy/include/takisy/core/memory.h \
+ /cygdrive/z/takisy/include/takisy/core/algorithm.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/gamma.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/pixel_format.h \
+ /cygdrive/z/takisy/include/takisy/core/endian_type.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/font/font.h \
+ /cygdrive/z/takisy/include/takisy/cgl/image/canvas_adapter.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/brush.h \
+ /cygdrive/z/takisy/include/takisy/gui/basic/pen.h

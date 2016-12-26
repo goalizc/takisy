@@ -6,7 +6,16 @@
 #include <takisy/core/algorithm.h>
 #include <takisy/core/stretchy_buffer.h>
 
-class box_blur
+class blur
+{
+public:
+    static inline int clamp(int n, int lower, int upper)
+    {
+        return n < lower ? lower : (n > upper ? upper : n);
+    }
+};
+
+class box_blur : public blur
 {
 public:
     box_blur(int radius)
@@ -41,9 +50,8 @@ private:
     {
         typedef typename Canvas::pixel_format pixel_format;
         constexpr unsigned int channels = pixel_format::channels();
-        constexpr auto min   = algorithm::min<int>;
-        constexpr auto max   = algorithm::max<int>;
-        constexpr auto clamp = algorithm::clamp<int>;
+        constexpr auto min = algorithm::min<int>;
+        constexpr auto max = algorithm::max<int>;
 
         const pixel_format* c1pxls = c1.pixels().data();
               pixel_format* c2pxls = c2.pixels().data();
@@ -85,7 +93,7 @@ private:
     unsigned int iterations;
 };
 
-class stack_blur
+class stack_blur : public blur
 {
 public:
     stack_blur(int radius)
@@ -112,9 +120,8 @@ private:
     {
         typedef typename Canvas::pixel_format pixel_format;
         constexpr unsigned int channels = pixel_format::channels();
-        constexpr auto min   = algorithm::min<int>;
-        constexpr auto max   = algorithm::max<int>;
-        constexpr auto clamp = algorithm::clamp<int>;
+        constexpr auto min = algorithm::min<int>;
+        constexpr auto max = algorithm::max<int>;
 
         const pixel_format* c1pxls = c1.pixels().data();
               pixel_format* c2pxls = c2.pixels().data();

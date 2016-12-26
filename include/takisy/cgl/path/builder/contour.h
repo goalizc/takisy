@@ -42,10 +42,10 @@ public:
     bool      closed(void) const;
 
 public:
-    const paths& build(const path& path);
-    const paths& build(const path::vertex_type* vertices, unsigned int size);
-    const paths& build(const paths& paths);
-    const paths& build(const path* paths, unsigned int size);
+    paths build(const path& path);
+    paths build(const path::vertex_type* vertices, unsigned int size);
+    paths build(const paths& paths);
+    paths build(const path* paths, unsigned int size);
 
 private:
     class implement* impl_;

@@ -60,10 +60,10 @@ public:
         int xi = subpixel::i(shifted_x), xf = subpixel::f(shifted_x);
         int yi = subpixel::i(shifted_y), yf = subpixel::f(shifted_y);
 
-        register const data_type* lt = canvas_.pixel(xi + 0, yi + 0).data();
-        register const data_type* rt = canvas_.pixel(xi + 1, yi + 0).data();
-        register const data_type* lb = canvas_.pixel(xi + 0, yi + 1).data();
-        register const data_type* rb = canvas_.pixel(xi + 1, yi + 1).data();
+        register const data_type& lt = canvas_.pixel(xi + 0, yi + 0).data();
+        register const data_type& rt = canvas_.pixel(xi + 1, yi + 0).data();
+        register const data_type& lb = canvas_.pixel(xi + 0, yi + 1).data();
+        register const data_type& rb = canvas_.pixel(xi + 1, yi + 1).data();
 
         for (unsigned int i = 0; i < pixel_format::channels(); ++i)
         {

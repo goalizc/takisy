@@ -18,19 +18,18 @@ public:
     interpolator& operator=(const interpolator& interpolator);
 
 public:
-    interpolator& clear(void);
+    double       lower_fy(void) const;
+    double       upper_fy(void) const;
+    unsigned int knots_size(void) const;
+    knot_type    knot(unsigned int index) const;
 
-    interpolator& clamp_fy(double min, double max);
-    interpolator& min_fy(double min_fy);
-    interpolator& max_fy(double max_fy);
+public:
+    interpolator& clear(void);
+    interpolator& clamp_fy(double lower, double upper);
+    interpolator& lower_fy(double lower_fy);
+    interpolator& upper_fy(double upper_fy);
     interpolator& add_knot(const knot_type& knot);
     interpolator& add_knot(double x, double y);
-
-    double min_fy(void) const;
-    double max_fy(void) const;
-
-    unsigned int knots_size(void) const;
-    knot_type    fetch_knot(unsigned int index) const;
 
 public:
     double fy(double x) const;

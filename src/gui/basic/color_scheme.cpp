@@ -1,43 +1,15 @@
 #include <takisy/gui/basic/color_scheme.h>
-
-class color_scheme::implement
-{
-    friend class color_scheme;
-
-public:
-    implement(const color& main, const color& cool, const color& warm)
-        : main_(main), cool_(cool), warm_(warm)
-    {}
-
-public:
-    static color foo(color color, signed char degree)
-    {
-        if (degree < 0)
-            return color.blend(color::black(-degree));
-        else
-            return color.blend(color::white(+degree));
-    }
-
-private:
-    color main_, cool_, warm_;
-    static color_scheme default_color_scheme_;
-};
-
-color_scheme color_scheme::implement::default_color_scheme_
-        (color::rgb(0x1abc9c), color::rgb(0x5a6673), color::rgb(0xe96151));
+#include "impl/color_scheme.hpp"
 
 color_scheme::color_scheme(void)
-    : color_scheme(default_color_scheme())
+    : impl_(new implement)
 {}
 
-color_scheme::color_scheme(const color& main,
-                           const color& cool, const color& warm)
-    : impl_(new implement(main, cool, warm))
-{}
-
-color_scheme::color_scheme(const color_scheme& colorscheme)
-    : color_scheme(colorscheme.main(), colorscheme.cool(), colorscheme.warm())
-{}
+color_scheme::color_scheme(const color_scheme& _color_scheme)
+    : color_scheme()
+{
+    operator=(_color_scheme);
+}
 
 color_scheme::~color_scheme(void)
 {
@@ -47,69 +19,107 @@ color_scheme::~color_scheme(void)
 color_scheme& color_scheme::operator=(const color_scheme& color_scheme)
 {
     if (this != &color_scheme)
-    {
-        impl_->main_ = color_scheme.impl_->main_;
-        impl_->cool_ = color_scheme.impl_->cool_;
-        impl_->warm_ = color_scheme.impl_->warm_;
-    }
+        impl_->scheme_ = color_scheme.impl_->scheme_;
 
     return *this;
 }
 
-color color_scheme::main(void) const
+color color_scheme::theme(void) const
 {
-    return impl_->main_;
+    return other("theme");
 }
 
-color color_scheme::main(signed char degree) const
+color color_scheme::background(void) const
 {
-    return implement::foo(impl_->main_, degree);
+    return other("background");
 }
 
-color color_scheme::cool(void) const
+color color_scheme::border(void) const
 {
-    return impl_->cool_;
+    return other("border");
 }
 
-color color_scheme::cool(signed char degree) const
+color color_scheme::text(void) const
 {
-    return implement::foo(impl_->cool_, degree);
+    return other("text");
 }
 
-color color_scheme::warm(void) const
+color color_scheme::selection(void) const
 {
-    return impl_->warm_;
+    return other("selection");
 }
 
-color color_scheme::warm(signed char degree) const
+color color_scheme::inactive_text(void) const
 {
-    return implement::foo(impl_->warm_, degree);
+    return other("inactive_text");
 }
 
-void color_scheme::main(const color& main)
+color color_scheme::inactive_selection(void) const
 {
-    impl_->main_ = main;
+    return other("inactive_selection");
 }
 
-void color_scheme::cool(const color& cool)
+color color_scheme::hyperlink(void) const
 {
-    impl_->cool_ = cool;
+    return other("hyperlink");
 }
 
-void color_scheme::warm(const color& warm)
+color color_scheme::other(const char* name) const
 {
-    impl_->warm_ = warm;
+    return impl_->other(name, 128);
+}
+
+void color_scheme::theme(const color& color)
+{
+    other("theme", color);
+}
+
+void color_scheme::background(const color& color)
+{
+    other("background", color);
+}
+
+void color_scheme::border(const color& color)
+{
+    other("border", color);
+}
+
+void color_scheme::text(const color& color)
+{
+    other("text", color);
+}
+
+void color_scheme::selection(const color& color)
+{
+    other("selection", color);
+}
+
+void color_scheme::inactive_text(const color& color)
+{
+    other("inactive_text", color);
+}
+
+void color_scheme::inactive_selection(const color& color)
+{
+    other("inactive_selection", color);
+}
+
+void color_scheme::hyperlink(const color& color)
+{
+    other("hyperlink", color);
+}
+
+void color_scheme::other(const char* name, const color& color)
+{
+    impl_->scheme_[name] = color;
+
+    if (impl_->host_)
+        impl_->host_->repaint();
 }
 
 color_scheme& color_scheme::default_color_scheme(void)
 {
-    return implement::default_color_scheme_;
-}
+    static color_scheme default_color_scheme;
 
-const color_scheme& color_scheme::seven_eleven(void)
-{
-    static const color_scheme instance
-            (color::rgb(0x3f7700), color::rgb(0x2e1bec), color::rgb(0x2182f4));
-
-    return instance;
+    return default_color_scheme;
 }

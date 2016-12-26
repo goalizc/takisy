@@ -9,15 +9,7 @@ pen::pen(double width)
     : pen(width, color::black())
 {}
 
-pen::pen(const class color& color)
-    : pen(1, color)
-{}
-
-pen::pen(const brush_sptr& brush)
-    : pen(1, brush)
-{}
-
-pen::pen(double width, const class color& color)
+pen::pen(double width, const ::color& color)
     : pen(width, make_color_brush_sptr(color))
 {}
 
@@ -27,6 +19,24 @@ pen::pen(double width, const brush_sptr& brush)
     impl_->contour_.width(width);
     impl_->brush_ = brush;
 }
+
+pen::pen(double width, const ::color& color, initlist_type initlist)
+    : pen(width, make_color_brush_sptr(color), initlist)
+{}
+
+pen::pen(double width, const brush_sptr& brush, initlist_type initlist)
+    : pen(width, brush)
+{
+    dash_array(initlist);
+}
+
+pen::pen(const ::color& color)
+    : pen(1, color)
+{}
+
+pen::pen(const brush_sptr& brush)
+    : pen(1, brush)
+{}
 
 pen::pen(const pen& pen)
     : impl_(new implement)
@@ -103,7 +113,7 @@ void pen::width(double width)
     impl_->contour_.width(width);
 }
 
-void pen::color(const class color& color)
+void pen::color(const ::color& color)
 {
     impl_->brush_ = make_color_brush_sptr(color);
 }
@@ -135,7 +145,7 @@ void pen::joint(Joint joint)
     }
 }
 
-void pen::dash_array(std::initializer_list<double> il)
+void pen::dash_array(initlist_type il)
 {
     dash_array(il.begin(), il.size());
 }

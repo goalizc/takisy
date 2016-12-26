@@ -1,7 +1,6 @@
 #ifndef freetype_h_20140826
 #define freetype_h_20140826
 
-#include <takisy/cgl/path/path.h>
 #include <takisy/cgl/font/font.h>
 
 class freetype : public font
@@ -27,6 +26,13 @@ private:
     freetype& operator=(const freetype& freetype);
 
 public:
+    double ascender(void) const;
+    double descender(void) const;
+    double height(void) const override;
+    double emheight(void) const override;
+    RenderMode render_mode(void) const;
+
+public:
     void render_mode(RenderMode render_mode);
     void ignore_bitmap(bool ignore);
     bool fontsize(unsigned int size);
@@ -36,13 +42,6 @@ public:
     void embolden(double xstrength, double ystrength);
     void italic(bool italic);
     void italic(double lean);
-
-public:
-    double ascender(void) const;
-    double descender(void) const;
-    double height(void) const override;
-    double emheight(void) const override;
-    RenderMode render_mode(void) const;
 
 public:
     const bitmap* get_bitmap(unsigned int char_code) const override;

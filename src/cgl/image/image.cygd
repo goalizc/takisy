@@ -1,0 +1,18 @@
+/cygdrive/z/takisy/src/cgl/image/image.cygo /cygdrive/z/takisy/src/cgl/image/image.cygd: /cygdrive/z/takisy/src/cgl/image/image.cpp \
+ /cygdrive/z/takisy/include/takisy/core/os.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
+ /cygdrive/z/takisy/include/takisy/cgl/image/image.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/color.h \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/image/format.h \
+ /cygdrive/z/takisy/include/takisy/core/stream.h \
+ /cygdrive/z/takisy/include/takisy/core/file.h \
+ /cygdrive/z/takisy/include/takisy/cgl/image/canvas_adapter.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/canvas.h \
+ /cygdrive/z/takisy/include/takisy/core/memory.h \
+ /cygdrive/z/takisy/include/takisy/core/algorithm.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/gamma.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/pixel_format.h \
+ /cygdrive/z/takisy/include/takisy/core/endian_type.h

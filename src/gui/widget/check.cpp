@@ -1,15 +1,13 @@
-#include <string>
 #include <takisy/core/sys.h>
 #include <takisy/algorithm/stralgo.h>
-#include <takisy/gui/widget/label.h>
 #include <takisy/gui/widget/check.h>
 
 class check::implement
 {
     friend class check;
 
-    static constexpr int box_size = 12;
-    static constexpr int spacing  =  4;
+    static constexpr int boxsize = 12;
+    static constexpr int spacing =  5;
 
 public:
     implement(widget* content, bool checked)
@@ -50,13 +48,13 @@ bool check::checked(void) const
     return impl_->checked_;
 }
 
-Size check::optimal_size(void) const
+Size check::optimal_size(OptimalPolicy policy) const
 {
-    Size optimal_size = impl_->content_->optimal_size();
+    Size optsize = impl_->content_->optimal_size(policy);
 
-    optimal_size.width += implement::box_size + implement::spacing;
+    optsize.width += implement::boxsize + implement::spacing;
 
-    return optimal_size;
+    return optsize;
 }
 
 void check::content(widget* content)
@@ -72,7 +70,7 @@ void check::checked(bool checked)
     if (impl_->checked_ != checked)
     {
         impl_->checked_ = checked;
-        onChecked();
+        onCheckedHandle();
         repaint();
     }
 }
@@ -81,27 +79,33 @@ void check::onSize(void)
 {
     if (impl_->content_)
     {
-        impl_->content_->width(width() - impl_->content_->x());
-        impl_->content_->height(impl_->content_->optimal_size().height);
-        impl_->content_->x(implement::box_size + implement::spacing);
-        impl_->content_->y(int(height() - impl_->content_->height()) / 2);
+        widget*& content = impl_->content_;
+
+        content->x(implement::boxsize + implement::spacing);
+        content->width(width() - content->x());
+        content->height(content->optimal_size(opFixedWidth).height);
+        content->y(int(height() - content->height()) / 2);
     }
 }
 
-void check::onPaint(graphics graphics, Rect rect)
+void check::onPaint(graphics graphics, Rect)
 {
-    int   base = implement::box_size, bases1 = base - 1, bases3 = base - 3;
-    int   y    = ((int)height() - base) / 2;
-    color clr  = color_scheme()->main();
+    color color = color_scheme().theme();
+    rectf rect;
 
-    graphics.draw_rectangle(0, y, bases1, y + bases1, clr);
+    rect.left = 0;
+    rect.top  = ((int)height() - implement::boxsize) / 2;
+    rect.width(implement::boxsize);
+    rect.height(implement::boxsize);
+
+    graphics.draw_rectangle(rect.inflate(-0.5), color);
     if (checked())
-        graphics.fill_rectangle(3, y + 3, bases3, y + bases3, clr);
+        graphics.fill_rectangle(rect.inflate(-3), color);
 }
 
-bool check::onClick(sys::MouseButton button, int times, Point point)
+bool check::onMouseDown(sys::Button button, int times, Point point)
 {
-    if (button == sys::mbLButton)
+    if (button == sys::btnLeft)
     {
         checked(!checked());
         return true;
@@ -126,7 +130,7 @@ private:
 };
 
 text_check::text_check(const std::string& text)
-    : text_check(text, sys::default_codec())
+    : text_check(text, sys::default_codec(), false)
 {}
 
 text_check::text_check(const std::string& text, bool checked)
@@ -157,52 +161,12 @@ text_check::~text_check(void)
     delete impl_;
 }
 
-bool text_check::word_wrap(void) const
+label& text_check::text(void)
 {
-    return impl_->label_.word_wrap();
+    return impl_->label_;
 }
 
-std::wstring text_check::text(void) const
+const label& text_check::text(void) const
 {
-    return impl_->label_.text();
-}
-
-const class font& text_check::font(void) const
-{
-    return impl_->label_.font();
-}
-
-void text_check::word_wrap(bool word_wrap)
-{
-    impl_->label_.word_wrap(word_wrap);
-
-    onSize();
-}
-
-void text_check::text(const std::string& text)
-{
-    impl_->label_.text(text);
-
-    onSize();
-}
-
-void text_check::text(const std::string& text, const std::string& codec)
-{
-    impl_->label_.text(text, codec);
-
-    onSize();
-}
-
-void text_check::text(const std::wstring& text)
-{
-    impl_->label_.text(text);
-
-    onSize();
-}
-
-void text_check::font(const class font& font)
-{
-    impl_->label_.font(font);
-
-    onSize();
+    return impl_->label_;
 }

@@ -1,4 +1,5 @@
 #include <map>
+#include <set>
 #include <takisy/core/sys.h>
 #include <takisy/core/macro.h>
 #include <takisy/algorithm/stralgo.h>
@@ -6,30 +7,33 @@
 #include <takisy/gui/basic/graphics.h>
 #include <takisy/gui/widget/widget.h>
 #include <takisy/gui/cross_platform_window.h>
+#include "basic/impl/color_scheme.hpp"
 #include "basic/impl/graphics.hpp"
 
 typedef widget* LPWIDGET;
 
-namespace takisy
+namespace takisy {
+namespace gui
 {
-    const char*
-        class_name__ = "takisy::gui::cross_platform_window";
-
     LPWIDGET
         captured_widget__;
-
     std::map<cross_platform_window::Handle, LPWIDGET>
-        all_windows__;
-}
+        windows_as__, focus__;
+    std::set<cross_platform_window::Handle>
+        windows__, windows_widget__;
+}}
 
 class cross_platform_window::implement
 {
     friend class cross_platform_window;
 
-    static class cross_platform_window_initializer
+    static constexpr
+           const char* class_name__ = "takisy::gui::cross_platform_window";
+
+    static class initializer
     {
     public:
-        cross_platform_window_initializer(void)
+        initializer(void)
         {
         #ifdef __os_win__
             WNDCLASSEX cls = {
@@ -43,7 +47,7 @@ class cross_platform_window::implement
                 .hCursor       = nullptr,
                 .hbrBackground = HBRUSH(COLOR_WINDOW),
                 .lpszMenuName  = nullptr,
-                .lpszClassName = takisy::class_name__,
+                .lpszClassName = class_name__,
                 .hIconSm       = LoadIcon(nullptr, IDI_APPLICATION),
             };
 
@@ -51,13 +55,13 @@ class cross_platform_window::implement
         #endif
         }
 
-        ~cross_platform_window_initializer(void)
+        ~initializer(void)
         {
         #ifdef __os_win__
-            UnregisterClass(takisy::class_name__, GetModuleHandle(nullptr));
+            UnregisterClass(class_name__, GetModuleHandle(nullptr));
         #endif
         }
-    } __cross_platform_window_initializer__;
+    } __initializer__;
 
 public:
     implement(Handle handle)
@@ -65,27 +69,11 @@ public:
     {}
 
 private:
-    static void onWidgetPaint(LPWIDGET, graphics&, const Rect&);
 #ifdef __os_win__
     static LRESULT CALLBACK widgetProc(HWND, LPWIDGET, UINT, WPARAM, LPARAM);
     static LRESULT CALLBACK windowProc(HWND, UINT, WPARAM, LPARAM);
 #else
     // other system callback
-#endif
-
-#ifdef __os_win__
-    static Point pointFromLPARAM(LPARAM lparam)
-    {
-        return Point {
-            .x = static_cast<short>(LOWORD(lparam)),
-            .y = static_cast<short>(HIWORD(lparam))
-        };
-    }
-
-    static Size sizeFromLPARAM(LPARAM lparam)
-    {
-        return Size(LOWORD(lparam), HIWORD(lparam));
-    }
 #endif
 
     static Point cursor_point(void)
@@ -102,9 +90,31 @@ private:
     #endif
     }
 
+    static void paint(LPWIDGET widget, graphics& graphics, const Rect& rect)
+    {
+        widget->onPaint(graphics, rect);
+
+        for (LPWIDGET child : widget->children())
+        {
+            if (!child->visible())
+                continue;
+
+            Rect paint_rect = rect.intersect(child->rect());
+            if (paint_rect.empty())
+                continue;
+
+            paint_rect = paint_rect.offset(-child->xy());
+            class graphics child_graphics = graphics;
+            child_graphics.impl_->paint_area(child->xy(), paint_rect);
+            paint(child, child_graphics, paint_rect);
+        }
+
+        widget->onEndPaint(graphics, rect);
+    }
+
     static LPWIDGET hittest_nocapture(LPWIDGET widget, Point& point)
     {
-        if (!widget || !widget->inside(point.x, point.y))
+        if (!widget || widget->disabled() || !widget->inside(point.x, point.y))
             return nullptr;
         else
             point -= widget->xy();
@@ -115,11 +125,10 @@ private:
 
         for (iterator_type i = children.rbegin(); i != children.rend(); ++i)
         {
-            LPWIDGET child = *i;
-            if (!child->visible())
+            if (!(*i)->visible())
                 continue;
 
-            LPWIDGET ht_widget = hittest_nocapture(child, point);
+            LPWIDGET ht_widget = hittest_nocapture(*i, point);
             if (ht_widget)
                 return ht_widget;
         }
@@ -129,51 +138,28 @@ private:
 
     static LPWIDGET hittest(LPWIDGET widget, Point& point)
     {
-        if (takisy::captured_widget__)
+        if (takisy::gui::captured_widget__)
         {
-            widget = takisy::captured_widget__;
+            widget = takisy::gui::captured_widget__;
 
             while (widget)
             {
-                point  -= widget->xy();
-                widget  = widget->father();
+                point -= widget->xy();
+                widget = widget->father();
             }
 
-            return takisy::captured_widget__;
+            return takisy::gui::captured_widget__;
         }
-        else
-            return hittest_nocapture(widget, point);
+
+        return hittest_nocapture(widget, point);
     }
 
 private:
     Handle handle_;
 };
 
-cross_platform_window::implement::cross_platform_window_initializer
-        cross_platform_window::implement::__cross_platform_window_initializer__;
-
-void cross_platform_window::implement::onWidgetPaint
-    (LPWIDGET widget, graphics& graphics, const Rect& rect)
-{
-    widget->onPaint(graphics, rect);
-
-    for (LPWIDGET child : widget->children())
-    {
-        if (!child->visible())
-            continue;
-
-        Rect paint_rect = rect.intersect(child->rect());
-        if (paint_rect.empty())
-            continue;
-
-        paint_rect = paint_rect.offset(-child->xy());
-        class graphics child_graphics = graphics;
-        child_graphics.impl_->paint_area(child->xy(), paint_rect);
-        onWidgetPaint(child, child_graphics, paint_rect);
-    }
-
-    widget->onEndPaint(graphics, rect);
-}
+cross_platform_window::implement::initializer
+        cross_platform_window::implement::__initializer__;
 
 #ifdef __os_win__
 
@@ -185,18 +171,16 @@ public:
     {}
 
 public:
-    void refresh(const rect& rect, const canvas_bgra8& canvas) override
+    void refresh(const rect& rect, canvas_bgra8& canvas) override
     {
-        canvas_bgra8 c(canvas);
-
-        for (canvas_bgra8::pixel_format& pixel : c.pixels())
+        for (canvas_bgra8::pixel_format& pixel : canvas.pixels())
             pixel.premultiply();
 
         BITMAPINFO bitmap_info = {
             .bmiHeader = BITMAPINFOHEADER {
                 .biSize          = sizeof(BITMAPINFOHEADER),
-                .biWidth         = +static_cast<LONG>(c.width()),
-                .biHeight        = -static_cast<LONG>(c.height()),
+                .biWidth         = +static_cast<LONG>(canvas.width()),
+                .biHeight        = -static_cast<LONG>(canvas.height()),
                 .biPlanes        = 1,
                 .biBitCount      = 32,
                 .biCompression   = BI_RGB,
@@ -210,8 +194,8 @@ public:
 
         SetDIBitsToDevice(hdc_,
                           rect.left, rect.top, rect.width(), rect.height(),
-                          0, 0, 0, c.height(),
-                          c.pixels().data(), &bitmap_info, DIB_RGB_COLORS);
+                          0, 0, 0, canvas.height(),
+                          canvas.pixels().data(), &bitmap_info, DIB_RGB_COLORS);
     }
 
 private:
@@ -221,23 +205,24 @@ private:
 LRESULT CALLBACK cross_platform_window::implement::widgetProc
     (HWND hwnd, LPWIDGET widget, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    using namespace takisy::gui;
+
     struct window_information
     {
         std::pair<bool, Point> move;
-        LPWIDGET focus, enter;
-        struct Click {
+        LPWIDGET enter;
+        struct click {
             unsigned int times;
             LPWIDGET widget;
             Point point;
-            sys::MouseButton button;
+            sys::Button button;
             DWORD pretime;
         } click;
 
     public:
         window_information(void)
-            : move(std::make_pair(false, Point(0, 0)))
-            , focus(nullptr), enter(nullptr)
-            , click({0, nullptr, Point(0, 0), sys::mbNone, 0})
+            : move(std::make_pair(false, Point(0, 0))), enter(nullptr)
+            , click({0, nullptr, Point(0, 0), sys::btnNone, 0})
         {}
     };
 
@@ -245,21 +230,15 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
     window_information& wndinfo = wndinfos[hwnd];
     Point ht_point;
 
-    #define onEvent(lpwidget, method, params...)                               \
-        ({  LPWIDGET w = lpwidget; Point p = ht_point;                         \
-            while (w) {                                                        \
-                if (w->method(params)) break;                                  \
-                else if (w->attribute<bool>("intercept."#method)) w = nullptr; \
-                else { ht_point += w->xy(); w = w->father(); }                 \
+    #define onEventStop(stopwidget, lpwidget, method, params...)        \
+        ({  LPWIDGET w = lpwidget; Point p = ht_point;                  \
+            while (w && w != stopwidget) {                              \
+                if (w->method(params)) break;                           \
+                else if (w->property<bool>("intercept."#method)) break; \
+                else { ht_point += w->xy(); w = w->father(); }          \
             } ht_point = p; w; })
-
-    #define onEventStop(stopwidget, lpwidget, method, params...)               \
-        ({  LPWIDGET w = lpwidget; Point p = ht_point;                         \
-            while (w) {                                                        \
-                if (w == stopwidget || w->method(params)) break;               \
-                else if (w->attribute<bool>("intercept."#method)) w = nullptr; \
-                else { ht_point += w->xy(); w = w->father(); }                 \
-            } ht_point = p; w; })
+    #define onEvent(lpwidget, method, params...)                        \
+            onEventStop(nullptr, lpwidget, method, params)
 
     switch (msg)
     {
@@ -271,12 +250,12 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             HDC     hdc = GetDC(hwnd);
             HDC     cdc = CreateCompatibleDC(hdc);
             HBITMAP bmp = CreateCompatibleBitmap(hdc, cr.width(), cr.height());
-            windows_device_context wdc(cdc);
+            device_context::pointer wdc(new windows_device_context(cdc));
             SelectObject(cdc, bmp);
 
             graphics graphics;
-            graphics.impl_->initialize(&wdc, cr);
-            onWidgetPaint(widget, graphics, cr);
+            graphics.impl_->initialize(wdc, cr);
+            paint(widget, graphics, cr);
             graphics.impl_->paint();
 
             SIZE          size  = { cr.width(), cr.height() };
@@ -293,12 +272,13 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
         {
             PAINTSTRUCT ps;
             BeginPaint(hwnd, &ps);
-            windows_device_context wdc(ps.hdc);
+            device_context::pointer wdc(new windows_device_context(ps.hdc));
+            static constexpr const char* bgc = "background";
 
             graphics graphics;
-            graphics.impl_->initialize(&wdc, ps.rcPaint);
-            graphics.clear(color::white());
-            onWidgetPaint(widget, graphics, ps.rcPaint);
+            graphics.impl_->initialize(wdc, ps.rcPaint);
+            graphics.clear(widget->color_scheme().impl_->other(bgc, 255));
+            paint(widget, graphics, ps.rcPaint);
             graphics.impl_->paint();
 
             EndPaint(hwnd, &ps);
@@ -310,28 +290,28 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
         {
             Point    ht_point  = cursor_point();
             LPWIDGET ht_widget = hittest(widget, ht_point);
-            sys::MouseButton button = sys::mbNone;
+            sys::Button button = sys::btnNone;
 
             switch (msg)
             {
-            case WM_LBUTTONDOWN: button = sys::mbLButton; break;
-            case WM_MBUTTONDOWN: button = sys::mbMButton; break;
-            case WM_RBUTTONDOWN: button = sys::mbRButton; break;
+            case WM_LBUTTONDOWN: button = sys::btnLeft;   break;
+            case WM_MBUTTONDOWN: button = sys::btnMiddle; break;
+            case WM_RBUTTONDOWN: button = sys::btnRight;  break;
             }
 
-            if (button == sys::mbLButton)
+            if (button == sys::btnLeft)
             {
-                LPWIDGET fw =
-                    onEventStop(wndinfo.focus, ht_widget, onFocus, true);
-                if (fw && wndinfo.focus != fw)
-                {
-                    if (wndinfo.focus)
-                        wndinfo.focus->onFocus(false);
-                    wndinfo.focus = fw;
-                }
+                LPWIDGET prefw = focus__[hwnd]; focus__[hwnd] = nullptr;
+                LPWIDGET    fw = onEventStop(prefw, ht_widget, onFocus, true);
+
+                if (fw && prefw != fw) {
+                    focus__[hwnd] = fw;
+                    if (prefw) prefw->onFocus(false);
+                } else
+                    focus__[hwnd] = prefw;
             }
 
-            window_information::Click& ci = wndinfo.click;
+            struct window_information::click& ci = wndinfo.click;
             ci.times   = ci.widget == ht_widget
                       && ci.button == button
                       && ci.point  == ht_point
@@ -343,7 +323,8 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             ci.pretime = GetTickCount();
 
             if (!onEvent(ht_widget, onMouseDown, button, ci.times, ht_point)
-                && button == sys::mbLButton)
+                && button == sys::btnLeft
+                && !IsZoomed(hwnd))
             {
                 wndinfo.move = std::make_pair(true, cursor_point());
                 SetCapture(hwnd);
@@ -384,21 +365,18 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
         {
             Point    ht_point  = cursor_point();
             LPWIDGET ht_widget = hittest(widget, ht_point);
-            sys::MouseButton button = sys::mbNone;
+            sys::Button button = sys::btnNone;
 
             ReleaseCapture();
             wndinfo.move.first = false;
 
             switch (msg)
             {
-            case WM_LBUTTONUP: button = sys::mbLButton; break;
-            case WM_MBUTTONUP: button = sys::mbMButton; break;
-            case WM_RBUTTONUP: button = sys::mbRButton; break;
+            case WM_LBUTTONUP: button = sys::btnLeft;   break;
+            case WM_MBUTTONUP: button = sys::btnMiddle; break;
+            case WM_RBUTTONUP: button = sys::btnRight;  break;
             }
 
-            if (button == wndinfo.click.button)
-                onEvent(ht_widget, onClick,
-                        button, wndinfo.click.times, ht_point);
             onEvent(ht_widget, onMouseUp, button, ht_point);
         }
         break;
@@ -412,20 +390,23 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
         }
         break;
     case WM_KEYDOWN:
-        onEvent(wndinfo.focus, onKeyDown, (sys::VirtualKey)(wparam));
+        if (focus__[hwnd] && focus__[hwnd]->enabled())
+            onEvent(focus__[hwnd], onKeyDown, (sys::VirtualKey)(wparam));
         break;
     case WM_CHAR:
-        onEvent(wndinfo.focus, onKeyPress, wparam);
+        if (focus__[hwnd] && focus__[hwnd]->enabled())
+            onEvent(focus__[hwnd], onKeyPress, wparam);
         break;
     case WM_KEYUP:
-        onEvent(wndinfo.focus, onKeyUp, (sys::VirtualKey)(wparam));
+        if (focus__[hwnd] && focus__[hwnd]->enabled())
+            onEvent(focus__[hwnd], onKeyUp, (sys::VirtualKey)(wparam));
         break;
     default:
         break;
     }
 
-    #undef onEventStop
     #undef onEvent
+    #undef onEventStop
 
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
@@ -433,61 +414,81 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
 LRESULT CALLBACK cross_platform_window::implement::windowProc
     (HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
+    using namespace takisy::gui;
     static std::map<HWND, unsigned char> prechar;
     LPWIDGET client = nullptr;
 
-    if (takisy::all_windows__.find(hwnd) != takisy::all_windows__.end())
-        client = takisy::all_windows__[hwnd];
+    try
+        { client = windows_as__.at(hwnd); }
+    catch (const std::out_of_range&)
+        {}
 
     switch (msg)
     {
+    case WM_ERASEBKGND:
+        if (client)
+            return 0;
     case WM_SIZING:
         if (client)
         {
             enum { None = 0, L = 0x1000, T = 0x100, R = 0x10, B = 0x1 };
             static unsigned int border[] =
                  { None, L, R, T, T | L, T | R, B, B | L, B | R };
-
-            RECT& rect      = *reinterpret_cast<RECT*>(lparam);
-            Size  rect_size = Rect(rect).size();
-
             cross_platform_window window(hwnd);
-            Size min = client->minimal_size(), ws = window.size();
-            Size max = client->maximal_size(), cs = window.client_size();
+            Size  min  = client->lower_size(), ws = window.size();
+            Size  max  = client->upper_size(), cs = window.client_size();
+            RECT& rect = *reinterpret_cast<RECT*>(lparam);
+            Size  size = Rect(rect).size();
 
             min.width  += ws.width  - cs.width;
             min.height += ws.height - cs.height;
             max.width  += ws.width  - cs.width;
             max.height += ws.height - cs.height;
 
-            if (rect_size.width < min.width) {
-                if (border[wparam] & L) rect.left = rect.right - min.width;
+            if (size.width < min.width) {
+                if (border[wparam] & L)
+                    rect.left = rect.right - min.width;
                 else
-                if (border[wparam] & R) rect.right = rect.left + min.width;
-            } else if (rect_size.width > max.width) {
-                if (border[wparam] & L) rect.left = rect.right - max.width;
+                if (border[wparam] & R)
+                    rect.right = rect.left + min.width;
+            } else
+            if (size.width > max.width) {
+                if (border[wparam] & L)
+                    rect.left = rect.right - max.width;
                 else
-                if (border[wparam] & R) rect.right = rect.left + max.width;
+                if (border[wparam] & R)
+                    rect.right = rect.left + max.width;
             }
 
-            if (rect_size.height < min.height) {
-                if (border[wparam] & T) rect.top = rect.bottom - min.height;
+            if (size.height < min.height) {
+                if (border[wparam] & T)
+                    rect.top = rect.bottom - min.height;
                 else
-                if (border[wparam] & B) rect.bottom = rect.top + min.height;
-            } else if (rect_size.height > max.height) {
-                if (border[wparam] & T) rect.top = rect.bottom - max.height;
+                if (border[wparam] & B)
+                    rect.bottom = rect.top + min.height;
+            } else
+            if (size.height > max.height) {
+                if (border[wparam] & T)
+                    rect.top = rect.bottom - max.height;
                 else
-                if (border[wparam] & B) rect.bottom = rect.top + max.height;
+                if (border[wparam] & B)
+                    rect.bottom = rect.top + max.height;
             }
         }
         break;
     case WM_MOVE:
         if (client)
-            client->xy(pointFromLPARAM(lparam));
+            client->xy(Point {
+                .x = static_cast<short>(LOWORD(lparam)),
+                .y = static_cast<short>(HIWORD(lparam))
+            });
         break;
     case WM_SIZE:
         if (client)
-            client->size(sizeFromLPARAM(lparam));
+            client->size(Size {
+                .width  = LOWORD(lparam),
+                .height = HIWORD(lparam)
+            });
         break;
     case WM_SHOWWINDOW:
         if (client)
@@ -498,20 +499,24 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
             cursor::set(cursor::ctArrow);
         break;
     case WM_CHAR:
-        if (prechar[hwnd] > 0x7f) {
+        if (prechar[hwnd] > 0x7f)
+        {
             wparam |= prechar[hwnd] << 8;
-            prechar[hwnd] = 0; }
-        else if (wparam > 0x7f) {
+            prechar[hwnd] = 0;
+        }
+        else if (wparam > 0x7f)
+        {
             prechar[hwnd] = wparam;
-            return 0; }
+            return 0;
+        }
         break;
     case WM_NCDESTROY:
-        takisy::all_windows__.erase(hwnd);
-        if (takisy::all_windows__.empty()) quit();
+        windows__.erase(hwnd);
+        windows_as__.erase(hwnd);
+        windows_widget__.erase(hwnd);
+        if (windows__.empty())
+            quit();
         return 0;
-    case WM_ERASEBKGND:
-        if (client)
-            return 0;
     default:
         break;
     };
@@ -523,17 +528,15 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
 }
 
 #else
-
     // other system callback
-
 #endif
 
 cross_platform_window::cross_platform_window(void)
     : cross_platform_window(nullptr)
 {}
 
-cross_platform_window::cross_platform_window(bool create_window)
-    : cross_platform_window(create_window ? create() : nullptr)
+cross_platform_window::cross_platform_window(unsigned long wndstyle)
+    : cross_platform_window(create(wndstyle))
 {}
 
 cross_platform_window::cross_platform_window(Handle handle)
@@ -560,13 +563,35 @@ cross_platform_window&
 
 cross_platform_window::Handle cross_platform_window::create(void)
 {
+    return create(wsCommonWindow);
+}
+
+cross_platform_window::Handle
+    cross_platform_window::create(unsigned long wndstyle)
+{
 #ifdef __os_win__
-    return CreateWindowEx(0, takisy::class_name__, "Cross Platform Window",
-                          WS_OVERLAPPEDWINDOW,
-                          CW_USEDEFAULT, CW_USEDEFAULT,
-                          CW_USEDEFAULT, CW_USEDEFAULT,
-                          GetDesktopWindow(), nullptr,
-                          GetModuleHandle(nullptr), nullptr);
+    DWORD exstyle = 0, style = 0;
+    if (wndstyle & wsAlphaChannel)  exstyle |= WS_EX_LAYERED;
+    if (wndstyle & wsTaskbar); else exstyle |= WS_EX_TOOLWINDOW;
+    if (wndstyle & wsCaption)         style |= WS_CAPTION;
+    if (wndstyle & wsSysMenu)         style |= WS_SYSMENU;
+    if (wndstyle & wsMinBox)          style |= WS_MINIMIZEBOX;
+    if (wndstyle & wsMinimize)        style |= WS_MINIMIZE;
+    if (wndstyle & wsMaxBox)          style |= WS_MAXIMIZEBOX;
+    if (wndstyle & wsMaximize)        style |= WS_MAXIMIZE;
+    if (wndstyle & wsResizable)       style |= WS_SIZEBOX;
+    if (wndstyle & wsPopup)           style |= WS_POPUP;
+    if (wndstyle & wsVisible)         style |= WS_VISIBLE;
+
+    Handle handle = CreateWindowEx(
+                    exstyle, implement::class_name__, "Cross Platform Window",
+                    style, CW_USEDEFAULT, CW_USEDEFAULT,
+                           CW_USEDEFAULT, CW_USEDEFAULT,
+                    nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
+    if (handle)
+        takisy::gui::windows__.insert(handle);
+
+    return handle;
 #else
     return nullptr;
 #endif
@@ -625,7 +650,7 @@ Size cross_platform_window::size(void) const
 Rect cross_platform_window::rect(void) const
 {
     if (!impl_->handle_)
-        return Rect();
+        return {0, 0, 0, 0};
 
 #ifdef __os_win__
     RECT rect;
@@ -633,16 +658,16 @@ Rect cross_platform_window::rect(void) const
     if (GetWindowRect(impl_->handle_, &rect))
         return rect;
     else
-        return Rect();
+        return {0, 0, 0, 0};
 #else
-    return Rect();
+    return {0, 0, 0, 0};
 #endif
 }
 
 Point cross_platform_window::client_offset(void) const
 {
     if (!impl_->handle_)
-        return Point();
+        return {0, 0};
 
 #ifdef __os_win__
     POINT offset = {0, 0};
@@ -650,16 +675,16 @@ Point cross_platform_window::client_offset(void) const
     if (ClientToScreen(impl_->handle_, &offset))
         return Point(offset) - xy();
     else
-        return Point();
+        return {0, 0};
 #else
-    return Point();
+    return {0, 0};
 #endif
 }
 
 Size cross_platform_window::client_size(void) const
 {
     if (!impl_->handle_)
-        return Size();
+        return {0, 0};
 
 #ifdef __os_win__
     RECT rect;
@@ -667,9 +692,9 @@ Size cross_platform_window::client_size(void) const
     if (GetClientRect(impl_->handle_, &rect))
         return Rect(rect).size();
     else
-        return Size();
+        return {0, 0};
 #else
-    return Size();
+    return {0, 0};
 #endif
 }
 
@@ -830,6 +855,14 @@ void cross_platform_window::show(void)
 void cross_platform_window::hide(void)
 {
     visible(false);
+}
+
+void cross_platform_window::move_center(void)
+{
+    Size screen(GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN));
+    Size window = size();
+
+    xy((screen.width - window.width) / 2, (screen.height - window.height) / 2);
 }
 
 void cross_platform_window::capture(bool capture)

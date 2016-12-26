@@ -2,6 +2,7 @@
 #define ellipse_h_20130822
 
 #include <takisy/cgl/path/path.h>
+#include <takisy/cgl/path/vertices.h>
 
 class ellipse
 {
@@ -27,11 +28,11 @@ public:
     double height(void) const;
 
 public:
-    const path& build(void);
-    const path& build_sector(double angle_from, double angle_to);
-    const path& build_sector_v2(double angle_from, double segment_length);
-    const path& build_segment(double angle_from, double angle_to);
-    const path& build_segment_v2(double angle_from, double segment_length);
+    vertices build(void);
+    vertices build_sector(double angle_from, double angle_to);
+    vertices build_sector_v2(double angle_from, double segment_length);
+    vertices build_segment(double angle_from, double angle_to);
+    vertices build_segment_v2(double angle_from, double segment_length);
 
 private:
     class implement* impl_;

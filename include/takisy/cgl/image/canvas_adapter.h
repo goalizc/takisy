@@ -20,21 +20,22 @@ public:
     canvas_adapter& operator=(const canvas_adapter& ca);
 
 public:
-    virtual unsigned int flag(void) const = 0;
-    virtual unsigned int width(void) const = 0;
-    virtual unsigned int height(void) const = 0;
-    virtual unsigned int pixel_bytes(void) const = 0;
-    virtual unsigned int bytes(void) const = 0;
-    virtual unsigned int row_bytes(void) const = 0;
-    virtual color pixel(int x, int y) const = 0;
-    virtual unsigned char* buffer(void) = 0;
-    virtual unsigned char* row_buffer(unsigned int y) = 0;
-    virtual const unsigned char* buffer(void) const = 0;
-    virtual const unsigned char* row_buffer(unsigned int y) const = 0;
     virtual void clear(void) = 0;
     virtual void clear(color color) = 0;
     virtual void resize(unsigned int width, unsigned int height) = 0;
+    virtual unsigned int pixel_bytes(void) const = 0;
+    virtual unsigned int width(void) const = 0;
+    virtual unsigned int height(void) const = 0;
+    virtual color pixel(int x, int y) const = 0;
+    virtual unsigned char* buffer(void) = 0;
+    virtual const unsigned char* buffer(void) const = 0;
     virtual void pixel(int x, int y, const color& color) = 0;
+    virtual void pixel(int x, int y, const absolute_color& color) = 0;
+
+    unsigned int row_bytes(void) const;
+    unsigned int bytes(void) const;
+    unsigned char* row_buffer(unsigned int y);
+    const unsigned char* row_buffer(unsigned int y) const;
 
 public:
     template <typename Canvas>
@@ -51,44 +52,39 @@ class derived_canvas_adapter : public canvas_adapter
     friend class canvas_adapter;
     typedef typename std::remove_reference<Canvas>::type noref_canvas;
     typedef typename noref_canvas::pixel_format pixel_format;
+
 public:
     derived_canvas_adapter(void) : canvas() {}
     derived_canvas_adapter(unsigned int width, unsigned int height)
         : canvas(width, height) {}
-    derived_canvas_adapter(Canvas& canvas) : canvas(canvas) {}
+    derived_canvas_adapter(noref_canvas& canvas) : canvas(canvas) {}
     template <typename PixelMatrix>
     derived_canvas_adapter(const PixelMatrix& pm) : canvas(pm) {}
+
 public:
-    unsigned int flag(void) const override
-        { return pixel_format::flag(); }
-    unsigned int width(void) const override
-        { return canvas.width(); }
-    unsigned int height(void) const override
-        { return canvas.height(); }
-    unsigned int pixel_bytes(void) const override
-        { return pixel_format::pixel_bytes(); }
-    unsigned int bytes(void) const override
-        { return height() * row_bytes(); }
-    unsigned int row_bytes(void) const override
-        { return width() * pixel_bytes(); }
-    color pixel(int x, int y) const override
-        { return canvas.pixel(x, y); }
-    unsigned char* buffer(void) override
-        { return (unsigned char*)(canvas.pixels().data()); }
-    unsigned char* row_buffer(unsigned int y) override
-        { return buffer() + y * row_bytes(); }
-    const unsigned char* buffer(void) const override
-        { return (const unsigned char*)(canvas.pixels().data()); }
-    const unsigned char* row_buffer(unsigned int y) const override
-        { return buffer() + y * row_bytes(); }
     void clear(void) override
         { canvas.clear(); }
     void clear(color color) override
         { canvas.clear(color); }
     void resize(unsigned int width, unsigned int height) override
         { canvas.resize(width, height); }
+    unsigned int pixel_bytes(void) const override
+        { return pixel_format::pixel_bytes(); }
+    unsigned int width(void) const override
+        { return canvas.width(); }
+    unsigned int height(void) const override
+        { return canvas.height(); }
+    color pixel(int x, int y) const override
+        { return canvas.pixel(x, y); }
+    unsigned char* buffer(void) override
+        { return (unsigned char*)(canvas.pixels().data()); }
+    const unsigned char* buffer(void) const override
+        { return (const unsigned char*)(canvas.pixels().data()); }
     void pixel(int x, int y, const color& color) override
         { canvas.pixel(x, y, color); }
+    void pixel(int x, int y, const absolute_color& color) override
+        { canvas.pixel(x, y, color); }
+
 private:
     Canvas canvas;
 };
@@ -100,7 +96,7 @@ canvas_adapter& canvas_adapter::operator=(const PixelMatrix& pm)
 
     for (unsigned int y = 0; y < pm.height(); ++y)
     for (unsigned int x = 0; x < pm.width(); ++x)
-        pixel(x, y, pm.pixel(x, y));
+        pixel(x, y, absolute_color(pm.pixel(x, y)));
 
     return *this;
 }
@@ -112,8 +108,8 @@ inline canvas_adapter::pointer canvas_adapter::make(void)
 }
 
 template <typename Canvas>
-inline canvas_adapter::pointer canvas_adapter::make(
-                                    unsigned int width, unsigned int height)
+inline canvas_adapter::pointer
+    canvas_adapter::make(unsigned int width, unsigned int height)
 {
     return pointer(new derived_canvas_adapter<Canvas>(width, height));
 }

@@ -34,14 +34,19 @@ public:
     template <typename Canvas>
     inline void filter(const Canvas& src, Canvas& dst) const
     {
+        bool same_size = width == src.width() && height == src.height();
+
         if (&src == &dst)
         {
-            Canvas canvas_temporary;
-            filter(src, canvas_temporary);
-            dst.swap(canvas_temporary);
+            if (!same_size)
+            {
+                Canvas canvas_temporary;
+                filter(src, canvas_temporary);
+                dst.swap(canvas_temporary);
+            }
         }
         else
-        if (width == src.width() && height == src.height())
+        if (same_size)
             dst = src;
         else
         {
@@ -77,14 +82,19 @@ public:
     template <typename Canvas>
     inline void filter(const Canvas& src, Canvas& dst) const
     {
+        bool same_size = width == src.width() && height == src.height();
+
         if (&src == &dst)
         {
-            Canvas canvas_temporary;
-            filter(src, canvas_temporary);
-            dst.swap(canvas_temporary);
+            if (!same_size)
+            {
+                Canvas canvas_temporary;
+                filter(src, canvas_temporary);
+                dst.swap(canvas_temporary);
+            }
         }
         else
-        if (width == src.width() && height == src.height())
+        if (same_size)
             dst = src;
         else
         {

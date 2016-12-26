@@ -1,6 +1,5 @@
 #include <takisy/core/math.h>
 #include <takisy/cgl/path/vertices_wrapper.h>
-#include <takisy/cgl/path/vertex_set.h>
 #include <takisy/cgl/path/vertex_fetcher.h>
 #include <takisy/cgl/path/builder/bezier.h>
 
@@ -74,7 +73,7 @@ public:
         return distance_tolerance_;
     }
 
-    inline class vertex_set& vertex_set(void)
+    inline class vertices& result(void)
     {
         return result_;
     }
@@ -219,7 +218,7 @@ private:
     }
 
 private:
-    class vertex_set result_;
+    class vertices result_;
     unsigned int depth_;
     double angle_tolerance_, distance_tolerance_;
 };
@@ -291,51 +290,51 @@ double bezier::distance_tolerance(void) const
     return impl_->ba_.distance_tolerance();
 }
 
-const path& bezier::build(const path::vertex_type& _1,
-                          const path::vertex_type& _2,
-                          const path::vertex_type& _3)
+vertices bezier::build(const path::vertex_type& _1,
+                       const path::vertex_type& _2,
+                       const path::vertex_type& _3)
 {
     return build(_1.x, _1.y, _2.x, _2.y, _3.x, _3.y);
 }
 
-const path& bezier::build(path::vertex_type::axis_type _1x,
-                          path::vertex_type::axis_type _1y,
-                          path::vertex_type::axis_type _2x,
-                          path::vertex_type::axis_type _2y,
-                          path::vertex_type::axis_type _3x,
-                          path::vertex_type::axis_type _3y)
+vertices bezier::build(path::vertex_type::axis_type _1x,
+                       path::vertex_type::axis_type _1y,
+                       path::vertex_type::axis_type _2x,
+                       path::vertex_type::axis_type _2y,
+                       path::vertex_type::axis_type _3x,
+                       path::vertex_type::axis_type _3y)
 {
-    impl_->ba_.vertex_set().clear();
+    impl_->ba_.result().clear();
 
     impl_->ba_.build(_1x, _1y, _2x, _2y, _3x, _3y);
-    impl_->ba_.vertex_set().append(_3x, _3y);
+    impl_->ba_.result().append(_3x, _3y);
 
-    return impl_->ba_.vertex_set();
+    return impl_->ba_.result();
 }
 
-const path& bezier::build(const path::vertex_type& _1,
-                          const path::vertex_type& _2,
-                          const path::vertex_type& _3,
-                          const path::vertex_type& _4)
+vertices bezier::build(const path::vertex_type& _1,
+                       const path::vertex_type& _2,
+                       const path::vertex_type& _3,
+                       const path::vertex_type& _4)
 {
     return build(_1.x, _1.y, _2.x, _2.y, _3.x, _3.y, _4.x, _4.y);
 }
 
-const path& bezier::build(path::vertex_type::axis_type _1x,
-                          path::vertex_type::axis_type _1y,
-                          path::vertex_type::axis_type _2x,
-                          path::vertex_type::axis_type _2y,
-                          path::vertex_type::axis_type _3x,
-                          path::vertex_type::axis_type _3y,
-                          path::vertex_type::axis_type _4x,
-                          path::vertex_type::axis_type _4y)
+vertices bezier::build(path::vertex_type::axis_type _1x,
+                       path::vertex_type::axis_type _1y,
+                       path::vertex_type::axis_type _2x,
+                       path::vertex_type::axis_type _2y,
+                       path::vertex_type::axis_type _3x,
+                       path::vertex_type::axis_type _3y,
+                       path::vertex_type::axis_type _4x,
+                       path::vertex_type::axis_type _4y)
 {
-    impl_->ba_.vertex_set().clear();
+    impl_->ba_.result().clear();
 
     impl_->ba_.build(_1x, _1y, _2x, _2y, _3x, _3y, _4x, _4y);
-    impl_->ba_.vertex_set().append(_4x, _4y);
+    impl_->ba_.result().append(_4x, _4y);
 
-    return impl_->ba_.vertex_set();
+    return impl_->ba_.result();
 }
 
 class bezier_fitting_curve::implement
@@ -354,9 +353,9 @@ public:
     {}
 
 public:
-    const path& build(const path& path)
+    vertices build(const path& path)
     {
-        ba_.vertex_set().clear();
+        ba_.result().clear();
 
         if (path.size() < 3)
             return path;
@@ -371,23 +370,18 @@ public:
                 from_index = 1, to_index = path.size() - 3;
 
             if (!closed_)
-                build_3p_v1(vf.fetch_vertex(+0),
-                            vf.fetch_vertex(+1),
-                            vf.fetch_vertex(+2));
+                build_3p_v1(vf[0], vf[1], vf[2]);
 
             for (int i = from_index; i <= to_index; ++i)
-                build_4p(vf.fetch_vertex(i - 1), vf.fetch_vertex(i + 0),
-                         vf.fetch_vertex(i + 1), vf.fetch_vertex(i + 2));
+                build_4p(vf[i - 1], vf[i], vf[i + 1], vf[i + 2]);
 
             if (!closed_)
             {
-                build_3p_v2(vf.fetch_vertex(-3),
-                            vf.fetch_vertex(-2),
-                            vf.fetch_vertex(-1));
-                ba_.vertex_set().append(vf.fetch_vertex(-1));
+                build_3p_v2(vf[-3], vf[-2], vf[-1]);
+                ba_.result().append(vf[-1]);
             }
 
-            return ba_.vertex_set();
+            return ba_.result();
         }
     }
 
@@ -530,13 +524,13 @@ bool bezier_fitting_curve::closed(void) const
     return impl_->closed_;
 }
 
-const path& bezier_fitting_curve::build(const path& path)
+vertices bezier_fitting_curve::build(const path& path)
 {
     return impl_->build(path);
 }
 
-const path& bezier_fitting_curve::build(const path::vertex_type* vertices,
-                                        unsigned int size)
+vertices bezier_fitting_curve::build(const path::vertex_type* vertices,
+                                     unsigned int size)
 {
     return build(vertices_wrapper(vertices, size));
 }

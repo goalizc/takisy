@@ -11,8 +11,8 @@ class layout::implement
     friend class grid_layout;
 
 public:
-    implement(layout* _this)
-        : this_(_this), readapting_(false)
+    implement(layout& self)
+        : self(self), readapting_(false)
         , alignment_(aCenter), margin_({0, 0, 0, 0}), spacing_(0)
     {}
 
@@ -20,17 +20,17 @@ public:
     {}
 
 public:
-    Alignment get_alignment(widget* widget) const
+    unsigned int get_alignment(widget* widget) const
     {
-        if (widget->exists_attribute("alignment"))
-            return widget->attribute<Alignment>("alignment");
+        if (widget->exists_property("alignment"))
+            return widget->property<unsigned int>("alignment");
 
         return alignment_;
     }
 
     std::vector<widget*> visual_children(void) const
     {
-        std::vector<widget*> children = this_->children();
+        std::vector<widget*> children = self.children();
 
         children.erase(std::remove_if(children.begin(), children.end(),
                                       [](widget* child) -> bool
@@ -62,9 +62,9 @@ public:
     virtual void readapt(void) = 0;
 
 protected:
-    layout*      this_;
+    layout&      self;
     bool         readapting_;
-    Alignment    alignment_;
+    unsigned int alignment_;
     Margin       margin_;
     unsigned int spacing_;
 };
@@ -78,7 +78,7 @@ layout::~layout(void)
     delete impl_;
 }
 
-Alignment layout::alignment(void) const
+unsigned int layout::alignment(void) const
 {
     return impl_->alignment_;
 }
@@ -93,7 +93,7 @@ unsigned int layout::spacing(void) const
     return impl_->spacing_;
 }
 
-void layout::alignment(Alignment alignment)
+void layout::alignment(unsigned int alignment)
 {
     impl_->alignment_ = alignment;
     impl_->readapt_safe();
@@ -226,20 +226,20 @@ void spacer_layout::add_spacer(unsigned int size)
     add_spacer(size, size);
 }
 
-void spacer_layout::add_spacer(unsigned int minimal, unsigned int maximal)
+void spacer_layout::add_spacer(unsigned int lower, unsigned int upper)
 {
     implement::spacer* spacer = new implement::spacer;
 
     if (!dynamic_cast<horizontal_layout*>(this))
     {
-        spacer->minimal_width(minimal);
-        spacer->maximal_width(maximal);
+        spacer->lower_width(lower);
+        spacer->upper_width(upper);
     }
     else
     if (!dynamic_cast<vertical_layout*>(this))
     {
-        spacer->minimal_height(minimal);
-        spacer->maximal_height(maximal);
+        spacer->lower_height(lower);
+        spacer->upper_height(upper);
     }
 
     spacer->show();
@@ -250,8 +250,8 @@ void spacer_layout::add_spacer(unsigned int minimal, unsigned int maximal)
 class horizontal_layout::implement : public layout::implement
 {
 public:
-    implement(horizontal_layout* _this)
-        : layout::implement(_this)
+    implement(horizontal_layout& self)
+        : layout::implement(self)
     {}
 
 public:
@@ -261,9 +261,9 @@ public:
         if (children.empty())
             return;
 
-        class spacer_layout* sl = dynamic_cast<class spacer_layout*>(this_);
-        std::vector<widget*>& spacers = sl->impl_->spacers_;
-        int available = this_->width() - margin_.left - margin_.right
+        class spacer_layout& sl = dynamic_cast<class spacer_layout&>(self);
+        std::vector<widget*>& spacers = sl.impl_->spacers_;
+        int available = self.width() - margin_.left - margin_.right
                         - spacing_ * (children.size() - spacers.size() - 1);
         int remind  = children.size();
         int average = available / remind;
@@ -272,7 +272,7 @@ public:
         std::sort(sorted_children.begin(), sorted_children.end(),
                   [](widget* a, widget* b) -> bool
                   {
-                      return a->maximal_width() < b->maximal_width();
+                      return a->upper_width() < b->upper_width();
                   });
 
         for (widget* child : sorted_children)
@@ -286,8 +286,11 @@ public:
             }
         }
 
-        unsigned int cheight = this_->height() - margin_.top - margin_.bottom;
-        unsigned int offset  = margin_.left;
+        int cheight = self.height() - margin_.top - margin_.bottom;
+        int offset  = margin_.left;
+
+        if (cheight < 0)
+            cheight = 0;
 
         for (widget* child : children)
         {
@@ -304,11 +307,11 @@ public:
                 y = margin_.top;
                 break;
             case aCenter:
-                y = int(this_->height() - child->height()
+                y = int(self.height() - child->height()
                         + margin_.top - margin_.bottom) / 2;
                 break;
             case aBottom:
-                y = this_->height() - margin_.bottom - child->height();
+                y = self.height() - margin_.bottom - child->height();
                 break;
             }
             child->xy(offset, y);
@@ -323,14 +326,14 @@ public:
 horizontal_layout::horizontal_layout(void)
     : spacer_layout()
 {
-    layout::impl_ = new implement(this);
+    layout::impl_ = new implement(*this);
 }
 
 class vertical_layout::implement : public layout::implement
 {
 public:
-    implement(vertical_layout* _this)
-        : layout::implement(_this)
+    implement(vertical_layout& self)
+        : layout::implement(self)
     {}
 
 public:
@@ -340,9 +343,9 @@ public:
         if (children.empty())
             return;
 
-        class spacer_layout* sl = dynamic_cast<class spacer_layout*>(this_);
-        std::vector<widget*>& spacers = sl->impl_->spacers_;
-        int available = this_->height() - margin_.top - margin_.bottom
+        class spacer_layout& sl = dynamic_cast<class spacer_layout&>(self);
+        std::vector<widget*>& spacers = sl.impl_->spacers_;
+        int available = self.height() - margin_.top - margin_.bottom
                         - spacing_ * (children.size() - spacers.size() - 1);
         int remind  = children.size();
         int average = available / remind;
@@ -351,7 +354,7 @@ public:
         std::sort(sorted_children.begin(), sorted_children.end(),
                   [](widget* a, widget* b) -> bool
                   {
-                      return a->maximal_height() < b->maximal_height();
+                      return a->upper_height() < b->upper_height();
                   });
 
         for (widget* child : sorted_children)
@@ -365,8 +368,11 @@ public:
             }
         }
 
-        unsigned int cwidth = this_->width() - margin_.left - margin_.right;
-        unsigned int offset = margin_.top;
+        int cwidth = self.width() - margin_.left - margin_.right;
+        int offset = margin_.top;
+
+        if (cwidth < 0)
+            cwidth = 0;
 
         for (widget* child : children)
         {
@@ -383,11 +389,11 @@ public:
                 x = margin_.left;
                 break;
             case aCenter:
-                x = int(this_->width() - child->width()
+                x = int(self.width() - child->width()
                         + margin_.left - margin_.right) / 2;
                 break;
             case aRight:
-                x = this_->width() - margin_.right - child->width();
+                x = self.width() - margin_.right - child->width();
                 break;
             }
             child->xy(x, offset);
@@ -402,7 +408,7 @@ public:
 vertical_layout::vertical_layout(void)
     : spacer_layout()
 {
-    layout::impl_ = new implement(this);
+    layout::impl_ = new implement(*this);
 }
 
 class grid_layout::implement : public layout::implement
@@ -410,8 +416,8 @@ class grid_layout::implement : public layout::implement
     friend class grid_layout;
 
 public:
-    implement(grid_layout* _this, unsigned int column, unsigned int row)
-        : layout::implement(_this)
+    implement(grid_layout& self, unsigned int column, unsigned int row)
+        : layout::implement(self)
         , column_(column), row_(row), items_(column_ * row_)
     {}
 
@@ -430,8 +436,8 @@ public:
         {
             widget* older = item(col, row);
 
-            this_->layout::remove(older);
-            this_->layout::add(newer);
+            self.layout::remove(older);
+            self.layout::add(newer);
 
             items_[row * column_ + col] = newer;
 
@@ -456,7 +462,7 @@ void grid_layout::implement::readapt(void)
 
     if (true)
     {
-        int available = this_->width() - margin_.left - margin_.right
+        int available = self.width() - margin_.left - margin_.right
                         - spacing_ * (column_ - 1);
         int remind  = column_;
         int average = available / remind;
@@ -512,7 +518,7 @@ void grid_layout::implement::readapt(void)
 
     if (true)
     {
-        int available = this_->height() - margin_.top - margin_.bottom
+        int available = self.height() - margin_.top - margin_.bottom
                         - spacing_ * (row_ - 1);
         int remind  = row_;
         int average = available / remind;
@@ -568,7 +574,7 @@ void grid_layout::implement::readapt(void)
 }
 
 grid_layout::grid_layout(unsigned int column, unsigned int row)
-    : layout(), impl_(new implement(this, column, row))
+    : layout(), impl_(new implement(*this, column, row))
 {
     layout::impl_ = impl_;
 }

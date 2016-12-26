@@ -9,32 +9,37 @@ class color_scheme
 
 public:
     color_scheme(void);
-    color_scheme(const color& main, const color& cool, const color& warm);
     color_scheme(const color_scheme& color_scheme);
    ~color_scheme(void);
 
     color_scheme& operator=(const color_scheme& color_scheme);
 
 public:
-    color main(void) const;
-    color main(signed char degree) const;
-    color cool(void) const;
-    color cool(signed char degree) const;
-    color warm(void) const;
-    color warm(signed char degree) const;
+    color theme(void) const;
+    color background(void) const;
+    color border(void) const;
+    color text(void) const;
+    color selection(void) const;
+    color inactive_text(void) const;
+    color inactive_selection(void) const;
+    color hyperlink(void) const;
+    color other(const char* name) const;
 
 public:
-    void main(const color& main);
-    void cool(const color& cool);
-    void warm(const color& warm);
+    void theme(const color& color);
+    void background(const color& color);
+    void border(const color& color);
+    void text(const color& color);
+    void selection(const color& color);
+    void inactive_text(const color& color);
+    void inactive_selection(const color& color);
+    void hyperlink(const color& color);
+    void other(const char* name, const color& color);
 
 public:
     static color_scheme& default_color_scheme(void);
 
 public:
-    static const color_scheme& seven_eleven(void);
-
-private:
     class implement* impl_;
 };
 

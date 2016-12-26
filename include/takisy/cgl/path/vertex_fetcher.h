@@ -16,11 +16,16 @@ public:
         return path_.size();
     }
 
-    inline path::vertex_type fetch_vertex(int i) const
+    inline path::vertex_type at(int i) const
     {
-        register int bar = path_.size();
+        register int n = path_.size();
 
-        return path_.fetch_vertex(i < 0 ? (bar + i % bar) % bar : i % bar);
+        return path_.at(i < 0 ? (n + i % n) % n : i % n);
+    }
+
+    inline path::vertex_type operator[](int index) const
+    {
+        return at(index);
     }
 
 private:

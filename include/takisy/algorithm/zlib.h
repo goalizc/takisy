@@ -6,7 +6,7 @@
 class zlib
 {
 public:
-    typedef stretchy_buffer<unsigned char> buffer_t;
+    typedef stretchy_buffer<unsigned char> buffer_type;
 
     enum CompressLevel
     {
@@ -16,14 +16,19 @@ public:
     };
 
 public:
-    static buffer_t compress(const buffer_t& buffer);
-    static buffer_t compress(const void* buffer, unsigned int length);
-    static buffer_t compress(const buffer_t& buffer, CompressLevel level);
-    static buffer_t compress(const void* buffer, unsigned int length,
-                             CompressLevel level);
+    static buffer_type
+        compress(const buffer_type& buffer);
+    static buffer_type
+        compress(const void* buffer, unsigned int length);
+    static buffer_type
+        compress(const buffer_type& buffer, CompressLevel level);
+    static buffer_type
+        compress(const void* buffer, unsigned int length, CompressLevel level);
 
-    static buffer_t decompress(const buffer_t& buffer);
-    static buffer_t decompress(const void* buffer, unsigned int length);
+    static buffer_type
+        decompress(const buffer_type& buffer);
+    static buffer_type
+        decompress(const void* buffer, unsigned int length);
 };
 
 #endif // zlib_h_20140325

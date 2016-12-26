@@ -1,0 +1,4 @@
+/cygdrive/z/takisy/src/algorithm/rfc1951.cygo /cygdrive/z/takisy/src/algorithm/rfc1951.cygd: /cygdrive/z/takisy/src/algorithm/rfc1951.cpp \
+ /cygdrive/z/takisy/src/algorithm/rfc1951.h \
+ /cygdrive/z/takisy/include/takisy/core/bit_buffer.h \
+ /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h

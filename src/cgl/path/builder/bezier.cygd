@@ -1,0 +1,10 @@
+/cygdrive/z/takisy/src/cgl/path/builder/bezier.cygo /cygdrive/z/takisy/src/cgl/path/builder/bezier.cygd: /cygdrive/z/takisy/src/cgl/path/builder/bezier.cpp \
+ /cygdrive/z/takisy/include/takisy/core/math.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices_wrapper.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
+ /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertex_fetcher.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/builder/bezier.h \
+ /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h

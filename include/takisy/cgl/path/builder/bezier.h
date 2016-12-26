@@ -2,6 +2,7 @@
 #define bezier_h_20130823
 
 #include <takisy/cgl/path/path.h>
+#include <takisy/cgl/path/vertices.h>
 
 class bezier
 {
@@ -24,24 +25,24 @@ public:
     double distance_tolerance(void) const;
 
 public:
-    const path& build(const path::vertex_type& _1, const path::vertex_type& _2,
-                      const path::vertex_type& _3);
-    const path& build(path::vertex_type::axis_type _1x,
-                      path::vertex_type::axis_type _1y,
-                      path::vertex_type::axis_type _2x,
-                      path::vertex_type::axis_type _2y,
-                      path::vertex_type::axis_type _3x,
-                      path::vertex_type::axis_type _3y);
-    const path& build(const path::vertex_type& _1, const path::vertex_type& _2,
-                      const path::vertex_type& _3, const path::vertex_type& _4);
-    const path& build(path::vertex_type::axis_type _1x,
-                      path::vertex_type::axis_type _1y,
-                      path::vertex_type::axis_type _2x,
-                      path::vertex_type::axis_type _2y,
-                      path::vertex_type::axis_type _3x,
-                      path::vertex_type::axis_type _3y,
-                      path::vertex_type::axis_type _4x,
-                      path::vertex_type::axis_type _4y);
+    vertices build(const path::vertex_type& _1, const path::vertex_type& _2,
+                   const path::vertex_type& _3);
+    vertices build(path::vertex_type::axis_type _1x,
+                   path::vertex_type::axis_type _1y,
+                   path::vertex_type::axis_type _2x,
+                   path::vertex_type::axis_type _2y,
+                   path::vertex_type::axis_type _3x,
+                   path::vertex_type::axis_type _3y);
+    vertices build(const path::vertex_type& _1, const path::vertex_type& _2,
+                   const path::vertex_type& _3, const path::vertex_type& _4);
+    vertices build(path::vertex_type::axis_type _1x,
+                   path::vertex_type::axis_type _1y,
+                   path::vertex_type::axis_type _2x,
+                   path::vertex_type::axis_type _2y,
+                   path::vertex_type::axis_type _3x,
+                   path::vertex_type::axis_type _3y,
+                   path::vertex_type::axis_type _4x,
+                   path::vertex_type::axis_type _4y);
 
 private:
     class implement* impl_;
@@ -73,8 +74,8 @@ public:
     bool closed(void) const;
 
 public:
-    const path& build(const path& path);
-    const path& build(const path::vertex_type* vertices, unsigned int size);
+    vertices build(const path& path);
+    vertices build(const path::vertex_type* vertices, unsigned int size);
 
 private:
     class implement* impl_;

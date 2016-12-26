@@ -2,6 +2,7 @@
 #define rasterizer_h_20130802
 
 #include <takisy/core/stretchy_buffer.h>
+#include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/path/path.h>
 
 class raster
@@ -27,8 +28,10 @@ private:
     raster& operator=(const raster&) = delete;
 
 public:
-    void evenodd(bool evenodd);
     bool evenodd(void) const;
+
+public:
+    void evenodd(bool evenodd);
 
 public:
     void rasterize(const path& path);

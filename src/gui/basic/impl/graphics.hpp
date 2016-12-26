@@ -3,12 +3,11 @@
 
 #include <takisy/core/algorithm.h>
 #include <takisy/cgl/basic/raster.h>
-#include <takisy/cgl/basic/canvas.h>
+#include <takisy/cgl/image/canvas_adapter.h>
 #include "../device_context.h"
 
 class graphics::implement
 {
-    friend class Window;
     friend class cross_platform_window;
     friend class graphics;
 
@@ -17,7 +16,7 @@ class graphics::implement
 
 public:
     implement(void)
-        : mask_(nullptr), canvas_(std::make_shared<canvas_type>()), dc_(nullptr)
+        : canvas_(std::make_shared<canvas_type>()), dc_(nullptr)
     {}
 
     ~implement(void)
@@ -26,21 +25,18 @@ public:
     }
 
 public:
-    inline void initialize(device_context* dc, rect pr)
+    inline void initialize(const device_context::pointer& dc, const rect& pr)
     {
-        dc_       =  dc;
-        rect_     =  pr = pr.normalize();
-        poffset_  = -pr.left_top();
-        prect_    =  pr;
-        mask_     =  nullptr;
-        canvas_   =  std::make_shared<canvas_type>(pr.width(), pr.height());
+        dc_      =  dc;
+        prect_   =  rect_ = pr.normalize();
+        poffset_ = -prect_.left_top();
+        canvas_  =  std::make_shared<canvas_type>(pr.width(), pr.height());
     }
 
     inline void paint_area(const point& offset, rect rect)
     {
         poffset_ += offset;
         prect_    = rect.normalize();
-        mask_     = nullptr;
     }
 
 public:
@@ -56,8 +52,10 @@ public:
 public:
     inline const canvas_type::pixel_format& pixel(int x, int y) const
     {
-        x = algorithm::clamp(x, prect_.left, prect_.right  - 1);
-        y = algorithm::clamp(y, prect_.top,  prect_.bottom - 1);
+        x = x < prect_.left ? prect_.left
+                            : x >= prect_.right ? prect_.right - 1 : x;
+        y = y < prect_.top  ? prect_.top
+                            : y >= prect_.bottom ? prect_.bottom - 1 : y;
 
         return canvas_->unsafe_pixel(x + poffset_.x, y + poffset_.y);
     }
@@ -65,12 +63,7 @@ public:
 public:
     inline void unsafe_pixel(int x, int y, const color& color)
     {
-        if (mask_)
-            canvas_->pixel(x + poffset_.x,
-                           y + poffset_.y, color * mask_->pixel(x, y).a());
-        else
-            canvas_->pixel(x + poffset_.x,
-                           y + poffset_.y, color);
+        canvas_->unsafe_pixel(x + poffset_.x, y + poffset_.y).blend(color);
     }
 
     inline void pixel(int x, int y, const color& color)
@@ -94,8 +87,8 @@ public:
         {
             int begin = span.x, end = span.x + span.length;
 
-            if (begin <  prect_.left)  begin = prect_.left;
-            if (end   >  prect_.right) end   = prect_.right;
+            if (begin < prect_.left)  begin = prect_.left;
+            if (end   > prect_.right) end   = prect_.right;
 
             for (int x = begin; x < end; ++x)
                 unsafe_pixel(x, y, brush(x, y) * span.coverage);
@@ -103,12 +96,10 @@ public:
     }
 
 private:
-    rect  rect_;
+    rect  prect_, rect_;
     point poffset_;
-    rect  prect_;
-    const mask_type* mask_;
     canvas_sptr canvas_;
-    device_context* dc_;
+    device_context::pointer dc_;
 };
 
 #endif // graphics_implement_hpp_20150715

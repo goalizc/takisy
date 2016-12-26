@@ -1,5 +1,5 @@
+#include <vector>
 #include <takisy/core/math.h>
-#include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/component/interpolator.h>
 
 class interpolator::implement
@@ -8,19 +8,19 @@ class interpolator::implement
 
     struct newton_polynomial
     {
+        double dq; // difference quotient; 差商
         interpolator::knot_type knot;
-        double dq; // difference quotient
     };
 
 public:
-    implement(void) : min_fy_(-1e100), max_fy_(+1e100) {}
+    implement(void) : lower_fy_(-1e100), upper_fy_(+1e100) {}
 
 public:
     void add_knot(double x, double y)
     {
-        newton_polynomial_.append(newton_polynomial {
+        newton_polynomial_.push_back(newton_polynomial {
+            .dq   = y,
             .knot = interpolator::knot_type {.x = x, .y = y},
-            .dq   = y
         });
 
         for (int i = newton_polynomial_.size() - 1; i > 0; --i)
@@ -48,14 +48,14 @@ public:
 
             static_cast<void>(math::isnan(fy) ? fy = 0.0 : 0);
 
-            return fy < min_fy_ ? min_fy_ : fy > max_fy_ ? max_fy_ : fy;
+            return fy < lower_fy_ ? lower_fy_ : fy > upper_fy_ ? upper_fy_ : fy;
         }
     }
 
 private:
-    double min_fy_;
-    double max_fy_;
-    stretchy_buffer<newton_polynomial> newton_polynomial_;
+    double lower_fy_;
+    double upper_fy_;
+    std::vector<newton_polynomial> newton_polynomial_;
 };
 
 interpolator::interpolator(void)
@@ -77,10 +77,9 @@ interpolator& interpolator::operator=(const interpolator& interpolator)
 {
     if (this != &interpolator)
     {
-        impl_->min_fy_ = interpolator.impl_->min_fy_;
-        impl_->max_fy_ = interpolator.impl_->max_fy_;
-        impl_->newton_polynomial_
-                       = interpolator.impl_->newton_polynomial_.clone();
+        impl_->lower_fy_          = interpolator.impl_->lower_fy_;
+        impl_->upper_fy_          = interpolator.impl_->upper_fy_;
+        impl_->newton_polynomial_ = interpolator.impl_->newton_polynomial_;
     }
 
     return *this;
@@ -93,24 +92,44 @@ interpolator& interpolator::clear(void)
     return *this;
 }
 
-interpolator& interpolator::clamp_fy(double min, double max)
+double interpolator::lower_fy(void) const
 {
-    impl_->min_fy_ = min;
-    impl_->max_fy_ = max;
+    return impl_->lower_fy_;
+}
+
+double interpolator::upper_fy(void) const
+{
+    return impl_->upper_fy_;
+}
+
+unsigned int interpolator::knots_size(void) const
+{
+    return impl_->newton_polynomial_.size();
+}
+
+interpolator::knot_type interpolator::knot(unsigned int index) const
+{
+    return impl_->newton_polynomial_[index].knot;
+}
+
+interpolator& interpolator::clamp_fy(double lower, double upper)
+{
+    impl_->lower_fy_ = lower;
+    impl_->upper_fy_ = upper;
 
     return *this;
 }
 
-interpolator& interpolator::min_fy(double min_fy)
+interpolator& interpolator::lower_fy(double lower_fy)
 {
-    impl_->min_fy_ = min_fy;
+    impl_->lower_fy_ = lower_fy;
 
     return *this;
 }
 
-interpolator& interpolator::max_fy(double max_fy)
+interpolator& interpolator::upper_fy(double upper_fy)
 {
-    impl_->max_fy_ = max_fy;
+    impl_->upper_fy_ = upper_fy;
 
     return *this;
 }
@@ -125,26 +144,6 @@ interpolator& interpolator::add_knot(double x, double y)
     impl_->add_knot(x, y);
 
     return *this;
-}
-
-double interpolator::min_fy(void) const
-{
-    return impl_->min_fy_;
-}
-
-double interpolator::max_fy(void) const
-{
-    return impl_->max_fy_;
-}
-
-unsigned int interpolator::knots_size(void) const
-{
-    return impl_->newton_polynomial_.size();
-}
-
-interpolator::knot_type interpolator::fetch_knot(unsigned int index) const
-{
-    return impl_->newton_polynomial_[index].knot;
 }
 
 double interpolator::fy(double x) const

@@ -31,7 +31,7 @@ rm              = rm -rf
 mkdir           = mkdir -p
 
 ccflags         =
-cxxflags        = -Ofast --std=gnu++11 -Wall -Werror -Wno-array-bounds
+cxxflags        = -O3 --std=gnu++11 -Wall -Werror -Wno-array-bounds
 ldflags         =
 
 ########################################################################

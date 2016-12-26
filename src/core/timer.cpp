@@ -25,12 +25,12 @@ private:
     bool  repeatable_;
     unsigned long interval_;
     unsigned long start_timestamp_, handle_timestamp_;
-    unsigned int handle_times_;
+    unsigned long handle_times_;
 };
 
 class timer::core
 {
-    static constexpr unsigned long minimal_interval = 10;
+    static constexpr unsigned long minimal_interval = 1;
 
 private:
     core(void)
@@ -59,6 +59,13 @@ private:
     }
 
 public:
+    static core& get(void)
+    {
+        static core single_instance;
+        return single_instance;
+    }
+
+public:
     bool exists(const timer* timer)
     {
         return std::find(timers_.begin(),
@@ -66,25 +73,18 @@ public:
     }
 
 public:
-    void push(timer* timer)
+    void add(timer* timer)
     {
         if (!exists(timer))
         {
-            timer->restart();
             timers_.push_back(timer);
+            timer->restart();
         }
     }
 
-    void pop(timer* timer)
+    void remove(timer* timer)
     {
         timers_.remove(timer);
-    }
-
-public:
-    static core& get(void)
-    {
-        static core single_instance;
-        return single_instance;
     }
 
 private:
@@ -103,13 +103,12 @@ private:
             if (  timer->impl_->handle_timestamp_
                 + timer->impl_->interval_ < timestamp)
             {
-                timer->onTimer();
+                timer->onTimerHandle();
+                timer->impl_->handle_timestamp_ = timestamp;
                 timer->impl_->handle_times_++;
 
-                if (timer->impl_->repeatable_)
-                    timer->impl_->handle_timestamp_ = timestamp;
-                else
-                    get().pop(timer);
+                if (!timer->impl_->repeatable_)
+                    timer->stop();
             }
         }
     }
@@ -125,11 +124,11 @@ timer::timer(void)
     : timer(1)
 {}
 
-timer::timer(unsigned int interval)
+timer::timer(unsigned long interval)
     : timer(interval, true)
 {}
 
-timer::timer(unsigned int interval, bool repeatable)
+timer::timer(unsigned long interval, bool repeatable)
     : impl_(new implement(interval, repeatable))
 {}
 
@@ -158,12 +157,12 @@ bool timer::repeatable(void) const
     return impl_->repeatable_;
 }
 
-unsigned int timer::elapse(void) const
+unsigned long timer::elapse(void) const
 {
     return active() ? now() - impl_->start_timestamp_ : 0;
 }
 
-unsigned int timer::handle_times(void) const
+unsigned long timer::handle_times(void) const
 {
     return active() ? impl_->handle_times_ : 0;
 }
@@ -173,26 +172,27 @@ void timer::active(bool active)
     active ? start() : stop();
 }
 
-void timer::interval(unsigned int interval)
+void timer::interval(unsigned long interval)
 {
     impl_->interval_ = interval;
 }
 
 void timer::start(void)
 {
-    core::get().push(this);
+    core::get().add(this);
 }
 
 void timer::restart(void)
 {
-    impl_->handle_times_     = 0;
-    impl_->handle_timestamp_ =
-    impl_->start_timestamp_  = now();
+    impl_->start_timestamp_ = impl_->handle_timestamp_ = now();
+    impl_->handle_times_    = 0;
+
+    start();
 }
 
 void timer::stop(void)
 {
-    core::get().pop(this);
+    core::get().remove(this);
 }
 
 unsigned long timer::now()

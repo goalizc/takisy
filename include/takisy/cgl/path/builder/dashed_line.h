@@ -31,7 +31,6 @@ public:
     dashed_line(double (&dash_array)[Size], bool closed, unsigned int offset)
         : dashed_line(dash_array, Size, closed, offset) {}
     dashed_line(const dashed_line& dl);
-
    ~dashed_line(void);
 
     dashed_line& operator=(const dashed_line& dl);
@@ -55,10 +54,10 @@ public:
     double offset(void) const;
 
 public:
-    const paths& build(const path& path);
-    const paths& build(const path::vertex_type* vertices, unsigned int size);
-    const paths& build(const paths& paths);
-    const paths& build(const path* paths, unsigned int size);
+    paths build(const path& path);
+    paths build(const path::vertex_type* vertices, unsigned int size);
+    paths build(const paths& paths);
+    paths build(const path* paths, unsigned int size);
 
 private:
     class implement* impl_;

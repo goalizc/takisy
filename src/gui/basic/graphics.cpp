@@ -1,7 +1,7 @@
 #include <takisy/core/sys.h>
 #include <takisy/core/algorithm.h>
 #include <takisy/algorithm/stralgo.h>
-#include <takisy/cgl/path/vertex_set.h>
+#include <takisy/cgl/path/vertices.h>
 #include <takisy/cgl/path/builder/rectangle.h>
 #include <takisy/cgl/path/builder/ellipse.h>
 #include <takisy/cgl/path/builder/circle.h>
@@ -32,7 +32,6 @@ graphics& graphics::operator=(const graphics& graphics)
         impl_->rect_    = graphics.impl_->rect_;
         impl_->poffset_ = graphics.impl_->poffset_;
         impl_->prect_   = graphics.impl_->prect_;
-        impl_->mask_    = graphics.impl_->mask_;
         impl_->canvas_  = graphics.impl_->canvas_;
     }
 
@@ -47,11 +46,6 @@ color graphics::pixel(int x, int y) const
 color graphics::pixel(const point& point) const
 {
     return impl_->pixel(point.x, point.y);
-}
-
-void graphics::mask(const mask_type* mask)
-{
-    impl_->mask_ = mask;
 }
 
 void graphics::clear(const color& color)
@@ -112,66 +106,6 @@ void graphics::pixel(const point& point, const brush& brush,
     impl_->pixel(point.x, point.y, brush(point.x, point.y) * coverage);
 }
 
-void graphics::draw_line(const point& p1, const point& p2, const color& color)
-{
-    draw_line(p1, p2, color_brush(color));
-}
-
-void graphics::draw_line(int p1x, int p1y, int p2x, int p2y, const color& color)
-{
-    draw_line(p1x, p1y, p2x, p2y, color_brush(color));
-}
-
-void graphics::draw_line(const point& p1, const point& p2, const brush& brush)
-{
-    draw_line(p1.x, p1.y, p2.x, p2.y, brush);
-}
-
-void graphics::draw_line(int p1x, int p1y, int p2x, int p2y, const brush& brush)
-{
-    if (p2x == p1x)
-    {
-        int x    = p1x;
-        int step = p1y < p2y ? 1 : -1;
-
-        for (int y = p1y; y != p2y; y += step)
-            impl_->pixel(x, y, brush(x, y));
-    }
-    else
-    {
-        double slope = static_cast<double>(p2y - p1y) / (p2x - p1x);
-
-        if (math::abs(slope) < 1)
-        {
-            int step = p1x < p2x ? 1 : -1;
-            double y = p1y + 0.5;
-
-            slope *= step;
-
-            for (int x = p1x; x != p2x; x += step)
-            {
-                impl_->pixel(x, y, brush(x, y));
-
-                y += slope;
-            }
-        }
-        else
-        {
-            int step = p1y < p2y ? 1 : -1;
-            double x = p1x + 0.5;
-
-            slope = step / slope;
-
-            for (int y = p1y; y != p2y; y += step)
-            {
-                impl_->pixel(x, y, brush(x, y));
-
-                x += slope;
-            }
-        }
-    }
-}
-
 void graphics::draw_line(const pointf& p1, const pointf& p2, const pen& pen)
 {
     draw_line(p1.x, p1.y, p2.x, p2.y, pen);
@@ -180,73 +114,12 @@ void graphics::draw_line(const pointf& p1, const pointf& p2, const pen& pen)
 void graphics::draw_line(double p1x, double p1y, double p2x, double p2y,
                          const pen& pen)
 {
-    vertex_set line;
+    vertices line;
 
     line.append(p1x, p1y);
     line.append(p2x, p2y);
 
     draw_path(line, pen);
-}
-
-void graphics::draw_rectangle(const rect& rect, const color& color)
-{
-    draw_rectangle(rect, color_brush(color));
-}
-
-void graphics::draw_rectangle(const point& p1, const point& p2,
-                              const color& color)
-{
-    draw_rectangle(p1, p2, color_brush(color));
-}
-
-void graphics::draw_rectangle(const point& point, const size& size,
-                              const color& color)
-{
-    draw_rectangle(point, size, color_brush(color));
-}
-
-void graphics::draw_rectangle(int p1x, int p1y, int p2x, int p2y,
-                              const color& color)
-{
-    draw_rectangle(p1x, p1y, p2x, p2y, color_brush(color));
-}
-
-void graphics::draw_rectangle(const rect& rect, const brush& brush)
-{
-    draw_rectangle(rect.left, rect.top, rect.right, rect.bottom, brush);
-}
-
-void graphics::draw_rectangle(const point& p1, const point& p2,
-                              const brush& brush)
-{
-    draw_rectangle(p1.x, p1.y, p2.x, p2.y, brush);
-}
-
-void graphics::draw_rectangle(const point& point, const size& size,
-                              const brush& brush)
-{
-    draw_rectangle(point.x, point.y,
-                   point.x + size.width, point.y + size.height,
-                   brush);
-}
-
-void graphics::draw_rectangle(int p1x, int p1y, int p2x, int p2y,
-                              const brush& brush)
-{
-    if (p1x > p2x) algorithm::swap(p1x, p2x);
-    if (p1y > p2y) algorithm::swap(p1y, p2y);
-
-    for (int x = p1x; x <= p2x; ++x)
-    {
-        impl_->pixel(x, p1y, brush(x, p1y));
-        impl_->pixel(x, p2y, brush(x, p2y));
-    }
-
-    for (int y = p1y + 1; y < p2y; ++y)
-    {
-        impl_->pixel(p1x, y, brush(p1x, y));
-        impl_->pixel(p2x, y, brush(p2x, y));
-    }
 }
 
 void graphics::draw_rectangle(const rectf& rect, const pen& pen)
@@ -610,27 +483,49 @@ void graphics::draw_text(const point& point,
     draw_text(point.x, point.y, string, font, brush);
 }
 
-void graphics::draw_text(const rect& rect,
+void graphics::draw_text(const rect& rct,
                          const wchar_t* string, const font& font,
                          const brush& brush)
 {
-    draw_text(rect.left, rect.top, rect.right, rect.bottom,
-              string, font, brush);
+    rect r = rct.normalize(), lr = r.intersect(impl_->prect_);
+    long x = r.left, y = r.top;
+    long c = 0;
+
+    #define NEXT_LINE() \
+        { x = r.left; y += font.height(); if (y >= lr.bottom) return; }
+
+    while ((c = *string++))
+        if (c != '\n')
+        {
+            const bitmap* bitmap = font.get_bitmap(c);
+            long c_left = x + bitmap->left, c_right = c_left + bitmap->width;
+            long c_bottom = x + bitmap->top + bitmap->height;
+            if (c_right >= r.right)
+                NEXT_LINE()
+            if (lr.left < c_right && c_left < lr.right && c_bottom > lr.top)
+                bitmap->render(*this, x, y,
+                               lr.left, lr.top, lr.right, lr.bottom,
+                               brush);
+            x += bitmap->advance;
+        }
+        else
+            NEXT_LINE()
+
+    #undef NEXT_LINE
 }
 
 void graphics::draw_text(const point& p1, const point& p2,
                          const wchar_t* string, const font& font,
                          const brush& brush)
 {
-    draw_text(p1.x, p1.y, p2.x, p2.y, string, font, brush);
+    draw_text(rect(p1, p2), string, font, brush);
 }
 
 void graphics::draw_text(const point& point, const size& size,
                          const wchar_t* string, const font& font,
                          const brush& brush)
 {
-    draw_text(point.x, point.y, point.x + size.width, point.y + size.height,
-              string, font, brush);
+    draw_text(rect(point, size), string, font, brush);
 }
 
 void graphics::draw_text(int x, int y,
@@ -644,31 +539,7 @@ void graphics::draw_text(int p1x, int p1y, int p2x, int p2y,
                          const wchar_t* string, const font& font,
                          const brush& brush)
 {
-    int x = p1x, y = p1y;
-    int char_code = 0;
-    auto next_line = [&](void) -> bool {
-        return x = p1x, (y += font.height()) < p2y;
-    };
-
-    while ((char_code = *string++))
-    {
-        switch (char_code)
-        {
-        case '\n':
-            if (!next_line())
-                return;
-            break;
-        default:
-            {
-                const bitmap* bitmap = font.get_bitmap(char_code);
-                if (static_cast<int>(x + bitmap->left + bitmap->width) >= p2x)
-                    if (!next_line())
-                        return;
-                x = bitmap->render(*this, x, y, p2x, p2y, brush);
-            }
-            break;
-        }
-    }
+    draw_text(rect(p1x, p1y, p2x, p2y), string, font, brush);
 }
 
 void graphics::draw_image(const canvas_adapter& canvas)
@@ -704,7 +575,8 @@ void graphics::draw_image(int x, int y, const canvas_adapter& canvas)
     draw_image(x, y, canvas, 0, 0, canvas.width(), canvas.height());
 }
 
-void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
+void graphics::draw_image(int x, int y,
+                          const canvas_adapter& canvas,
                           int cx, int cy,
                           unsigned int width, unsigned int height)
 {
@@ -713,7 +585,6 @@ void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
     if (cx + (int)width < 0 || cy + (int)height < 0
         || cx > (int)canvas.width() || cy > (int)canvas.height())
         return;
-
     if (cx < 0) x -= cx, width += cx, cx = 0;
     if (cx + (int)width > (int)canvas.width()) width = canvas.width() - cx;
     if (cy < 0) y -= cy, height += cy, cy = 0;
@@ -722,15 +593,18 @@ void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
     if (x + (int)width < r.left || y + (int)height < r.top
         || x > r.right || y > r.bottom)
         return;
-
     if (x < r.left) cx += r.left - x, width -= r.left - x, x = r.left;
     if (x + (int)width > r.right) width = r.right - x;
     if (y < r.top) cy += r.top - y, height -= r.top - y, y = r.top;
     if (y + (int)height > r.bottom) height = r.bottom - y;
 
+    x += impl_->poffset_.x;
+    y += impl_->poffset_.y;
+
     for (unsigned int i = 0; i < height; ++i)
     for (unsigned int j = 0; j < width;  ++j)
-        impl_->unsafe_pixel(x + j, y + i, canvas.pixel(cx + j, cy + i));
+        impl_->canvas_->unsafe_pixel(x + j, y + i)
+                              .blend(canvas.pixel(cx + j, cy + i));
 }
 
 void graphics::draw_image(int x, int y, const canvas_adapter& canvas,
@@ -780,54 +654,27 @@ void graphics::draw_image(const point& xy, const canvas_adapter& canvas,
     draw_image(xy.x, xy.y, canvas, rect);
 }
 
-void graphics::fill_rectangle(const rect& rect, const color& color)
+void graphics::fill_rectangle(const rectf& rect, const color& color)
 {
     fill_rectangle(rect, color_brush(color));
 }
 
-void graphics::fill_rectangle(const point& p1, const point& p2,
+void graphics::fill_rectangle(const pointf& p1, const pointf& p2,
                               const color& color)
 {
     fill_rectangle(p1, p2, color_brush(color));
 }
 
-void graphics::fill_rectangle(const point& point, const size& size,
+void graphics::fill_rectangle(const pointf& point, const sizef& size,
                               const color& color)
 {
     fill_rectangle(point, size, color_brush(color));
 }
 
-void graphics::fill_rectangle(int p1x, int p1y, int p2x, int p2y,
+void graphics::fill_rectangle(double p1x, double p1y, double p2x, double p2y,
                               const color& color)
 {
     fill_rectangle(p1x, p1y, p2x, p2y, color_brush(color));
-}
-
-void graphics::fill_rectangle(const rect& rect, const brush& brush)
-{
-    ::rect r = rect.normalize().intersect(impl_->prect_);
-
-    for (int y = r.top; y < r.bottom; ++y)
-    for (int x = r.left; x < r.right; ++x)
-        impl_->unsafe_pixel(x, y, brush(x, y));
-}
-
-void graphics::fill_rectangle(const point& p1, const point& p2,
-                              const brush& brush)
-{
-    fill_rectangle(rect(p1, p2), brush);
-}
-
-void graphics::fill_rectangle(const point& point, const size& size,
-                              const brush& brush)
-{
-    fill_rectangle(rect(point, size), brush);
-}
-
-void graphics::fill_rectangle(int p1x, int p1y, int p2x, int p2y,
-                              const brush& brush)
-{
-    fill_rectangle(rect(p1x, p1y, p2x, p2y), brush);
 }
 
 void graphics::fill_rectangle(const rectf& rect, const brush& brush)
