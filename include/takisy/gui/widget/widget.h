@@ -6,7 +6,7 @@
 #include <takisy/core/sys.h>
 #include <takisy/gui/cross_platform_window.h>
 #include <takisy/gui/basic/color_scheme.h>
-#include <takisy/gui/basic/graphics.h>
+#include <takisy/cgl/graphics.h>
 
 class widget
 {
@@ -29,14 +29,14 @@ private:
     widget& operator=(const widget&);
 
 public:
-    unsigned int                id(void) const;
-    widget*                     father(void) const;
-    widget*                     forefather(void);
-    const widget*               forefather(void) const;
-    const std::vector<widget*>& children(void) const;
+    unsigned int         id(void) const;
+    widget*              father(void) const;
+    widget*              forefather(void);
+    const widget*        forefather(void) const;
+    std::vector<widget*> children(void) const;
     template <typename ReturnType>
-    ReturnType                  property(const std::string& name) const;
-    class color_scheme          color_scheme(void);
+    ReturnType           property(const std::string& name) const;
+    class color_scheme   color_scheme(void);
 
     int          x(void) const;
     int          y(void) const;
@@ -166,7 +166,7 @@ public:
     virtual void onPaint(graphics graphics, Rect rect);
     virtual void onEndPaint(graphics graphics, Rect rect);
     virtual bool onFocus(bool focus);
-    virtual bool onSetCursor(void);
+    virtual bool onSetCursor(Point point);
     virtual bool onKeyDown(sys::VirtualKey vkey);
     virtual bool onKeyPress(unsigned int chr);
     virtual bool onKeyUp(sys::VirtualKey vkey);
@@ -176,6 +176,8 @@ public:
     virtual bool onMouseEnter(void);
     virtual bool onMouseLeave(void);
     virtual bool onMouseWheel(int delta, Point point);
+    virtual bool onClose(void);
+    virtual void onDestroy(void);
 
 private:
     void* property(const std::string& name) const;

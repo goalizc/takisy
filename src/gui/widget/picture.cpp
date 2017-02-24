@@ -59,7 +59,7 @@ picture::picture(const char* uri)
     load_uri(uri);
 }
 
-picture::picture(stream& stream)
+picture::picture(const stream& stream)
     : picture()
 {
     load_stream(stream);
@@ -86,7 +86,7 @@ bool picture::load_uri(const char* uri)
     return load_stream(*stream_ptr);
 }
 
-bool picture::load_stream(stream& stream)
+bool picture::load_stream(const stream& stream)
 {
     if (impl_->image_.load_stream(stream))
     {
@@ -193,7 +193,7 @@ void picture::onPaint(graphics graphics, Rect rect)
                 unsigned int height = frame.height() * width() / frame.width();
                 scale(width(), height).filter(canvas, canvas);
                 if (disabled()) implement::disable_canvas(canvas);
-                register int y = ((int)this->height() - (int)height) / 2;
+                int y = ((int)this->height() - (int)height) / 2;
                 return graphics.draw_image(0, y, canvas_adapter(canvas));
             }
             else
@@ -203,7 +203,7 @@ void picture::onPaint(graphics graphics, Rect rect)
                 unsigned int width = frame.width() * height() / frame.height();
                 scale(width, height()).filter(canvas, canvas);
                 if (disabled()) implement::disable_canvas(canvas);
-                register int x = ((int)this->width() - (int)width) / 2;
+                int x = ((int)this->width() - (int)width) / 2;
                 return graphics.draw_image(x, 0, canvas_adapter(canvas));
             }
         }

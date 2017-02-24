@@ -35,7 +35,7 @@ public:
 public:
     static Exception system_exception(unsigned int error_code)
     {
-        return Exception(stralgo::format("system exception: %d", error_code));
+        return Exception(stralgo::format("system exception: $0", error_code));
     }
 
 private:

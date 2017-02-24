@@ -289,13 +289,13 @@ private:
 
             constexpr double pm = channel_mask();      // pixel mask
             constexpr double cm = color::channel_mask; // color mask
-            register  double pa = a()   / pm;          // pixel alpha
-            register  double ca = alpha / cm;          // color alpha
-            register  double _1 = pa - ca * pa;
-            register  double _2 = ca + _1;
-            register  double _3 = ca / cm;
-            register  double _4 = _1 / pm;
-            register  double _5 = _2 / pm;
+                      double pa = a()   / pm;          // pixel alpha
+                      double ca = alpha / cm;          // color alpha
+                      double _1 = pa - ca * pa;
+                      double _2 = ca + _1;
+                      double _3 = ca / cm;
+                      double _4 = _1 / pm;
+                      double _5 = _2 / pm;
 
             #define BLEND_CHANNEL(p, c) p((c * _3 + p() * _4) / _5)
 
@@ -330,6 +330,7 @@ private:
         }
     }
 
+private:
     template <int Shift>
     static inline unsigned int shift(unsigned int value)
     {

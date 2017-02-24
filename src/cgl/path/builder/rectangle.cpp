@@ -1,5 +1,5 @@
+#include <takisy/core/algo.h>
 #include <takisy/core/math.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/cgl/path/builder/ellipse.h>
 #include <takisy/cgl/path/builder/rectangle.h>
 
@@ -58,8 +58,8 @@ vertices rectangle::build(path::vertex_type::axis_type l,
 {
     vertices round_rectangle;
 
-    if (l > r) algorithm::swap(l, r);
-    if (t > b) algorithm::swap(t, b);
+    if (l > r) algo::swap(l, r);
+    if (t > b) algo::swap(t, b);
 
     if (r - l <  width * 2)  width = (r - l) / 2;
     if (b - t < height * 2) height = (b - t) / 2;

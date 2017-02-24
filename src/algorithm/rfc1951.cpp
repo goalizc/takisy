@@ -363,7 +363,7 @@ void inflate_dynamic(bit_buffer::input& input, buffer_type& output)
 
     huffman_tree* chuft = build_huffman_tree(lengths, 19);
     unsigned int sum_HLIT_HDIST = HLIT + HDIST;
-    unsigned int length, last_length = 0;
+    int length, last_length = 0;
 
     for (i = 0; i < sum_HLIT_HDIST; )
     {

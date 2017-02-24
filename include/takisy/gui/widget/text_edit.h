@@ -98,7 +98,7 @@ public:
     void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
     bool onFocus(bool focus) override;
-    bool onSetCursor(void) override;
+    bool onSetCursor(Point point) override;
     bool onKeyDown(sys::VirtualKey vkey) override;
     bool onKeyPress(unsigned int chr) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;

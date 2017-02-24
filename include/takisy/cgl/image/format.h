@@ -20,7 +20,7 @@ public:
     virtual ~format(void) {}
 
 public:
-    virtual bool load(stream& stream, frames& frames) const = 0;
+    virtual bool load(const stream& stream, frames& frames) const = 0;
     virtual bool dump(const frames& frames, stream& stream) const = 0;
 };
 
@@ -30,7 +30,7 @@ public:
         class implement;                                                \
                                                                         \
     public:                                                             \
-        bool load(stream& stream, frames& frames) const override;       \
+        bool load(const stream& stream, frames& frames) const override; \
         bool dump(const frames& frames, stream& stream) const override; \
     };
 

@@ -1,6 +1,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/core/os.h>
 
 #define stat_default(default_return)           \
@@ -70,7 +70,7 @@ std::string os::path::prefix(const std::string& path)
 
 os::path::pair os::path::split(const std::string& path)
 {
-    for (unsigned int i = path.size() - 1; i >= 0; --i)
+    for (int i = path.size() - 1; i >= 0; --i)
     {
         if (path[i] == '/' || path[i] == '\\')
             return pair { path.substr(0, i + 1), path.substr(i + 1) };
@@ -93,7 +93,7 @@ os::path::pair os::path::splitdrive(const std::string& path)
 
 os::path::pair os::path::splitext(const std::string& path)
 {
-    for (unsigned int i = path.size() - 1; i >= 0; --i)
+    for (int i = path.size() - 1; i >= 0; --i)
     {
         if (path[i] == '.')
             return pair { path.substr(0, i), path.substr(i) };

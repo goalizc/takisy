@@ -1,70 +1,45 @@
-#ifndef ini_h_20141014
-#define ini_h_20141014
+#ifndef ini_h_20170126
+#define ini_h_20170126
 
-#include <map>
 #include <string>
+#include <map>
+#include <takisy/algorithm/stralgo.h>
 #include <takisy/core/stream.h>
 
 class ini
 {
-public:
-    class value;
+    class implement;
 
 public:
-    typedef std::map<std::string, value> section_type;
+    typedef std::map<std::string, stralgo::string> section_type;
 
 public:
     ini(void);
-    ini(const char* filepath_or_content);
-    ini(stream& stream);
+    ini(const std::string& buffer);
+    ini(const stream& istream);
     ini(const ini& ini);
+    ini(ini&& ini);
    ~ini(void);
 
     ini& operator=(const ini& ini);
+    ini& operator=(ini&& ini);
 
 public:
-    bool load(const char* content);
-    bool load(stream& stream);
-    bool load_file(const char* filepath);
+    bool load(const std::string& buffer);
+    bool load(const stream& istream);
 
     std::string dump(void) const;
-    bool dump(stream& stream) const;
-    bool dump_file(const char* filepath) const;
+    std::string dump(unsigned int indent) const;
+    bool dump(stream& ostream) const;
+    bool dump(stream&& ostream) const;
+    bool dump(stream& ostream, unsigned int indent) const;
+    bool dump(stream&& ostream, unsigned int indent) const;
 
 public:
-    section_type& operator[](const std::string& section_name);
+    section_type& operator[](const std::string& section);
 
 private:
-    std::map<std::string, section_type> sections_;
+    class implement* impl_;
 };
 
-class ini::value
-{
-public:
-    value(void);
-    value(const std::string& value);
-    value(const value& value);
-   ~value(void);
-
-    value& operator=(const value& value);
-
-public:
-    void operator=(bool boolean);
-    void operator=(int number);
-    void operator=(long long number);
-    void operator=(double number);
-    void operator=(const char* string);
-
-public:
-    bool        as_bool(void) const;
-    double      as_number(void) const;
-    const char* as_string(void) const;
-
-public:
-    operator const char*(void) const;
-
-private:
-    std::string value_;
-};
-
-#endif // ini_h_20141014
+#endif // ini_h_20170126

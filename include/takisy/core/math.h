@@ -2,6 +2,7 @@
 #define math_h_20130815
 
 #include <cmath>
+#include <algorithm>
 
 class math
 {
@@ -12,14 +13,14 @@ public:
 public:
     static inline unsigned int seed(unsigned int seed)
     {
-        return seed ^= random_seed_ ^= seed ^= random_seed_;
+        std::swap(seed_, seed);
+
+        return seed;
     }
 
     static inline int rand(void)
     {
-        random_seed_ = static_cast<int>((static_cast<unsigned long long>(
-                          random_seed_) * 16807 + 0) % 2147483647);
-        return random_seed_;
+        return (seed_ = (seed_ * 16807ull + 0) % 2147483647);
     }
 
     static inline int rand(int upper_bound)
@@ -34,7 +35,7 @@ public:
 
     static inline double frand(void)
     {
-        return rand() / 2147483647.0f;
+        return rand() * 4.656612875245797e-10;
     }
 
     static inline double frand(double upper_bound)
@@ -183,8 +184,14 @@ public:
         return std::isnan(n);
     }
 
+    template <typename FloatType>
+    static inline bool isinf(FloatType n)
+    {
+        return std::isinf(n);
+    }
+
 private:
-    static unsigned int random_seed_;
+    static unsigned int seed_;
 };
 
 #endif //math_h_20130815

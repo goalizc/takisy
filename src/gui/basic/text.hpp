@@ -11,9 +11,9 @@
 #include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/font/font.h>
 #include <takisy/cgl/font/tfont_simple.h>
-#include <takisy/gui/basic/brush.h>
+#include <takisy/cgl/brush.h>
+#include <takisy/cgl/graphics.h>
 #include <takisy/gui/basic/define.h>
-#include <takisy/gui/basic/graphics.h>
 
 class text {
     static const unsigned int xxdo_limit = 16;
@@ -533,7 +533,9 @@ public:
     }
 
     bool outside_caret(void) const {
-        return view_.outside(caret_point());
+        point cp = caret_point();
+        return view_.outside(cp.x, cp.y)
+            && view_.outside(cp.x, cp.y + font_->height());
     }
 
     double line_height(void) const {

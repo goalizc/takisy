@@ -15,25 +15,41 @@ class endian_type
     typedef unsigned int uint;
 
 public:
-    endian_type(void)
+    inline endian_type(void)
         : value_(0)
     {}
 
-    endian_type(ValueType value)
+    inline endian_type(ValueType value)
         : value_(transform(value))
     {}
 
+    inline endian_type(const self_type& et)
+        : value_(et.value_)
+    {}
+
     template <typename ValueType2, EndianType endianType2>
-    endian_type(const endian_type<ValueType2, endianType2>& et)
+    inline endian_type(const endian_type<ValueType2, endianType2>& et)
         : value_(transform(et.value()))
     {}
 
-    ~endian_type(void) {}
+    inline self_type& operator=(const self_type& et)
+    {
+        value_ = et.value_;
+
+        return *this;
+    }
 
     template <typename ValueType2, EndianType endianType2>
-    endian_type& operator=(const endian_type<ValueType2, endianType2>& et)
+    inline self_type& operator=(const endian_type<ValueType2, endianType2>& et)
     {
         value(et.value());
+
+        return *this;
+    }
+
+    inline self_type& operator=(ValueType _value)
+    {
+        return value(_value);
     }
 
 public:
@@ -61,11 +77,9 @@ public:
         return value_;
     }
 
-    inline endian_type operator=(ValueType _value)
+    inline operator ValueType(void) const
     {
-        value(_value);
-
-        return *this;
+        return value();
     }
 
 public:
@@ -137,11 +151,6 @@ public:
     inline ValueType operator--(int)
     {
         return value(value() - 1) + 1;
-    }
-
-    inline operator ValueType(void) const
-    {
-        return value();
     }
 
 private:

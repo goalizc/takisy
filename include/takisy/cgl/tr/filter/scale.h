@@ -6,15 +6,14 @@
 
 class scale
 {
-public:
-    typedef stretchy_buffer<int> table_t;
+protected:
+    typedef stretchy_buffer<int> table_type;
 
-public:
     template <unsigned int Shift>
-    static table_t table(unsigned int src, unsigned int dst)
+    static table_type table(unsigned int src, unsigned int dst)
     {
         double ratio = (src - 1.0) * (1 << Shift) / (dst - 1), foobar = 0;
-        table_t table(dst);
+        table_type table(dst);
 
         for (unsigned int i = 0; i < dst; ++i, foobar += ratio)
             table[i] = foobar + 0.5;
@@ -23,7 +22,7 @@ public:
     }
 };
 
-class nearest_neighbor_scale
+class nearest_neighbor_scale : private scale
 {
 public:
     nearest_neighbor_scale(unsigned int width, unsigned int height)
@@ -51,8 +50,8 @@ public:
         else
         {
             typedef typename Canvas::pixel_format pixel_format;
-            scale::table_t xtable = scale::table<0>(src.width(),  width);
-            scale::table_t ytable = scale::table<0>(src.height(), height);
+            table_type xtable = table<0>(src.width(),  width);
+            table_type ytable = table<0>(src.height(), height);
 
             dst.resize(width, height);
 
@@ -71,7 +70,7 @@ private:
     unsigned int width, height;
 };
 
-class bilinear_interpolation_scale
+class bilinear_interpolation_scale : private scale
 {
 public:
     bilinear_interpolation_scale(unsigned int width, unsigned int height)
@@ -102,8 +101,8 @@ public:
             typedef typename Canvas::pixel_format pixel_format;
             typedef unsigned int uint32;
             static constexpr uint32 shift = bilinear_interpolator::shift();
-            scale::table_t xtable = scale::table<shift>(src.width(),  width);
-            scale::table_t ytable = scale::table<shift>(src.height(), height);
+            table_type xtable = table<shift>(src.width(),  width);
+            table_type ytable = table<shift>(src.height(), height);
             bilinear_interpolator bi(src);
 
             dst.resize(width, height);

@@ -1,13 +1,12 @@
 #include <ctime>
 #include <takisy/core/sys.h>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/core/codec.h>
 #include <takisy/core/timer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/text_edit.h>
 #include <takisy/gui/cross_platform_window.h>
-#include "../basic/text.hpp"
 #include "edit_box.h"
 
 namespace takisy {
@@ -57,11 +56,10 @@ public:
     {
         caret_timer_.restart();
 
-        self.vertical_scroll().range(0, text_.height());
-        self.vertical_scroll().value(   text_.offset().y);
-
-        self.horizontal_scroll().range(0, text_.width());
-        self.horizontal_scroll().value(   text_.offset().x);
+        self.vertical_scroll().max(text_.height());
+        self.vertical_scroll().value(text_.offset().y);
+        self.horizontal_scroll().max(text_.width());
+        self.horizontal_scroll().value(text_.offset().x);
 
         self.repaint();
     }
@@ -70,9 +68,8 @@ private:
     text_edit& self;
     class text text_;
     bool border_visible_;
-    bool fixed_brush_;
-    brush_sptr selbrush_, bgbrush_, fgbrush_;
-    bool readonly_, caret_visible_;
+    brush_sptr text_brush_, background_brush_, selection_brush_;
+    bool fixed_brush_, readonly_, caret_visible_;
     unsigned int blink_interval_;
     timer caret_timer_;
     struct {
@@ -167,6 +164,7 @@ text_edit::text_edit(const std::wstring& _text)
             onRedoAvailableHandle(yes);
         });
 
+    vertical_scroll().min(0);
     vertical_scroll().step(impl_->text_.line_height() * 3);
     vertical_scroll().show();
     vertical_scroll().onScroll(
@@ -176,6 +174,7 @@ text_edit::text_edit(const std::wstring& _text)
             repaint();
         });
 
+    horizontal_scroll().min(0);
     horizontal_scroll().step(36);
     horizontal_scroll().show();
     horizontal_scroll().onScroll(
@@ -286,17 +285,17 @@ bool text_edit::fixed_brush(void) const
 
 brush_sptr text_edit::text_brush(void) const
 {
-    return impl_->fgbrush_;
+    return impl_->text_brush_;
 }
 
 brush_sptr text_edit::background_brush(void) const
 {
-    return impl_->bgbrush_;
+    return impl_->background_brush_;
 }
 
 brush_sptr text_edit::selection_brush(void) const
 {
-    return impl_->selbrush_;
+    return impl_->selection_brush_;
 }
 
 Point text_edit::offset(void) const
@@ -461,42 +460,42 @@ void text_edit::hide_border(void)
 
 void text_edit::text_color(const color& color)
 {
-    text_brush(make_color_brush_sptr(color));
+    text_brush(make_brushsptr<color_brush>(color));
 }
 
 void text_edit::text_brush(const brush_sptr& brush)
 {
-    if (impl_->fgbrush_ != brush)
+    if (impl_->text_brush_ != brush)
     {
-        impl_->fgbrush_ = brush;
+        impl_->text_brush_ = brush;
         repaint();
     }
 }
 
 void text_edit::background_color(const color& color)
 {
-    background_brush(make_color_brush_sptr(color));
+    background_brush(make_brushsptr<color_brush>(color));
 }
 
 void text_edit::background_brush(const brush_sptr& brush)
 {
-    if (impl_->bgbrush_ != brush)
+    if (impl_->background_brush_ != brush)
     {
-        impl_->bgbrush_ = brush;
+        impl_->background_brush_ = brush;
         repaint();
     }
 }
 
 void text_edit::selection_color(const color& color)
 {
-    selection_brush(make_color_brush_sptr(color));
+    selection_brush(make_brushsptr<color_brush>(color));
 }
 
 void text_edit::selection_brush(const brush_sptr& brush)
 {
-    if (impl_->selbrush_ != brush)
+    if (impl_->selection_brush_ != brush)
     {
-        impl_->selbrush_ = brush;
+        impl_->selection_brush_ = brush;
         repaint();
     }
 }
@@ -548,21 +547,21 @@ void text_edit::onSize(void)
 void text_edit::onPaint(graphics graphics, Rect rect)
 {
     Point offset(0, 0);
-    if (impl_->fixed_brush_)
-        offset = this->offset();
+    if (!impl_->fixed_brush_)
+        offset = impl_->text_.offset();
 
-    if (impl_->bgbrush_)
+    if (impl_->background_brush_)
     {
-        impl_->bgbrush_->offset(offset.x, offset.y);
-        graphics.fill_rectangle(rect, *impl_->bgbrush_);
+        offset_brush::set(impl_->background_brush_, offset);
+        graphics.fill_rectangle(rect, *impl_->background_brush_);
     }
 
     brush_sptr selbrush, wrtbrush;
 
-    if (impl_->selbrush_)
+    if (impl_->selection_brush_)
     {
-        selbrush = impl_->selbrush_;
-        selbrush->offset(offset.x, offset.y);
+        offset_brush::set(impl_->selection_brush_, offset);
+        selbrush = impl_->selection_brush_;
     }
     else
     if (focused())
@@ -570,10 +569,10 @@ void text_edit::onPaint(graphics graphics, Rect rect)
     else
         selbrush.reset(new color_brush(color_scheme().inactive_selection()));
 
-    if (impl_->fgbrush_)
+    if (impl_->text_brush_)
     {
-        wrtbrush = impl_->fgbrush_;
-        wrtbrush->offset(offset.x, offset.y);
+        offset_brush::set(impl_->text_brush_, offset);
+        wrtbrush = impl_->text_brush_;
     }
     else
     if (focused())
@@ -589,7 +588,7 @@ void text_edit::onPaint(graphics graphics, Rect rect)
 
         graphics.draw_line(cp.x + 0.5, cp.y,
                            cp.x + 0.5, cp.y + impl_->text_.font()->emheight(),
-                           make_lambda_brush_sptr(
+                           make_brushsptr<lambda_brush>(
             [&graphics](int x, int y) -> color
             {
                 return ~graphics.pixel(x, y).opaque();
@@ -613,7 +612,7 @@ bool text_edit::onFocus(bool focus)
     return true;
 }
 
-bool text_edit::onSetCursor(void)
+bool text_edit::onSetCursor(Point)
 {
     cursor::set(cursor::ctIBeam);
 

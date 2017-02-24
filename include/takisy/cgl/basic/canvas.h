@@ -1,8 +1,8 @@
 #ifndef canvas_h_20131115
 #define canvas_h_20131115
 
+#include <takisy/core/algo.h>
 #include <takisy/core/memory.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/basic/size.h>
 #include <takisy/cgl/basic/color.h>
@@ -16,7 +16,7 @@ class canvas
 public:
     typedef PixelFormat pixel_format;
     typedef GammaType   gamma_type;
-    typedef stretchy_buffer<pixel_format> pixels_type;
+    typedef stretchy_buffer<pixel_format, false, true> pixels_type;
 
 public:
     canvas(void)
@@ -28,9 +28,13 @@ public:
     {}
 
     canvas(const canvas& canvas)
-        : size_  (canvas.size_)
-        , gamma_ (canvas.gamma_)
-        , pixels_(canvas.pixels_.clone())
+        : size_(canvas.size_), gamma_(canvas.gamma_)
+        , pixels_(canvas.pixels_.copy())
+    {}
+
+    canvas(canvas&& canvas)
+        : size_(canvas.size_), gamma_(canvas.gamma_)
+        , pixels_(canvas.pixels_)
     {}
 
     template <typename PixalMatrix>
@@ -48,7 +52,19 @@ public:
         {
             size_   = canvas.size_;
             gamma_  = canvas.gamma_;
-            pixels_ = canvas.pixels_.clone();
+            pixels_ = canvas.pixels_.copy();
+        }
+
+        return *this;
+    }
+
+    canvas& operator=(canvas&& canvas)
+    {
+        if (this != &canvas)
+        {
+            size_   = canvas.size_;
+            gamma_  = canvas.gamma_;
+            pixels_ = canvas.pixels_;
         }
 
         return *this;
@@ -118,9 +134,9 @@ public:
 
     inline void swap(canvas& canvas)
     {
-        algorithm::swap(size_ ,  canvas.size_);
-        algorithm::swap(gamma_,  canvas.gamma_);
-        algorithm::swap(pixels_, canvas.pixels_);
+        algo::swap(size_ ,  canvas.size_);
+        algo::swap(gamma_,  canvas.gamma_);
+        algo::swap(pixels_, canvas.pixels_);
     }
 
     template <typename GammaFunction>
@@ -140,7 +156,7 @@ public:
         return size_.height;
     }
 
-    inline const pixel_format& pixel(register int x, register int y) const
+    inline const pixel_format& pixel(int x, int y) const
     {
         x = x < 0 ? 0 : (x >= (int)size_.width  ? size_.width - 1  : x);
         y = y < 0 ? 0 : (y >= (int)size_.height ? size_.height - 1 : y);

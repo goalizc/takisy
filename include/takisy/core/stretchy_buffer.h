@@ -1,339 +1,192 @@
 #ifndef stretchy_buffer_h_20140319
 #define stretchy_buffer_h_20140319
 
-#include <new>
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <initializer_list>
+#include <new>
+#include <string>
 
-template <typename ElementType,
-          bool blNeedConstruct = false,
-          bool blNeedDestruct  = blNeedConstruct,
-          bool blNeedSet0      = true>
-class stretchy_buffer
-{
-    static constexpr unsigned int element_size = sizeof(ElementType);
-
+template <typename T,
+          bool bc = false, bool b0 = false,
+          bool bd = bc>
+struct stretchy_buffer {
+    typedef T value_type;
 public:
-    typedef ElementType element_type;
-    typedef std::initializer_list<element_type> initializer_list;
-
-public:
-    inline stretchy_buffer(void)
-        : h_(nullptr)
-    {}
-
-    inline stretchy_buffer(unsigned int size)
+    stretchy_buffer(void)
+        : c_(nullptr) {}
+    stretchy_buffer(unsigned size)
         : stretchy_buffer()
-    {
-        resize(size);
-    }
-
-    inline stretchy_buffer(const element_type* elements, unsigned int size)
+        { resize(size); }
+    stretchy_buffer(const T* values, unsigned size)
         : stretchy_buffer()
-    {
-        append(elements, size);
-    }
+        { append(values, size); }
+    stretchy_buffer(std::initializer_list<T> initlist)
+        : stretchy_buffer(initlist.begin(), initlist.size()) {}
+    stretchy_buffer(const std::string& string)
+        : stretchy_buffer((const T*)string.data(), string.size()) {}
+    stretchy_buffer(const stretchy_buffer& stbuf)
+        : c_(stbuf.c_)
+        { if (c_) ++c_->rc; }
+    stretchy_buffer(stretchy_buffer&& stbuf)
+        : c_(stbuf.c_)
+        { stbuf.c_ = nullptr; }
+   ~stretchy_buffer(void)
+        { release(); }
 
-    inline stretchy_buffer(initializer_list il)
-        : stretchy_buffer()
-    {
-        append(il.begin(), il.size());
-    }
-
-    inline stretchy_buffer(const stretchy_buffer& sb)
-        : h_(sb.h_)
-    {
-        if (h_)
-            ++h_->rc;
-    }
-
-    inline ~stretchy_buffer(void)
-    {
-        free();
-    }
-
-    inline stretchy_buffer& operator=(const stretchy_buffer& sb)
-    {
-        if (this != &sb)
-        {
-            free();
-
-            if ((h_ = sb.h_))
-                ++h_->rc;
+    stretchy_buffer& operator=(const stretchy_buffer& stbuf) {
+        if (this != &stbuf) {
+            release();
+            if ((c_ = stbuf.c_))
+                ++c_->rc;
         }
-
         return *this;
     }
 
-public:
-    inline unsigned int capacity(void) const
-    {
-        return h_ ? h_->c : 0;
-    }
-
-    inline unsigned int size(void) const
-    {
-        return h_ ? h_->s : 0;
-    }
-
-    inline unsigned int reference_count(void) const
-    {
-        return h_ ? h_->rc : 0;
-    }
-
-    inline element_type& front(void)
-    {
-        return operator[](0);
-    }
-
-    inline const element_type& front(void) const
-    {
-        return operator[](0);
-    }
-
-    inline element_type& back(void)
-    {
-        return operator[](h_->s - 1);
-    }
-
-    inline const element_type& back(void) const
-    {
-        return operator[](h_->s - 1);
-    }
-
-    inline element_type* begin(void)
-    {
-        return h_ ? h_->b : nullptr;
-    }
-
-    inline const element_type* begin(void) const
-    {
-        return h_ ? h_->b : nullptr;
-    }
-
-    inline element_type* end(void)
-    {
-        return h_ ? h_->b + h_->s : nullptr;
-    }
-
-    inline const element_type* end(void) const
-    {
-        return h_ ? h_->b + h_->s : nullptr;
-    }
-
-    inline element_type& operator[](unsigned int index)
-    {
-        return h_->b[index];
-    }
-
-    inline const element_type& operator[](unsigned int index) const
-    {
-        return h_->b[index];
-    }
-
-    inline element_type* data(void)
-    {
-        return h_ ? h_->b : nullptr;
-    }
-
-    inline const element_type* data(void) const
-    {
-        return h_ ? h_->b : nullptr;
+    stretchy_buffer& operator=(stretchy_buffer&& stbuf) {
+        return swap(stbuf), *this;
     }
 
 public:
-    inline bool null(void) const
-    {
-        return !h_;
-    }
-
-    inline bool empty(void) const
-    {
-        return null() || h_->s == 0;
+    operator std::string(void) const {
+        if (empty())
+            return std::string();
+        else
+            return std::string((const char*)data(), size() * sizeof(T));
     }
 
 public:
-    inline void recapacity(unsigned int capacity)
-    {
-        if (!h_)
-        {
-            h_     = (heart*)::malloc(sizeof(heart));
-            h_->c  = capacity < 8 ? 8 : capacity;
-            h_->s  = 0;
-            h_->rc = 1;
-            h_->b  = (element_type*)::malloc(element_size * h_->c);
+    bool null(void)  const { return !c_; }
+    bool empty(void) const { return null() || c_->s == 0; }
 
-            if (blNeedConstruct)
-                for (unsigned int i = 0; i < h_->c; ++i)
-                    new (&h_->b[i]) element_type();
-            else
-            if (blNeedSet0)
-                ::memset(h_->b, 0, h_->c * element_size);
-        }
-        else if (capacity > h_->c)
-        {
-            unsigned int nc = h_->c;
+public:
+    unsigned capacity(void) const { return c_ ? c_->c  : 0; }
+    unsigned size(void)     const { return c_ ? c_->s  : 0; }
+    unsigned refcount(void) const { return c_ ? c_->rc : 0; }
+
+    T& operator[](unsigned index) { return c_->b[index]; }
+    T& front(void) { return operator[](0); }
+    T& back(void)  { return operator[](c_->s - 1); }
+    T* begin(void) { return c_ ? c_->b : nullptr; }
+    T* end(void)   { return c_ ? c_->b + c_->s : nullptr; }
+    T* data(void)  { return c_ ? c_->b : nullptr; }
+
+    const T& operator[](unsigned index) const { return c_->b[index]; }
+    const T& front(void) const { return operator[](0); }
+    const T& back(void)  const { return operator[](c_->s - 1); }
+    const T* begin(void) const { return c_ ? c_->b : nullptr; }
+    const T* end(void)   const { return c_ ? c_->b + c_->s : nullptr; }
+    const T* data(void)  const { return c_ ? c_->b : nullptr; }
+
+public:
+    void recapacity(unsigned capacity) {
+        if (!c_) {
+            c_     = (core*)malloc(sizeof(core));
+            c_->c  = capacity < 8 ? 8 : capacity;
+            c_->s  = 0;
+            c_->rc = 1;
+            c_->b  = (T*)malloc(sizeof(T) * c_->c);
+            if (bc) for (unsigned i = 0; i < c_->c; ++i)
+                new (&c_->b[i]) T();
+            else if (b0)
+                memset(c_->b, 0, c_->c * sizeof(T));
+        } else if (capacity > c_->c) {
+            unsigned nc = c_->c;
             do { nc <<= 1; } while (nc < capacity);
-            h_->b = (element_type*)::realloc(h_->b, element_size * nc);
-
-            if (blNeedConstruct)
-                for (unsigned int i = h_->c; i < nc; ++i)
-                    new (&h_->b[i]) element_type();
-            else
-            if (blNeedSet0)
-                ::memset(h_->b + h_->c, 0, (nc - h_->c) * element_size);
-
-            h_->c = nc;
+            c_->b = (T*)realloc(c_->b, sizeof(T) * nc);
+            if (bc) for (unsigned i = c_->c; i < nc; ++i)
+                new (&c_->b[i]) T();
+            else if (b0)
+                memset(c_->b + c_->c, 0, (nc - c_->c) * sizeof(T));
+            c_->c = nc;
         }
     }
-
-    inline void resize(unsigned int size)
-    {
-        recapacity(size);
-        h_->s = size;
+    void resize(unsigned size) {
+        recapacity(size); c_->s = size;
     }
-
-    inline stretchy_buffer clone(void) const
-    {
-        stretchy_buffer foobar;
-
-        if (!empty())
-            foobar.append(h_->b, h_->s);
-
-        return foobar;
+    stretchy_buffer copy(void) const {
+        stretchy_buffer stbuf;
+        if (!empty()) stbuf.append(c_->b, c_->s);
+        return stbuf;
     }
-
-    inline void swap(stretchy_buffer& sb)
-    {
-        heart* h  =    h_;
-               h_ = sb.h_;
-            sb.h_ =    h;
+    void swap(stretchy_buffer& stbuf) {
+        std::swap(c_, stbuf.c_);
     }
-
-    inline void clear(void)
-    {
-        if (h_)
-            h_->s = 0;
+    void clear(void) {
+        if (c_) c_->s = 0;
     }
-
-    inline void insert(unsigned int index, const element_type& value)
-    {
+    void insert(unsigned index, const T& value) {
         insert(index, &value, 1);
     }
-
-    inline void insert(unsigned int index, const element_type* values,
-                       unsigned int count)
-    {
+    void insert(unsigned index, const T* values, unsigned count) {
         if (index >= size())
             append(values, count);
-        else
-        {
-            recapacity(h_->s + count);
-            move(begin() + index, begin() + index + count, h_->s - index);
+        else {
+            recapacity(c_->s + count);
+            move(begin() + index, begin() + index + count, c_->s - index);
             move(values, begin() + index, count);
-            h_->s += count;
+            c_->s += count;
         }
     }
-
-    inline void insert(unsigned int index, initializer_list il)
-    {
-        insert(index, il.begin(), il.size());
+    void insert(unsigned index, std::initializer_list<T> initlist) {
+        insert(index, initlist.begin(), initlist.size());
     }
-
-    inline void append(const element_type& value)
-    {
+    void append(const T& value) {
         append(&value, 1);
     }
-
-    inline void append(const element_type* values, unsigned int count)
-    {
+    void append(const T* values, unsigned count) {
         recapacity(size() + count);
-        move(values, h_->b + h_->s, count);
-        h_->s += count;
+        move(values, c_->b + c_->s, count);
+        c_->s += count;
     }
-
-    inline void append(initializer_list il)
-    {
-        append(il.begin(), il.size());
+    void append(std::initializer_list<T> initlist) {
+        append(initlist.begin(), initlist.size());
     }
-
-    inline void remove(void)
-    {
-        if (!empty())
-            --h_->s;
+    void remove(void) {
+        if (!empty()) --c_->s;
     }
-
-    inline void remove(unsigned int index)
-    {
-        if (index < size())
-        {
-            move(h_->b + index + 1, h_->b + index, h_->s - index - 1);
-            --h_->s;
+    void remove(unsigned index) {
+        if (index < size()) {
+            move(c_->b + index + 1, c_->b + index, c_->s - index - 1);
+            --c_->s;
         }
     }
-
-    inline void remove(unsigned int from ,unsigned int to)
-    {
+    void remove(unsigned from ,unsigned to) {
         if (from == to)
             return;
-
-        if (from > to)
-            from ^= to ^= from ^= to;
-
-        if (from < size())
-        {
-            if (to > h_->s)
-                to = h_->s;
-
-            move(begin() + to, begin() + from, h_->s - to);
-            h_->s -= to - from;
+        else if (from > to)
+            std::swap(from, to);
+        if (from < size()) {
+            if (to > c_->s) to = c_->s;
+            move(begin() + to, begin() + from, c_->s - to);
+            c_->s -= to - from;
         }
     }
 
 private:
-    inline void move(const element_type* from, element_type* to, int count)
-    {
-        if (from == to)
-            return;
-
-        if (blNeedConstruct)
-        {
-            if (from > to)
-                for (int i = count - 1; i >= 0; --i)
-                    to[i] = from[i];
-            else
-                for (int i = 0; i < count; ++i)
-                    to[i] = from[i];
-        }
-        else
-            ::memmove(to, from, element_size * count);
+    void move(const T* from, T* to, int count) {
+        if (from == to) return;
+        if (bc) {
+            if (from > to) for (int i = count - 1; i >= 0; --i)
+                to[i] = from[i];
+            else for (int i = 0; i < count; ++i)
+                to[i] = from[i];
+        } else memmove(to, from, sizeof(T) * count);
     }
-
-    inline void free(void)
-    {
-        if (!h_)
-            return;
-
-        if (--h_->rc == 0)
-        {
-            if (blNeedDestruct)
-                for (unsigned int i = 0; i < h_->c; ++i)
-                    h_->b[i].~element_type();
-
-            ::free(h_->b);
-            ::free(h_);
+    void release(void) {
+        if (!c_) return;
+        if (--c_->rc == 0) {
+            if (bd) for (unsigned i = 0; i < c_->c; ++i)
+                c_->b[i].~T();
+            free(c_->b);
+            free(c_);
         }
-
-        h_ = nullptr;
+        c_ = nullptr;
     }
 
 private:
-    struct heart
-    {
-        unsigned int  c, s, rc;
-        element_type *b;
-    } *h_;
+    struct core { unsigned c, s, rc; T *b; } *c_;
 };
 
 #endif // stretchy_buffer_h_20140319

@@ -58,8 +58,8 @@ public:
                                        path::vertex_type::axis_type y) const
     {
         return path::vertex_type {
-            .x = x * matrix_[0][0] + y * matrix_[0][1] + matrix_[0][2],
-            .y = x * matrix_[1][0] + y * matrix_[1][1] + matrix_[1][2],
+            x * matrix_[0][0] + y * matrix_[0][1] + matrix_[0][2],
+            x * matrix_[1][0] + y * matrix_[1][1] + matrix_[1][2],
         };
     }
 
@@ -110,7 +110,7 @@ transformer& transformer::operator=(const transformer& transformer)
 
 transformer& transformer::reset(void)
 {
-    register double (*matrix)[3] = impl_->matrix_;
+    double (*matrix)[3] = impl_->matrix_;
 
     matrix[0][0] = 1; matrix[0][1] = 0; matrix[0][2] = 0;
     matrix[1][0] = 0; matrix[1][1] = 1; matrix[1][2] = 0;

@@ -1,8 +1,0 @@
-/cygdrive/z/takisy/src/cgl/path/vertex_set.cygo /cygdrive/z/takisy/src/cgl/path/vertex_set.cygd: /cygdrive/z/takisy/src/cgl/path/vertex_set.cpp \
- /cygdrive/z/takisy/include/takisy/core/stretchy_buffer.h \
- /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h \
- /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
- /cygdrive/z/takisy/include/takisy/core/math.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/size.h

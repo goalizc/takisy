@@ -1,9 +1,0 @@
-/cygdrive/z/takisy/src/cgl/path/builder/circle.cygo /cygdrive/z/takisy/src/cgl/path/builder/circle.cygd: /cygdrive/z/takisy/src/cgl/path/builder/circle.cpp \
- /cygdrive/z/takisy/include/takisy/cgl/path/builder/ellipse.h \
- /cygdrive/z/takisy/include/takisy/cgl/path/path.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
- /cygdrive/z/takisy/include/takisy/core/math.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/rect.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
- /cygdrive/z/takisy/include/takisy/cgl/path/vertices.h \
- /cygdrive/z/takisy/include/takisy/cgl/path/builder/circle.h

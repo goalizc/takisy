@@ -1,3 +1,4 @@
+#include <takisy/core/algo.h>
 #include <takisy/gui/widget/slider.h>
 
 class slider::implement
@@ -98,7 +99,7 @@ void slider::max(double max)
 
 void slider::value(double value)
 {
-    value = algorithm::clamp(value, impl_->min_, impl_->max_);
+    value = algo::clamp(value, impl_->min_, impl_->max_);
 
     if (impl_->value_ != value)
     {
@@ -110,7 +111,7 @@ void slider::value(double value)
 
 void slider::radius(double radius)
 {
-    radius = algorithm::clamp(radius, 1.0, 24.0);
+    radius = algo::clamp(radius, 1.0, 24.0);
 
     if (impl_->radius_ != radius)
     {

@@ -9,7 +9,7 @@ class label::implement
 
 public:
     implement(label& self)
-        : self(self), fixed_brush_(true)
+        : self(self), fixed_(true)
     {}
 
 public:
@@ -31,8 +31,8 @@ public:
 private:
     label& self;
     class text text_;
-    bool fixed_brush_;
-    brush_sptr bgbrush_, fgbrush_;
+    brush_sptr text_brush_, background_brush_;
+    bool fixed_;
 };
 
 label::label(void)
@@ -121,17 +121,17 @@ const class font* label::font(void) const
 
 brush_sptr label::text_brush(void) const
 {
-    return impl_->fgbrush_;
+    return impl_->text_brush_;
 }
 
 brush_sptr label::background_brush(void) const
 {
-    return impl_->bgbrush_;
+    return impl_->background_brush_;
 }
 
 bool label::fixed_brush(void) const
 {
-    return impl_->fixed_brush_;
+    return impl_->fixed_;
 }
 
 unsigned int label::alignment(void) const
@@ -141,7 +141,14 @@ unsigned int label::alignment(void) const
 
 Size label::optimal_size(OptimalPolicy policy) const
 {
-    return impl_->text_.world();
+    if (policy == opFixedWidth || !impl_->text_.word_wrap())
+        return impl_->text_.world();
+    else
+    {
+        class text t = impl_->text_;
+        t.word_wrap(false);
+        return t.world();
+    }
 }
 
 void label::text(const std::string& _text)
@@ -232,37 +239,37 @@ void label::font(const class font* font)
 
 void label::text_color(const color& text_color)
 {
-    text_brush(make_color_brush_sptr(text_color));
+    text_brush(make_brushsptr<color_brush>(text_color));
 }
 
 void label::text_brush(const brush_sptr& text_brush)
 {
-    if (impl_->fgbrush_ != text_brush)
+    if (impl_->text_brush_ != text_brush)
     {
-        impl_->fgbrush_ = text_brush;
+        impl_->text_brush_ = text_brush;
         repaint();
     }
 }
 
 void label::background_color(const color& background_color)
 {
-    background_brush(make_color_brush_sptr(background_color));
+    background_brush(make_brushsptr<color_brush>(background_color));
 }
 
 void label::background_brush(const brush_sptr& background_brush)
 {
-    if (impl_->bgbrush_ != background_brush)
+    if (impl_->background_brush_ != background_brush)
     {
-        impl_->bgbrush_ = background_brush;
+        impl_->background_brush_ = background_brush;
         repaint();
     }
 }
 
 void label::fixed_brush(bool fixed)
 {
-    if (impl_->fixed_brush_ != fixed)
+    if (impl_->fixed_ != fixed)
     {
-        impl_->fixed_brush_ = fixed;
+        impl_->fixed_ = fixed;
         repaint();
     }
 }
@@ -282,20 +289,20 @@ void label::onSize(void)
 void label::onPaint(graphics graphics, Rect rect)
 {
     Point offset(0, 0);
-    if (impl_->fixed_brush_)
-        offset = -impl_->text_.offset();
+    if (!impl_->fixed_)
+        offset = impl_->text_.offset();
 
-    if (impl_->bgbrush_)
+    if (impl_->background_brush_)
     {
-        impl_->bgbrush_->offset(offset.x, offset.y);
-        graphics.fill_rectangle(rect, *impl_->bgbrush_);
+        offset_brush::set(impl_->background_brush_, offset);
+        graphics.fill_rectangle(rect, *impl_->background_brush_);
     }
 
     brush_sptr wrtbrush;
-    if (impl_->fgbrush_)
+    if (impl_->text_brush_)
     {
-        wrtbrush = impl_->fgbrush_;
-        wrtbrush->offset(offset.x, offset.y);
+        offset_brush::set(impl_->text_brush_, offset);
+        wrtbrush = impl_->text_brush_;
     }
     else
         wrtbrush.reset(new color_brush(color_scheme().text()));

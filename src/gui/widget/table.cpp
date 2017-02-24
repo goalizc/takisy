@@ -4,28 +4,15 @@
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/table.h>
-#include "../basic/text.hpp"
 #include "edit_box.h"
 
 class table::implement
 {
     friend class table;
 
-    struct item
+    struct brush
     {
-        class text text;
-        brush_sptr fgbrush, bgbrush, selbrush;
-        bool       editable;
-
-    public:
-        item(void)
-            : fgbrush(nullptr), bgbrush(nullptr), selbrush(nullptr)
-            , editable(false)
-        {
-            text.margin(2);
-            text.alignment(aCenter);
-            text.word_wrap(false);
-        }
+        brush_sptr text, background, selection;
     };
 
     struct gridline
@@ -44,16 +31,23 @@ class table::implement
         }
     };
 
-    struct header : public item
+    struct item
     {
+        text text;
+        bool editable;
+        std::shared_ptr<brush> brush;
+
     public:
-        header(void)
+        item(void)
+            : editable(false)
         {
-            bgbrush = make_color_brush_sptr(color::light_gray());
+            text.margin(2);
+            text.alignment(aCenter);
+            text.word_wrap(false);
         }
     };
 
-    struct row_header : public header
+    struct row_header : public item
     {
         unsigned int height;
 
@@ -63,7 +57,21 @@ class table::implement
         {}
     };
 
-    struct column_header : public header
+    struct row_headers
+    {
+        brush brush;
+        bool visible;
+        unsigned int width;
+
+    public:
+        row_headers(void)
+            : visible(false), width(32)
+        {
+            brush.background.reset(new color_brush(color::light_gray()));
+        }
+    };
+
+    struct column_header : public item
     {
         unsigned int width;
 
@@ -73,11 +81,26 @@ class table::implement
         {}
     };
 
+    struct column_headers
+    {
+        brush brush;
+        bool visible;
+        unsigned int height;
+
+    public:
+        column_headers(void)
+            : visible(true), height(16)
+        {
+            brush.background.reset(new color_brush(color::light_gray()));
+        }
+    };
+
     struct row_type
     {
-        struct row_header        header;
-        gridline                 gridline;
-        std::vector<struct item> items;
+        brush brush;
+        gridline gridline;
+        row_header header;
+        std::vector<item> items;
 
     public:
         unsigned int height(void) const
@@ -88,8 +111,9 @@ class table::implement
 
     struct column_type
     {
-        struct column_header header;
-        gridline             gridline;
+        brush brush;
+        gridline gridline;
+        column_header header;
 
     public:
         unsigned int width(void) const
@@ -107,7 +131,7 @@ public:
     {}
 
 public:
-    bool exists(const item_index& index) const
+    bool exists(const index& index) const
     {
         return static_cast<unsigned int>(index.row) < rows_.size()
             && static_cast<unsigned int>(index.col) < columns_.size();
@@ -118,13 +142,13 @@ public:
         unsigned int border_width = border_.width();
         unsigned int height = std::accumulate(
             rows_.begin(), rows_.begin() + row, border_width,
-            [](unsigned int height, const row_type& that)
+            [](unsigned int height, const row_type& other)
             {
-                return height + that.height();
+                return height + other.height();
             });
 
-        if (column_header_.visible)
-            height += column_header_.height;
+        if (column_headers_.visible)
+            height += column_headers_.height;
         if (row == rows_.size())
             height += border_width;
 
@@ -136,27 +160,32 @@ public:
         unsigned int border_width = border_.width();
         unsigned int width = std::accumulate(
             columns_.begin(), columns_.begin() + col, border_width,
-            [](unsigned int width, const column_type& that)
+            [](unsigned int width, const column_type& other)
             {
-                return width + that.width();
+                return width + other.width();
             });
 
-        if (row_header_.visible)
-            width += row_header_.width;
+        if (row_headers_.visible)
+            width += row_headers_.width;
         if (col == columns_.size())
             width += border_width;
 
         return width;
     }
 
-    Rect item_rect(item_index index) const
+    Rect item_rect(const index& index) const
     {
         Rect rect;
 
-        if (index.row == -1)
+        if (index.row == -2)
+        {
+            rect.top    = 0;
+            rect.bottom = self.vertical_scroll().max();
+        }
+        else if (index.row == -1)
         {
             rect.top    = border_.width();
-            rect.bottom = column_header_.height;
+            rect.bottom = column_headers_.height;
         }
         else if (static_cast<unsigned int>(index.row) < rows_.size())
         {
@@ -166,10 +195,15 @@ public:
             rect.bottom = rect.top  + row.header.height;
         }
 
-        if (index.col == -1)
+        if (index.col == -2)
+        {
+            rect.left   = 0;
+            rect.right  = self.horizontal_scroll().max();
+        }
+        else if (index.col == -1)
         {
             rect.left   = border_.width();
-            rect.right  = row_header_.width;
+            rect.right  = row_headers_.width;
         }
         else if (static_cast<unsigned int>(index.col) < columns_.size())
         {
@@ -183,14 +217,14 @@ public:
                            -self.vertical_scroll().valued());
     }
 
-    Rect items_rect(const std::vector<item_index>& indexes)
+    Rect items_rect(const std::vector<index>& indexes)
     {
         if (indexes.empty())
             return Rect();
 
-        item_index min = indexes.front(), max = min;
+        index min = indexes.front(), max = min;
 
-        for (const item_index& index : indexes)
+        for (const index& index : indexes)
         {
             if (min.row > index.row)
                 min.row = index.row;
@@ -210,9 +244,9 @@ public:
     void update(void)
     {
         self.vertical_scroll()
-            .range(0, vaccumulate(rows_.size()));
+            .max(vaccumulate(rows_.size()) + self.horizontal_scroll().height());
         self.horizontal_scroll()
-            .range(0, haccumulate(columns_.size()));
+            .max(haccumulate(columns_.size()) + self.vertical_scroll().width());
         self.repaint();
     }
 
@@ -228,93 +262,7 @@ public:
             .max(self.vertical_scroll().max() + after - before);
     }
 
-    void draw_header(graphics& graphics,
-                     const brush_sptr& txtbrush,
-                     int x, int y)
-    {
-        Rect rect(x, y, 0, y + column_header_.height);
-
-        for (column_type& column : columns_)
-        {
-            rect.left += column.gridline.width();
-            rect.width(column.header.width);
-
-            header& header = column.header;
-            if (header.bgbrush)
-                graphics.fill_rectangle(rect, *header.bgbrush);
-
-            text_rect(header.text, rect);
-            if (header.fgbrush)
-                header.text.draw(graphics, rect, nullptr, *header.fgbrush);
-            else
-                header.text.draw(graphics, rect, nullptr, *txtbrush);
-
-            rect.left += rect.width();
-        }
-    }
-
-    void draw_item(graphics& graphics,
-                   const brush_sptr& selbrush, const brush_sptr& txtbrush,
-                   struct item& item, bool selected, const Rect& rect)
-    {
-        if (item.bgbrush)
-            graphics.fill_rectangle(rect, *item.bgbrush);
-
-        if (selected)
-        {
-            if (item.selbrush)
-                graphics.fill_rectangle(rect, *item.selbrush);
-            else
-                graphics.fill_rectangle(rect, *selbrush);
-        }
-
-        text_rect(item.text, rect);
-        if (item.fgbrush)
-            item.text.draw(graphics, rect, nullptr, *item.fgbrush);
-        else
-            item.text.draw(graphics, rect, nullptr, *txtbrush);
-    }
-
-    int draw_row(graphics& graphics,
-                 const brush_sptr& selbrush, const brush_sptr& txtbrush,
-                 int x, int y, int index)
-    {
-        row_type& row = rows_[index];
-        Rect rect;
-
-        rect.left   = x;
-        rect.top    = y + row.gridline.width();
-        rect.bottom = rect.top + row.header.height;
-
-        if (row_header_.visible)
-        {
-            header& header = row.header;
-            rect.width(row_header_.width);
-            if (header.bgbrush)
-                graphics.fill_rectangle(rect, *header.bgbrush);
-            text_rect(header.text, rect);
-            if (header.fgbrush)
-                header.text.draw(graphics, rect, nullptr, *header.fgbrush);
-            else
-                header.text.draw(graphics, rect, nullptr, *txtbrush);
-            rect.left += rect.width();
-        }
-
-        for (unsigned int col = 0; col < columns_.size(); ++col)
-        {
-            rect.left += columns_[col].gridline.width();
-            rect.width(columns_[col].header.width);
-
-            draw_item(graphics, selbrush, txtbrush,
-                      row.items[col], self.selected({index, (int)col}),
-                      rect);
-
-            rect.left += rect.width();
-        }
-
-        return rect.bottom;
-    }
-
+public:
     void draw_lines(graphics& graphics, Rect rect)
     {
         int hsvalue = self.horizontal_scroll().valued(), dx = -hsvalue;
@@ -337,10 +285,10 @@ public:
             dy += border_width;
         }
 
-        if (row_header_.visible)
-            dx += row_header_.width;
-        if (column_header_.visible)
-            dy += column_header_.height;
+        if (row_headers_.visible)
+            dx += row_headers_.width;
+        if (column_headers_.visible)
+            dy += column_headers_.height;
 
         for (column_type& column : columns_)
         {
@@ -377,6 +325,116 @@ public:
         }
     }
 
+    void draw_header(graphics& graphics, brush_sptr txtbrush, int x, int y)
+    {
+        column_headers& colhds = column_headers_;
+        Rect rect(x, y, 0, y + colhds.height);
+
+        for (column_type& column : columns_)
+        {
+            rect.left += column.gridline.width();
+            rect.width(column.header.width);
+
+            column_header& header = column.header;
+            if (header.brush && header.brush->background)
+                graphics.fill_rectangle(rect, *header.brush->background);
+            else if (colhds.brush.background)
+                graphics.fill_rectangle(rect, *colhds.brush.background);
+
+            text_rect(header.text, rect);
+            if (header.brush && header.brush->text)
+                header.text.draw(graphics, rect, nullptr, *header.brush->text);
+            else if (colhds.brush.text)
+                header.text.draw(graphics, rect, nullptr, *colhds.brush.text);
+            else
+                header.text.draw(graphics, rect, nullptr, *txtbrush);
+
+            rect.left += rect.width();
+        }
+    }
+
+    int draw_row(graphics& graphics,
+                 const brush_sptr& txtbrush,
+                 const brush_sptr& selbrush, int x, int y, int index)
+    {
+        row_type& row = rows_[index];
+        Rect rect;
+
+        rect.left   = x;
+        rect.top    = y + row.gridline.width();
+        rect.bottom = rect.top + row.header.height;
+
+        if (row_headers_.visible)
+        {
+            row_headers& rowhds = row_headers_;
+            row_header&  header = row.header;
+
+            rect.width(rowhds.width);
+            if (header.brush && header.brush->background)
+                graphics.fill_rectangle(rect, *header.brush->background);
+            else if (rowhds.brush.background)
+                graphics.fill_rectangle(rect, *rowhds.brush.background);
+
+            text_rect(header.text, rect);
+            if (header.brush && header.brush->text)
+                header.text.draw(graphics, rect, nullptr, *header.brush->text);
+            else if (rowhds.brush.text)
+                header.text.draw(graphics, rect, nullptr, *rowhds.brush.text);
+            else
+                header.text.draw(graphics, rect, nullptr, *txtbrush);
+
+            rect.left += rect.width();
+        }
+
+        for (unsigned int i = 0; i < columns_.size(); ++i)
+        {
+            column_type& column = columns_[i];
+            item& item = row.items[i];
+
+            rect.left += column.gridline.width();
+            rect.width(column.header.width);
+
+            if (item.brush && item.brush->background)
+                graphics.fill_rectangle(rect, *item.brush->background);
+            else if (row.brush.background)
+                graphics.fill_rectangle(rect, *row.brush.background);
+            else if (column.brush.background)
+                graphics.fill_rectangle(rect, *column.brush.background);
+            else if (brush_.background)
+                graphics.fill_rectangle(rect, *brush_.background);
+
+            if (self.selected({index, (int)i}))
+            {
+                if (item.brush && item.brush->selection)
+                    graphics.fill_rectangle(rect, *item.brush->selection);
+                else if (row.brush.selection)
+                    graphics.fill_rectangle(rect, *row.brush.selection);
+                else if (column.brush.selection)
+                    graphics.fill_rectangle(rect, *column.brush.selection);
+                else if (brush_.selection)
+                    graphics.fill_rectangle(rect, *brush_.selection);
+                else
+                    graphics.fill_rectangle(rect, *selbrush);
+            }
+
+            text_rect(item.text, rect);
+            if (item.brush && item.brush->text)
+                item.text.draw(graphics, rect, nullptr, *item.brush->text);
+            else if (row.brush.text)
+                item.text.draw(graphics, rect, nullptr, *row.brush.text);
+            else if (column.brush.text)
+                item.text.draw(graphics, rect, nullptr, *column.brush.text);
+            else if (brush_.text)
+                item.text.draw(graphics, rect, nullptr, *brush_.text);
+            else
+                item.text.draw(graphics, rect, nullptr, *txtbrush);
+
+            rect.left += rect.width();
+        }
+
+        return rect.bottom;
+    }
+
 private:
     void text_rect(class text& text, const Rect& rect)
     {
@@ -394,52 +452,51 @@ private:
     }
 
 private:
-    table&                                   self;
-    gridline                                 border_;
-    std::vector<row_type>                    rows_;
-    std::vector<column_type>                 columns_;
-    struct { unsigned int width   = 32;
-             bool         visible = false; } row_header_;
-    struct { unsigned int height  = 16;
-             bool         visible = true; }  column_header_;
-    SelectionMode                            selmode_;
-    SelectionBehavior                        selbehavior_;
-    unsigned int                             edit_trigger_;
-    item_index                               selbegin_, current_, enter_;
-    std::set<item_index>                     selecteds_;
+    table&                   self;
+    brush                    brush_;
+    gridline                 border_;
+    std::vector<row_type>    rows_;
+    std::vector<column_type> columns_;
+    row_headers              row_headers_;
+    column_headers           column_headers_;
+    SelectionMode            selmode_;
+    SelectionBehavior        selbehavior_;
+    unsigned int             edit_trigger_;
+    index                    selbegin_, current_, enter_;
+    std::set<index>          selecteds_;
 };
 
-bool table::item_index::operator==(const item_index& that) const
+bool table::index::operator==(const index& other) const
 {
-    return row == that.row && col == that.col;
+    return row == other.row && col == other.col;
 }
 
-bool table::item_index::operator!=(const item_index& that) const
+bool table::index::operator!=(const index& other) const
 {
-    return !operator==(that);
+    return !operator==(other);
 }
 
-bool table::item_index::operator <(const item_index& that) const
+bool table::index::operator<(const index& other) const
 {
-    return row < that.row || (row == that.row && col < that.col);
+    return row < other.row || (row == other.row && col < other.col);
 }
 
 struct table::item::implement
 {
     table& host;
     table::implement::item& item;
-    item_index index;
+    index index;
 
 public:
     implement(table& host, table::implement::item& item,
-              const item_index& index)
+              const struct index& index)
         : host(host), item(item), index(index)
     {}
 
 public:
     void repaint(void)
     {
-        host.item_repaint(index);
+        host.repaint_item(index);
     }
 };
 
@@ -447,12 +504,21 @@ struct table::gridline::implement
 {
     table& host;
     table::implement::gridline& gridline;
-    unsigned int index;
 
 public:
-    implement(table& host, table::implement::gridline& gridline,
-              unsigned int index)
-        : host(host), gridline(gridline), index(index)
+    implement(table& host, table::implement::gridline& gridline)
+        : host(host), gridline(gridline)
+    {}
+};
+
+struct table::row_headers::implement
+{
+    table& host;
+    table::implement::row_headers& headers;
+
+public:
+    implement(table& host, table::implement::row_headers& headers)
+        : host(host), headers(headers)
     {}
 };
 
@@ -460,12 +526,39 @@ struct table::row_header::implement
 {
     table& host;
     table::implement::row_header& header;
-    unsigned int index;
 
 public:
-    implement(table& host, table::implement::row_header& header,
-              unsigned int index)
-        : host(host), header(header), index(index)
+    implement(table& host, table::implement::row_header& header)
+        : host(host), header(header)
+    {}
+};
+
+struct table::row::implement
+{
+    table& host;
+    table::implement::row_type& row;
+    int index;
+
+public:
+    implement(table& host, table::implement::row_type& row, int index)
+        : host(host), row(row), index(index)
+    {}
+
+public:
+    void repaint(void)
+    {
+        host.repaint_item({index, -2});
+    }
+};
+
+struct table::column_headers::implement
+{
+    table& host;
+    table::implement::column_headers& headers;
+
+public:
+    implement(table& host, table::implement::column_headers& headers)
+        : host(host), headers(headers)
     {}
 };
 
@@ -473,13 +566,29 @@ struct table::column_header::implement
 {
     table& host;
     table::implement::column_header& header;
-    unsigned int index;
 
 public:
-    implement(table& host, table::implement::column_header& header,
-              unsigned int index)
-        : host(host), header(header), index(index)
+    implement(table& host, table::implement::column_header& header)
+        : host(host), header(header)
     {}
+};
+
+struct table::column::implement
+{
+    table& host;
+    table::implement::column_type& column;
+    int index;
+
+public:
+    implement(table& host, table::implement::column_type& column, int index)
+        : host(host), column(column), index(index)
+    {}
+
+public:
+    void repaint(void)
+    {
+        host.repaint_item({-2, index});
+    }
 };
 
 table::table(void)
@@ -493,6 +602,7 @@ table::table(unsigned int column)
 table::table(unsigned int column, unsigned int row)
     : impl_(new implement(*this))
 {
+    vertical_scroll().min(0);
     vertical_scroll().step(36);
     vertical_scroll().show();
     vertical_scroll().onScroll(
@@ -501,6 +611,7 @@ table::table(unsigned int column, unsigned int row)
             repaint();
         });
 
+    horizontal_scroll().min(0);
     horizontal_scroll().step(36);
     horizontal_scroll().show();
     horizontal_scroll().onScroll(
@@ -535,43 +646,7 @@ unsigned int table::columns(void) const
     return impl_->columns_.size();
 }
 
-bool table::row_header_visible(void) const
-{
-    return impl_->row_header_.visible;
-}
-
-unsigned int table::row_header_width(void) const
-{
-    return impl_->row_header_.width;
-}
-
-bool table::column_header_visible(void) const
-{
-    return impl_->column_header_.visible;
-}
-
-unsigned int table::column_header_height(void) const
-{
-    return impl_->column_header_.height;
-}
-
-unsigned int table::row_height(unsigned int row) const
-{
-    if (row < rows())
-        return impl_->rows_[row].header.height;
-
-    return 0;
-}
-
-unsigned int table::column_width(unsigned int col) const
-{
-    if (col < columns())
-        return impl_->columns_[col].header.width;
-
-    return 0;
-}
-
-table::item_index table::current(void) const
+table::index table::current(void) const
 {
     return impl_->current_;
 }
@@ -591,7 +666,7 @@ unsigned int table::edit_trigger(void) const
     return impl_->edit_trigger_;
 }
 
-bool table::selected(const item_index& index) const
+bool table::selected(const index& index) const
 {
     switch (impl_->selbehavior_)
     {
@@ -599,240 +674,138 @@ bool table::selected(const item_index& index) const
     case sbSelectItems:
         return impl_->selecteds_.find(index) != impl_->selecteds_.end();
     case sbSelectRows:
-        for (const item_index& ii : impl_->selecteds_)
-            if (ii.row == index.row)
+        for (const struct index& i : impl_->selecteds_)
+            if (i.row == index.row)
                 return true;
         return false;
     case sbSelectColumns:
-        for (const item_index& ii : impl_->selecteds_)
-            if (ii.col == index.col)
+        for (const struct index& i : impl_->selecteds_)
+            if (i.col == index.col)
                 return true;
         return false;
     }
 }
 
-const class table::item table::item(const item_index& index) const
+const struct table::item table::item(const index& index) const
 {
     table& self = const_cast<table&>(*this);
     implement::item& item = impl_->rows_[index.row].items[index.col];
-    class item ret;
+    struct item ret;
 
     ret.impl.reset(new item::implement(self, item, index));
 
     return ret;
 }
 
-const class table::row_header table::row_header(unsigned int index) const
+const struct table::gridline table::border(void) const
 {
     table& self = const_cast<table&>(*this);
-    implement::row_header& header = impl_->rows_[index].header;
-    item_index ii = {(int)index, -1};
-    class row_header ret;
+    struct gridline ret;
 
-    ret.item::impl.reset(new item::implement(self, header, ii));
-    ret.impl.reset(new row_header::implement(self, header, index));
+    ret.impl.reset(new gridline::implement(self, impl_->border_));
 
     return ret;
 }
 
-const class table::column_header table::column_header(unsigned int index) const
+const struct table::row_headers table::row_headers(void) const
 {
     table& self = const_cast<table&>(*this);
-    implement::column_header& header = impl_->columns_[index].header;
-    item_index ii = {-1, (int)index};
-    class column_header ret;
+    implement::row_headers& headers = impl_->row_headers_;
+    struct row_headers ret;
 
-    ret.item::impl.reset(new item::implement(self, header, ii));
-    ret.impl.reset(new column_header::implement(self, header, index));
+    ret.impl.reset(new row_headers::implement(self, headers));
 
     return ret;
 }
 
-const class table::gridline table::border(void) const
+const struct table::row table::row(unsigned index) const
 {
     table& self = const_cast<table&>(*this);
-    class gridline ret;
+    implement::row_type& row = impl_->rows_[index];
+    struct row ret;
 
-    ret.impl.reset(new gridline::implement(self, impl_->border_, 0));
+    ret.impl.reset(new row::implement(self, row, index));
 
     return ret;
 }
 
-const class table::gridline table::vertical_gridline(unsigned int index) const
+const struct table::column table::column(unsigned index) const
 {
     table& self = const_cast<table&>(*this);
-    implement::gridline& gridline = impl_->rows_[index].gridline;
-    class gridline ret;
+    implement::column_type& column = impl_->columns_[index];
+    struct column ret;
 
-    ret.impl.reset(new gridline::implement(self, gridline, index));
+    ret.impl.reset(new column::implement(self, column, index));
 
     return ret;
 }
 
-const class table::gridline table::horizontal_gridline(unsigned int index) const
+const struct table::column_headers table::column_headers(void) const
 {
     table& self = const_cast<table&>(*this);
-    implement::gridline& gridline = impl_->rows_[index].gridline;
-    class gridline ret;
+    implement::column_headers& headers = impl_->column_headers_;
+    struct column_headers ret;
 
-    ret.impl.reset(new gridline::implement(self, gridline, index));
+    ret.impl.reset(new column_headers::implement(self, headers));
 
     return ret;
 }
 
-class table::item table::item(const item_index& index)
+struct table::item table::item(const index& index)
 {
     implement::item& item = impl_->rows_[index.row].items[index.col];
-    class item ret;
+    struct item ret;
 
     ret.impl.reset(new item::implement(*this, item, index));
 
     return ret;
 }
 
-class table::row_header table::row_header(unsigned int index)
+struct table::gridline table::border(void)
 {
-    implement::row_header& header = impl_->rows_[index].header;
-    item_index ii = {(int)index, -1};
-    class row_header ret;
+    struct gridline ret;
+    ret.impl.reset(new gridline::implement(*this, impl_->border_));
+    return ret;
+}
 
-    ret.item::impl.reset(new item::implement(*this, header, ii));
-    ret.impl.reset(new row_header::implement(*this, header, index));
+struct table::row_headers table::row_headers(void)
+{
+    implement::row_headers& headers = impl_->row_headers_;
+    struct row_headers ret;
+
+    ret.impl.reset(new row_headers::implement(*this, headers));
 
     return ret;
 }
 
-class table::column_header table::column_header(unsigned int index)
+struct table::column_headers table::column_headers(void)
 {
-    implement::column_header& header = impl_->columns_[index].header;
-    item_index ii = {-1, (int)index};
-    class column_header ret;
+    implement::column_headers& headers = impl_->column_headers_;
+    struct column_headers ret;
 
-    ret.item::impl.reset(new item::implement(*this, header, ii));
-    ret.impl.reset(new column_header::implement(*this, header, index));
+    ret.impl.reset(new column_headers::implement(*this, headers));
 
     return ret;
 }
 
-class table::gridline table::border(void)
+struct table::row table::row(unsigned int index)
 {
-    class gridline ret;
+    implement::row_type& row = impl_->rows_[index];
+    struct row ret;
 
-    ret.impl.reset(new gridline::implement(*this, impl_->border_, 0));
+    ret.impl.reset(new row::implement(*this, row, index));
 
     return ret;
 }
 
-class table::gridline table::vertical_gridline(unsigned int index)
+struct table::column table::column(unsigned int index)
 {
-    implement::gridline& gridline = impl_->rows_[index].gridline;
-    class gridline ret;
+    implement::column_type& column = impl_->columns_[index];
+    struct column ret;
 
-    ret.impl.reset(new gridline::implement(*this, gridline, index));
+    ret.impl.reset(new column::implement(*this, column, index));
 
     return ret;
-}
-
-class table::gridline table::horizontal_gridline(unsigned int index)
-{
-    implement::gridline& gridline = impl_->rows_[index].gridline;
-    class gridline ret;
-
-    ret.impl.reset(new gridline::implement(*this, gridline, index));
-
-    return ret;
-}
-
-void table::header_visible(bool visible)
-{
-    row_header_visible(visible);
-    column_header_visible(visible);
-}
-
-void table::row_header_visible(bool visible)
-{
-    if (impl_->row_header_.visible != visible)
-    {
-        impl_->row_header_.visible = visible;
-        impl_->update();
-    }
-}
-
-void table::row_header_width(unsigned int width)
-{
-    if (impl_->row_header_.width != width)
-    {
-        impl_->row_header_.width = width;
-        impl_->update();
-    }
-}
-
-void table::row_height(unsigned int row, unsigned int height)
-{
-    if (row < rows())
-    {
-        impl_->rows_[row].header.height = height;
-        impl_->update();
-    }
-}
-
-void table::column_header_visible(bool visible)
-{
-    if (impl_->column_header_.visible != visible)
-    {
-        impl_->column_header_.visible = visible;
-        impl_->update();
-    }
-}
-
-void table::column_header_height(unsigned int height)
-{
-    if (impl_->column_header_.height != height)
-    {
-        impl_->column_header_.height = height;
-        impl_->update();
-    }
-}
-
-void table::column_width(unsigned int col, unsigned int width)
-{
-    if (col < columns())
-    {
-        impl_->columns_[col].header.width = width;
-        impl_->update();
-    }
-}
-
-void table::show_header(void)
-{
-    show_row_header();
-    show_column_header();
-}
-
-void table::hide_header(void)
-{
-    hide_row_header();
-    hide_column_header();
-}
-
-void table::show_row_header(void)
-{
-    row_header_visible(true);
-}
-
-void table::hide_row_header(void)
-{
-    row_header_visible(false);
-}
-
-void table::show_column_header(void)
-{
-    column_header_visible(true);
-}
-
-void table::hide_column_header(void)
-{
-    column_header_visible(false);
 }
 
 void table::append_row(void)
@@ -857,7 +830,7 @@ void table::append_row(const std::wstring& header)
 
 void table::insert_row(unsigned int row)
 {
-    insert_row(row, stralgo::format("%d", row + 1));
+    insert_row(row, stralgo::strf(row + 1));
 }
 
 void table::insert_row(unsigned int row, const std::string& header)
@@ -914,7 +887,7 @@ void table::append_column(const std::wstring& header)
 
 void table::insert_column(unsigned int col)
 {
-    insert_column(col, stralgo::format("%d", col + 1));
+    insert_column(col, stralgo::strf(col + 1));
 }
 
 void table::insert_column(unsigned int col, const std::string& header)
@@ -963,6 +936,7 @@ void table::clear(void)
 
 void table::clear_rows(void)
 {
+    clear_selection();
     impl_->rows_.clear();
     impl_->update();
 }
@@ -970,7 +944,7 @@ void table::clear_rows(void)
 void table::clear_content(void)
 {
     for (implement::row_type& row : impl_->rows_)
-    for (class implement::item& item : row.items)
+    for (struct implement::item& item : row.items)
         item.text.content(std::wstring());
 
     repaint();
@@ -980,10 +954,10 @@ void table::clear_row(unsigned int row)
 {
     if (row < rows())
     {
-        for (class implement::item& item : impl_->rows_[row].items)
+        for (struct implement::item& item : impl_->rows_[row].items)
             item.text.content(std::wstring());
 
-        repaint(impl_->item_rect({(int)row, -1}));
+        repaint(impl_->item_rect({(int)row, -2}));
     }
 }
 
@@ -994,15 +968,15 @@ void table::clear_column(unsigned int col)
         for (implement::row_type& row : impl_->rows_)
             row.items[col].text.content(std::wstring());
 
-        repaint(impl_->item_rect({-1, (int)col}));
+        repaint(impl_->item_rect({-2, (int)col}));
     }
 }
 
-void table::current(const item_index& index)
+void table::current(const index& index)
 {
     if (impl_->exists(index) && index != impl_->current_)
     {
-        item_index oldcurrent = impl_->current_;
+        struct index oldcurrent = impl_->current_;
 
         repaint(impl_->item_rect(impl_->current_));
         impl_->current_ = index;
@@ -1045,15 +1019,14 @@ void table::edit_trigger(unsigned int edit_trigger)
     impl_->edit_trigger_ = edit_trigger;
 }
 
-void table::selected(const item_index& index, bool _selected)
+void table::selected(const index& index, bool _selected)
 {
     selected(index, index, _selected);
 }
 
-void table::selected(const item_index& _begin, const item_index& _end,
-                     bool _selected)
+void table::selected(const index& _begin, const index& _end, bool _selected)
 {
-    item_index begin = _begin, end = _end;
+    index begin = _begin, end = _end;
 
     if (begin.row > end.row)
         std::swap(begin.row, end.row);
@@ -1069,7 +1042,7 @@ void table::selected(const item_index& _begin, const item_index& _end,
     else if (end.col >= (int)columns())
         end.col = columns() - 1;
 
-    std::set<item_index> inserting;
+    std::set<index> inserting;
     for (int row = begin.row; row <= end.row; ++row)
     for (int col = begin.col; col <= end.col; ++col)
         inserting.insert({row, col});
@@ -1077,9 +1050,9 @@ void table::selected(const item_index& _begin, const item_index& _end,
     selected(inserting, _selected);
 }
 
-void table::selected(const std::set<item_index>& indexes, bool selected)
+void table::selected(const std::set<index>& indexes, bool selected)
 {
-    std::vector<item_index> result;
+    std::vector<index> result;
     using namespace std;
 
     if (selected)
@@ -1088,7 +1061,7 @@ void table::selected(const std::set<item_index>& indexes, bool selected)
                        impl_->selecteds_.begin(), impl_->selecteds_.end(),
                        inserter(result, result.begin()));
 
-        for (item_index& index : result)
+        for (index& index : result)
         {
             impl_->selecteds_.insert(index);
             onItemSelectedHandle(index);
@@ -1101,7 +1074,7 @@ void table::selected(const std::set<item_index>& indexes, bool selected)
                          impl_->selecteds_.begin(), impl_->selecteds_.end(),
                          inserter(result, result.begin()));
 
-        for (item_index& index : result)
+        for (index& index : result)
         {
             impl_->selecteds_.erase(index);
             onItemDisselectedHandle(index);
@@ -1118,55 +1091,128 @@ void table::selected(const std::set<item_index>& indexes, bool selected)
 
 }
 
-void table::select(const item_index& index)
+void table::select(const index& index)
 {
     selected(index, true);
 }
 
-void table::select(const item_index& begin, const item_index& end)
+void table::select(const index& begin, const index& end)
 {
     selected(begin, end, true);
 }
 
-void table::select(const std::set<item_index>& indexes)
+void table::select(const std::set<index>& indexes)
 {
     selected(indexes, true);
 }
 
-void table::disselect(const item_index& index)
+void table::disselect(const index& index)
 {
     selected(index, false);
 }
 
-void table::disselect(const item_index& begin, const item_index& end)
+void table::disselect(const index& begin, const index& end)
 {
     selected(begin, end, false);
 }
 
-void table::disselect(const std::set<item_index>& indexes)
+void table::disselect(const std::set<index>& indexes)
 {
     selected(indexes, false);
 }
 
 void table::clear_selection(void)
 {
-    std::vector<item_index>
-        indexes(impl_->selecteds_.begin(), impl_->selecteds_.end());
+    std::vector<index> sels(impl_->selecteds_.begin(), impl_->selecteds_.end());
     impl_->selecteds_.clear();
-    repaint(impl_->items_rect(indexes));
+    repaint(impl_->items_rect(sels));
 }
 
-table::item_index table::hittest(Point point) const
+void table::text_color(color color)
+{
+    text_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::text_brush(const brush_sptr& brush)
+{
+    impl_->brush_.text = brush;
+
+    for (implement::row_type& row : impl_->rows_)
+    {
+        row.brush.text.reset();
+
+        for (implement::item& item : row.items)
+            if (item.brush)
+                item.brush->text.reset();
+    }
+
+    for (implement::column_type& column : impl_->columns_)
+        column.brush.text.reset();
+
+    repaint();
+}
+
+void table::background_color(color color)
+{
+    background_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::background_brush(const brush_sptr& brush)
+{
+    impl_->brush_.background = brush;
+
+    for (implement::row_type& row : impl_->rows_)
+    {
+        row.brush.background.reset();
+
+        for (implement::item& item : row.items)
+            if (item.brush)
+                item.brush->background.reset();
+    }
+
+    for (implement::column_type& column : impl_->columns_)
+        column.brush.background.reset();
+
+    repaint();
+}
+
+void table::selection_color(color color)
+{
+    selection_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::selection_brush(const brush_sptr& brush)
+{
+    impl_->brush_.selection = brush;
+
+    for (implement::row_type& row : impl_->rows_)
+    {
+        row.brush.selection.reset();
+
+        for (implement::item& item : row.items)
+            if (item.brush)
+                item.brush->selection.reset();
+    }
+
+    for (implement::column_type& column : impl_->columns_)
+        column.brush.selection.reset();
+
+    repaint();
+}
+
+table::index table::hittest(Point point) const
 {
     unsigned int border_width = impl_->border_.width();
-    item_index index = {-1, -1};
+    index index = {-1, -1};
 
     point.y += vertical_scroll().valued() - border_width;
     if (point.y < 0)
         index.row = rows();
-    else if (!column_header_visible() || point.y >= (int)column_header_height())
+    else if (!impl_->column_headers_.visible
+             || point.y >= (int)impl_->column_headers_.height)
     {
-        point.y  -= column_header_height();
+        if (impl_->column_headers_.visible)
+            point.y -= impl_->column_headers_.height;
         index.row = 0;
 
         for (implement::row_type& row : impl_->rows_)
@@ -1182,9 +1228,11 @@ table::item_index table::hittest(Point point) const
     point.x += horizontal_scroll().valued() - border_width;
     if (point.x < 0)
         index.col = columns();
-    else if (!row_header_visible() || point.x >= (int)row_header_width())
+    else if (!impl_->row_headers_.visible
+             || point.x >= (int)impl_->row_headers_.width)
     {
-        point.x  -= row_header_width();
+        if (impl_->row_headers_.visible)
+            point.x -= impl_->row_headers_.width;
         index.col = 0;
 
         for (implement::column_type& column : impl_->columns_)
@@ -1200,41 +1248,97 @@ table::item_index table::hittest(Point point) const
     return index;
 }
 
-void table::scrollto(const item_index& index)
+void table::scrollto(const index& index)
 {
-    scrollto_row(index.row);
-    scrollto_column(index.col);
+    scrollto_row(index.row, aUndefined);
+    scrollto_column(index.col, aUndefined);
+}
+
+void table::scrollto(const index& index, unsigned int alignment)
+{
+    scrollto_row(index.row, alignment);
+    scrollto_column(index.col, alignment);
 }
 
 void table::scrollto_row(unsigned int row)
 {
+    scrollto_row(row, aUndefined);
+}
+
+void table::scrollto_row(unsigned int row, unsigned int alignment)
+{
     if (row >= rows())
         row  = rows() - 1;
 
-    unsigned int top    = impl_->vaccumulate(row);
-    unsigned int bottom = top + impl_->rows_[row].header.height;
+    int row_height = impl_->rows_[row].header.height;
+    int top    = impl_->vaccumulate(row);
+    int middle = top + (height() - row_height) / 2;
+    int bottom = top + row_height - height();
 
-    if (top < vertical_scroll().valued())
-        vertical_scroll().value(top);
-    else if (bottom > vertical_scroll().valued() + height())
-        vertical_scroll().value(bottom - height());
+    if (alignment == aUndefined)
+    {
+        if (top < vertical_scroll().valued())
+            vertical_scroll().value(top);
+        else if (bottom > vertical_scroll().valued())
+            vertical_scroll().value(bottom);
+    }
+    else
+    {
+        switch (alignment & aVertical)
+        {
+        case aTop:
+            vertical_scroll().value(top);
+            break;
+        case aCenter:
+            vertical_scroll().value(middle);
+            break;
+        case aBottom:
+            vertical_scroll().value(bottom);
+            break;
+        }
+    }
 }
 
 void table::scrollto_column(unsigned int col)
 {
+    scrollto_column(col, aUndefined);
+}
+
+void table::scrollto_column(unsigned int col, unsigned int alignment)
+{
     if (col >= columns())
         col  = columns() - 1;
 
-    unsigned int left  = impl_->haccumulate(col);
-    unsigned int right = left + impl_->columns_[col].header.width;
+    int column_width = impl_->columns_[col].header.width;
+    int left   = impl_->haccumulate(col);
+    int middle = left - (width() - column_width) / 2;
+    int right  = left + column_width - width();
 
-    if (left < horizontal_scroll().valued())
-        horizontal_scroll().value(left);
-    else if (right > horizontal_scroll().valued() + width())
-        horizontal_scroll().value(right - width());
+    if (alignment == aUndefined)
+    {
+        if (left < horizontal_scroll().valued())
+            horizontal_scroll().value(left);
+        else if (right > horizontal_scroll().valued())
+            horizontal_scroll().value(right);
+    }
+    else
+    {
+        switch (alignment & aHorizontal)
+        {
+        case aLeft:
+            horizontal_scroll().value(left);
+            break;
+        case aCenter:
+            horizontal_scroll().value(middle);
+            break;
+        case aRight:
+            horizontal_scroll().value(right);
+            break;
+        }
+    }
 }
 
-void table::item_repaint(const item_index& index)
+void table::repaint_item(const index& index)
 {
     repaint(impl_->item_rect(index));
 }
@@ -1248,29 +1352,29 @@ void table::onPaint(graphics graphics, Rect rect)
 {
     class color_scheme cs = color_scheme();
     color selcolor = focused() ? cs.selection() : cs.inactive_selection();
-    brush_sptr selbrush = make_color_brush_sptr(selcolor);
-    brush_sptr txtbrush = make_color_brush_sptr(cs.text());
+    brush_sptr txtbrush = make_brushsptr<color_brush>(cs.text());
+    brush_sptr selbrush = make_brushsptr<color_brush>(selcolor);
     int x = impl_->border_.width() - horizontal_scroll().valued();
     int y = impl_->border_.width() - vertical_scroll().valued();
 
     impl_->draw_lines(graphics, rect);
 
-    if (impl_->column_header_.visible)
+    if (impl_->column_headers_.visible)
     {
         int dx = x;
-        if (row_header_visible())
-            dx += row_header_width();
-        if (y + (int)column_header_height() > rect.top)
+        if (impl_->row_headers_.visible)
+            dx += impl_->row_headers_.width;
+        if (y + (int)impl_->column_headers_.height > rect.top)
             impl_->draw_header(graphics, txtbrush, dx, y);
-        y += column_header_height();
+        y += impl_->column_headers_.height;
     }
 
     for (unsigned int row = 0; row < rows() && y < rect.bottom; ++row)
     {
-        int rowheight = row_height(row);
+        int rowheight = impl_->rows_[row].header.height;
 
         if (y + rowheight > rect.top)
-            y = impl_->draw_row(graphics, selbrush, txtbrush, x, y, row);
+            y = impl_->draw_row(graphics, txtbrush, selbrush, x, y, row);
         else
             y += impl_->rows_[row].gridline.width() + rowheight;
     }
@@ -1286,10 +1390,8 @@ void table::onPaint(graphics graphics, Rect rect)
 
 bool table::onFocus(bool focus)
 {
-    std::vector<item_index>
-        indexes(impl_->selecteds_.begin(), impl_->selecteds_.end());
-    repaint(impl_->items_rect(indexes));
-
+    std::vector<index> sels(impl_->selecteds_.begin(), impl_->selecteds_.end());
+    repaint(impl_->items_rect(sels));
     return true;
 }
 
@@ -1302,7 +1404,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
     case sys::vkLeft:
     case sys::vkRight:
         {
-            item_index index = current();
+            index index = current();
             if (vkey == sys::vkUp)
                 --index.row;
             else if (vkey == sys::vkDown)
@@ -1396,7 +1498,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
         vertical_scroll().page_down();
         break;
     default:
-        break;
+        return false;
     }
 
     return true;
@@ -1423,7 +1525,7 @@ bool table::onKeyPress(unsigned int chr)
 
 bool table::onMouseDown(sys::Button button, int times, Point point)
 {
-    item_index index = hittest(point);
+    index index = hittest(point);
     if (!impl_->exists(index))
         return true;
     else
@@ -1505,16 +1607,26 @@ bool table::onMouseUp(sys::Button button, Point point)
 
 bool table::onMouseMove(Point point)
 {
-    item_index index = hittest(point), oldcurrent = current();
+    index index = hittest(point), oldcurrent = current();
     if (!impl_->exists(index))
         return true;
 
     if (impl_->enter_ != index)
     {
         if (impl_->exists(impl_->enter_))
+        {
             onItemMouseLeaveHandle(impl_->enter_);
+            if (impl_->enter_.row != index.row)
+                onRowMouseLeaveHandle(impl_->enter_.row);
+            if (impl_->enter_.col != index.col)
+                onColumnMouseLeaveHandle(impl_->enter_.col);
+        }
+        onItemMouseEnterHandle(index);
+        if (impl_->enter_.row != index.row)
+            onRowMouseEnterHandle(index.row);
+        if (impl_->enter_.col != index.col)
+            onColumnMouseEnterHandle(index.col);
         impl_->enter_ = index;
-        onItemMouseEnterHandle(impl_->enter_);
     }
 
     if (!sys::key_pressed(sys::vkLButton) || (index == oldcurrent))
@@ -1599,17 +1711,38 @@ table::fontptr table::item::font(void) const
 
 brush_sptr table::item::text_brush(void) const
 {
-    return impl->item.fgbrush;
+    if (impl->item.brush && impl->item.brush->text)
+        return impl->item.brush->text;
+    else if (impl->host.impl_->rows_[impl->index.row].brush.text)
+        return impl->host.impl_->rows_[impl->index.row].brush.text;
+    else if (impl->host.impl_->columns_[impl->index.col].brush.text)
+        return impl->host.impl_->columns_[impl->index.col].brush.text;
+    else
+        return impl->host.impl_->brush_.text;
 }
 
 brush_sptr table::item::background_brush(void) const
 {
-    return impl->item.bgbrush;
+    if (impl->item.brush && impl->item.brush->background)
+        return impl->item.brush->background;
+    else if (impl->host.impl_->rows_[impl->index.row].brush.background)
+        return impl->host.impl_->rows_[impl->index.row].brush.background;
+    else if (impl->host.impl_->columns_[impl->index.col].brush.background)
+        return impl->host.impl_->columns_[impl->index.col].brush.background;
+    else
+        return impl->host.impl_->brush_.background;
 }
 
 brush_sptr table::item::selection_brush(void) const
 {
-    return impl->item.selbrush;
+    if (impl->item.brush && impl->item.brush->selection)
+        return impl->item.brush->selection;
+    else if (impl->host.impl_->rows_[impl->index.row].brush.selection)
+        return impl->host.impl_->rows_[impl->index.row].brush.selection;
+    else if (impl->host.impl_->columns_[impl->index.col].brush.selection)
+        return impl->host.impl_->columns_[impl->index.col].brush.selection;
+    else
+        return impl->host.impl_->brush_.selection;
 }
 
 bool table::item::editable(void) const
@@ -1721,37 +1854,55 @@ void table::item::font(fontptr font)
     impl->repaint();
 }
 
-void table::item::text_color(const color& color)
+void table::item::text_color(color color)
 {
-    text_brush(make_color_brush_sptr(color));
+    text_brush(make_brushsptr<color_brush>(color));
 }
 
 void table::item::text_brush(const brush_sptr& brush)
 {
-    impl->item.fgbrush = brush;
-    impl->repaint();
+    if (!impl->item.brush)
+        impl->item.brush.reset(new table::implement::brush);
+
+    if (impl->item.brush->text != brush)
+    {
+        impl->item.brush->text = brush;
+        impl->repaint();
+    }
 }
 
-void table::item::background_color(const color& color)
+void table::item::background_color(color color)
 {
-    background_brush(make_color_brush_sptr(color));
+    background_brush(make_brushsptr<color_brush>(color));
 }
 
 void table::item::background_brush(const brush_sptr& brush)
 {
-    impl->item.bgbrush = brush;
-    impl->repaint();
+    if (!impl->item.brush)
+        impl->item.brush.reset(new table::implement::brush);
+
+    if (impl->item.brush->background != brush)
+    {
+        impl->item.brush->background = brush;
+        impl->repaint();
+    }
 }
 
-void table::item::selection_color(const color& color)
+void table::item::selection_color(color color)
 {
-    selection_brush(make_color_brush_sptr(color));
+    selection_brush(make_brushsptr<color_brush>(color));
 }
 
 void table::item::selection_brush(const brush_sptr& brush)
 {
-    impl->item.selbrush = brush;
-    impl->repaint();
+    if (!impl->item.brush)
+        impl->item.brush.reset(new table::implement::brush);
+
+    if (impl->item.brush->selection != brush)
+    {
+        impl->item.brush->selection = brush;
+        impl->repaint();
+    }
 }
 
 void table::item::editable(bool editable)
@@ -1781,8 +1932,8 @@ void table::item::edit(const std::wstring& text)
     std::shared_ptr<item> self(new item(*this));
     edit_box& eb = edit_box::pop(&impl->host, rect(), impl->item.text, text);
 
-    handler::sptr handler = impl->host.horizontal_scroll().onScroll(
-                            impl->host.vertical_scroll().onScroll(
+    handler::sptr handler = impl->host.vertical_scroll().onScroll(
+                            impl->host.horizontal_scroll().onScroll(
         [self, &eb](scroll*)
         {
             eb.xy(self->rect().left_top());
@@ -1797,14 +1948,14 @@ void table::item::edit(const std::wstring& text)
     eb.onEditFinish(
         [self, handler](edit_box*)
         {
-            self->impl->host.horizontal_scroll().onScrollRemove(handler);
             self->impl->host.vertical_scroll().onScrollRemove(handler);
+            self->impl->host.horizontal_scroll().onScrollRemove(handler);
         });
 }
 
 unsigned int table::gridline::width(void) const
 {
-    return math::ceil(impl->gridline.pen.width());
+    return impl->gridline.width();
 }
 
 brush_sptr table::gridline::brush(void) const
@@ -1828,12 +1979,12 @@ void table::gridline::width(unsigned int width)
     impl->host.impl_->update();
 }
 
-void table::gridline::color(const class color& color)
+void table::gridline::color(const struct color& color)
 {
-    brush(make_color_brush_sptr(color));
+    brush(make_brushsptr<color_brush>(color));
 }
 
-void table::gridline::brush(brush_sptr brush)
+void table::gridline::brush(const brush_sptr& brush)
 {
     impl->gridline.pen.brush(brush);
     impl->host.impl_->update();
@@ -1855,6 +2006,44 @@ void table::gridline::dash_array(const double* dash_array, unsigned int count)
     impl->host.impl_->update();
 }
 
+bool table::row_headers::visible(void) const
+{
+    return impl->headers.visible;
+}
+
+unsigned int table::row_headers::width(void) const
+{
+    return impl->headers.width;
+}
+
+void table::row_headers::show(void)
+{
+    visible(true);
+}
+
+void table::row_headers::hide(void)
+{
+    visible(false);
+}
+
+void table::row_headers::visible(bool visible)
+{
+    if (impl->headers.visible != visible)
+    {
+        impl->headers.visible = visible;
+        impl->host.impl_->update();
+    }
+}
+
+void table::row_headers::width(unsigned int width)
+{
+    if (impl->headers.width != width)
+    {
+        impl->headers.width = width;
+        impl->host.impl_->update();
+    }
+}
+
 unsigned int table::row_header::height(void) const
 {
     return impl->header.height;
@@ -1865,6 +2054,135 @@ void table::row_header::height(unsigned int height)
     if (impl->header.height != height)
     {
         impl->header.height = height;
+        impl->host.impl_->update();
+    }
+}
+
+unsigned int table::row::height(void) const
+{
+    return impl->row.header.height;
+}
+
+const table::gridline table::row::gridline(void) const
+{
+    return const_cast<row*>(this)->gridline();
+}
+
+const table::row_header table::row::header(void) const
+{
+    return const_cast<row*>(this)->header();
+}
+
+void table::row::height(unsigned int height)
+{
+    if (impl->row.header.height != height)
+    {
+        impl->row.header.height = height;
+        impl->host.impl_->update();
+    }
+}
+
+void table::row::text_color(color color)
+{
+    text_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::row::text_brush(const brush_sptr& brush)
+{
+    impl->row.brush.text = brush;
+
+    for (table::implement::item& item : impl->row.items)
+        if (item.brush)
+            item.brush->text.reset();
+
+    impl->repaint();
+}
+
+void table::row::background_color(color color)
+{
+    background_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::row::background_brush(const brush_sptr& brush)
+{
+    impl->row.brush.background = brush;
+
+    for (table::implement::item& item : impl->row.items)
+        if (item.brush)
+            item.brush->background.reset();
+
+    impl->repaint();
+}
+
+void table::row::selection_color(color color)
+{
+    selection_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::row::selection_brush(const brush_sptr& brush)
+{
+    impl->row.brush.selection = brush;
+
+    for (table::implement::item& item : impl->row.items)
+        if (item.brush)
+            item.brush->selection.reset();
+
+    impl->repaint();
+}
+
+table::gridline table::row::gridline(void)
+{
+    struct gridline ret;
+    ret.impl.reset(new gridline::implement(impl->host, impl->row.gridline));
+    return ret;
+}
+
+table::row_header table::row::header(void)
+{
+    table::implement::row_header& header = impl->row.header;
+    struct index i = {impl->index, -1};
+    struct row_header ret;
+
+    ret.item::impl.reset(new item::implement(impl->host, header, i));
+    ret.impl.reset(new row_header::implement(impl->host, header));
+
+    return ret;
+}
+
+bool table::column_headers::visible(void) const
+{
+    return impl->headers.visible;
+}
+
+unsigned int table::column_headers::height(void) const
+{
+    return impl->headers.height;
+}
+
+void table::column_headers::show(void)
+{
+    visible(true);
+}
+
+void table::column_headers::hide(void)
+{
+    visible(false);
+}
+
+void table::column_headers::visible(bool visible)
+{
+    if (impl->headers.visible != visible)
+    {
+        impl->headers.visible = visible;
+        impl->host.impl_->update();
+    }
+}
+
+void table::column_headers::height(unsigned int height)
+{
+    if (impl->headers.height != height)
+    {
+        impl->headers.height = height;
         impl->host.impl_->update();
     }
 }
@@ -1881,4 +2199,98 @@ void table::column_header::width(unsigned int width)
         impl->header.width = width;
         impl->host.impl_->update();
     }
+}
+
+unsigned int table::column::width(void) const
+{
+    return impl->column.header.width;
+}
+
+const table::gridline table::column::gridline(void) const
+{
+    return const_cast<column*>(this)->gridline();
+}
+
+const table::column_header table::column::header(void) const
+{
+    return const_cast<column*>(this)->header();
+}
+
+void table::column::width(unsigned int width)
+{
+    if (impl->column.header.width != width)
+    {
+        impl->column.header.width = width;
+        impl->host.impl_->update();
+    }
+}
+
+void table::column::text_color(color color)
+{
+    text_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::column::text_brush(const brush_sptr& brush)
+{
+    std::vector<table::implement::row_type>& rows = impl->host.impl_->rows_;
+
+    impl->column.brush.text = brush;
+    for (unsigned int i = 0; i < impl->host.columns(); ++i)
+        if (rows[i].items[impl->index].brush)
+            rows[i].items[impl->index].brush->text.reset();
+
+    impl->repaint();
+}
+
+void table::column::background_color(color color)
+{
+    background_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::column::background_brush(const brush_sptr& brush)
+{
+    std::vector<table::implement::row_type>& rows = impl->host.impl_->rows_;
+
+    impl->column.brush.background = brush;
+    for (unsigned int i = 0; i < impl->host.columns(); ++i)
+        if (rows[i].items[impl->index].brush)
+            rows[i].items[impl->index].brush->background.reset();
+
+    impl->repaint();
+}
+
+void table::column::selection_color(color color)
+{
+    selection_brush(make_brushsptr<color_brush>(color));
+}
+
+void table::column::selection_brush(const brush_sptr& brush)
+{
+    std::vector<table::implement::row_type>& rows = impl->host.impl_->rows_;
+
+    impl->column.brush.selection = brush;
+    for (unsigned int i = 0; i < impl->host.columns(); ++i)
+        if (rows[i].items[impl->index].brush)
+            rows[i].items[impl->index].brush->selection.reset();
+
+    impl->repaint();
+}
+
+table::gridline table::column::gridline(void)
+{
+    struct gridline ret;
+    ret.impl.reset(new gridline::implement(impl->host, impl->column.gridline));
+    return ret;
+}
+
+table::column_header table::column::header(void)
+{
+    table::implement::column_header& header = impl->column.header;
+    struct index i = {-1, impl->index};
+    struct column_header ret;
+
+    ret.item::impl.reset(new item::implement(impl->host, header, i));
+    ret.impl.reset(new column_header::implement(impl->host, header));
+
+    return ret;
 }

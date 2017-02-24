@@ -19,7 +19,7 @@ public:
         scheme_["text"]               = color::black();
         scheme_["selection"]          = color::dodger_blue();
         scheme_["inactive_text"]      = color::black();
-        scheme_["inactive_selection"] = color::dodger_blue(85);
+        scheme_["inactive_selection"] = color::dodger_blue(128);
         scheme_["hyperlink"]          = color::blue();
     }
 

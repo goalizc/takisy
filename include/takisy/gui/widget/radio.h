@@ -5,7 +5,6 @@
 #include <vector>
 #include <initializer_list>
 #include <takisy/core/handler.h>
-#include <takisy/cgl/font/font.h>
 #include <takisy/gui/widget/widget.h>
 #include <takisy/gui/widget/label.h>
 
@@ -76,6 +75,7 @@ class radio_group : public widget
 {
     class implement;
 
+public:
     DECLARE_HANDLER(onSelectionChanged);
 
 public:
@@ -95,6 +95,7 @@ public:
     widget*         item(unsigned int index) const;
     widget*         selected(void) const;
     int             selected_index(void) const;
+    Size            optimal_size(OptimalPolicy policy=opUnset) const override;
 
     unsigned int    margin(void) const;
     unsigned int    spacing(void) const;

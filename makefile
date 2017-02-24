@@ -4,7 +4,7 @@
 inc_dir         = include
 src_dir         = src
 lib_dir         = lib
-bin_dir         =
+bin_dir         = lib
 
 ########################################################################
 # 输出
@@ -14,11 +14,16 @@ target_type     = static
 target          = takisy
 
 ########################################################################
+# 外部依赖
+########################################################################
+dependency      =
+
+########################################################################
 # 外部库定义
 ########################################################################
 ext_inc_dir     = /usr/local/include/freetype2
-ext_lib_dir     =
-ext_lib         =
+ext_lib_dir     = /z/mingw/msys/1.0/local/lib
+ext_lib         = freetype ws2_32 gdi32 imm32
 
 ########################################################################
 # 编译相关
@@ -31,11 +36,11 @@ rm              = rm -rf
 mkdir           = mkdir -p
 
 ccflags         =
-cxxflags        = -O3 --std=gnu++11 -Wall -Werror -Wno-array-bounds
+cxxflags        = -O3 --std=gnu++11 -fopenmp -Wall -Werror -Wno-array-bounds
 ldflags         =
 
 ########################################################################
-# 相关目录
+# 头文件包含与链接库
 ########################################################################
 inc_dir        := $(addprefix -I,$(inc_dir))
 ext_inc_dir    := $(addprefix -I,$(ext_inc_dir))
@@ -67,20 +72,20 @@ endif # app
 all: prebuild $(target) postbuild
 
 $(objs): %.o: %.cpp
-	@echo 'g++.o   $@'
+	@echo 'cxx.o   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -c "$<" -o $@
 
 -include $(dpds)
 
 $(dpds): %.d: %.cpp
-	@echo 'g++.d   $@'
+	@echo 'cxx.d   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -MM "$<" | \
-    sed 's/^$(notdir $(basename $@)).o/$(subst /,\/,$(basename $@)).o $(subst /,\/,$(basename $@)).d/' > $@
+	sed 's?^$(notdir $*)\.o?$*.o $*.d?g' > $@
 
 $(target): $(objs)
 ifeq ($(target_type),app)
-	@echo 'g++     $@'
-	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) $(ldflags) -o $@
+	@echo 'cxx     $@'
+	@$(cxx) $^ $(ldflags) $(ext_lib_dir) $(ext_lib) -o $@
 	@$(strip) $@
 else
 ifeq ($(target_type),static)
@@ -88,8 +93,8 @@ ifeq ($(target_type),static)
 	@$(ar) rcs $@ $^
 else
 ifeq ($(target_type),shared)
-	@echo 'g++.so  $@'
-	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) -shared -o $@
+	@echo 'cxx.so  $@'
+	@$(cxx) $^ -shared $(ldflags) $(ext_lib_dir) $(ext_lib) -o $@
 endif # shared
 endif # static
 endif # app
@@ -114,4 +119,3 @@ help:
 	@echo '  rebuild            clean this project and then build it'
 	@echo '  prebuild           do prebuild event'
 	@echo '  postbuild          do postbuild event'
-

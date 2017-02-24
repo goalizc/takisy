@@ -110,6 +110,7 @@ public:
     void edit(unsigned int index, const std::wstring& text);
     long hittest(Point point) const;
     void scrollto(unsigned int index);
+    void scrollto(unsigned int index, unsigned int alignment);
 
 public:
     void onSize(void) override;

@@ -1,4 +1,0 @@
-/cygdrive/z/takisy/src/core/dynamic_linking_loader.cygo /cygdrive/z/takisy/src/core/dynamic_linking_loader.cygd: \
- /cygdrive/z/takisy/src/core/dynamic_linking_loader.cpp \
- /cygdrive/z/takisy/include/takisy/core/macro.h \
- /cygdrive/z/takisy/include/takisy/core/dynamic_linking_loader.h

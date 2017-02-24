@@ -32,12 +32,13 @@ public:
     {
         std::vector<widget*> children = self.children();
 
-        children.erase(std::remove_if(children.begin(), children.end(),
-                                      [](widget* child) -> bool
-                                      {
-                                         return !child->visible();
-                                      }),
-                       children.end());
+        children.erase(
+            std::remove_if(children.begin(), children.end(),
+                [](widget* child) -> bool
+                {
+                    return !child->visible();
+                }),
+            children.end());
 
         return children;
     }

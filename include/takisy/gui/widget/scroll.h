@@ -44,7 +44,7 @@ public:
     void end(void);
 
 public:
-    bool onSetCursor(void) override;
+    bool onSetCursor(Point point) override;
     bool onMouseUp(sys::Button button, Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
@@ -92,7 +92,7 @@ public:
 
 public:
     void onSize(void) override;
-    bool onSetCursor(void) override;
+    bool onSetCursor(Point point) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
     bool onMouseUp(sys::Button button, Point point) override;
     bool onMouseMove(Point point) override;

@@ -1,7 +1,6 @@
 #ifndef binary_image_h_20140917
 #define binary_image_h_20140917
 
-#include <takisy/core/algorithm.h>
 #include <takisy/cgl/tr/filter/blur.h>
 
 class binary_image

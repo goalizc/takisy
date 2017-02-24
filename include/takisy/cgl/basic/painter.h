@@ -5,7 +5,6 @@
 #include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/basic/canvas.h>
 #include <takisy/cgl/basic/raster.h>
-#include <takisy/cgl/font/tfont_simple.h>
 
 template <typename Canvas>
 class painter
@@ -159,8 +158,9 @@ void painter<Canvas>::text(rect area, const wchar_t* string,
     long x = r.left, y = r.top;
     long c = 0;
 
-    #define NEXT_LINE() \
-        { x = r.left; y += font.height(); if (y >= lr.bottom) return; }
+    #define next_line() \
+        do { x = r.left; y += font.height(); if (y >= lr.bottom) return; } \
+        while (false)
 
     while ((c = *string++))
         if (c != '\n')
@@ -169,7 +169,7 @@ void painter<Canvas>::text(rect area, const wchar_t* string,
             long c_left = x + bitmap->left, c_right = c_left + bitmap->width;
             long c_bottom = x + bitmap->top + bitmap->height;
             if (c_right >= r.right)
-                NEXT_LINE()
+                next_line();
             if (lr.left < c_right && c_left < lr.right && c_bottom > lr.top)
                 bitmap->render(canvas_, x, y,
                                lr.left, lr.top, lr.right, lr.bottom,
@@ -177,9 +177,9 @@ void painter<Canvas>::text(rect area, const wchar_t* string,
             x += bitmap->advance;
         }
         else
-            NEXT_LINE()
+            next_line();
 
-    #undef NEXT_LINE
+    #undef next_line
 }
 
 template <typename Canvas>

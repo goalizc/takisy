@@ -1,5 +1,5 @@
+#include <takisy/core/algo.h>
 #include <takisy/core/math.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/cgl/basic/point.h>
 #include <takisy/cgl/basic/raster.h>
 #include <takisy/cgl/path/vertex_fetcher.h>
@@ -64,7 +64,7 @@ public:
         {
             unsigned int i = 0, o = 0;
 
-            algorithm::sort(cl.data(), cl.size());
+            algo::sort(cl.data(), cl.size());
 
             while (i < cl.size())
             {

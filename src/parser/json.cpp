@@ -1,63 +1,311 @@
-#include <map>
-#include <cstdlib>
-#include <cstring>
-#include <stdexcept>
-#include <takisy/core/os.h>
+#include <limits>
+#include <numeric>
+#include <unordered_map>
+#include <vector>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/json.h>
 
-class json_exception : public std::exception
+class json::value
 {
 public:
-    json_exception(const char* what)
-        : what_(what)
-    {}
+    struct null;
+    struct boolean;
+    struct number_double;
+    struct number_integer;
+    struct string;
+    struct array;
+    struct object;
 
-    template <typename... Args>
-    json_exception(const char* format, const Args&... args)
-    {
-        what_ = stralgo::format(format, args...);
-    }
-
-    ~json_exception(void)
+public:
+    virtual ~value(void)
     {}
 
 public:
-    const char* what(void) const noexcept override
+    virtual valuesptr& get(unsigned int index)
     {
-        return what_.c_str();
+        throw std::logic_error(
+            stralgo::format("json type($0) is not array(6).", (int)type())
+        );
     }
 
-private:
-    std::string what_;
+    virtual valuesptr& get(const std::string& key)
+    {
+        throw std::logic_error(
+            stralgo::format("json type($0) is not object(7).", (int)type())
+        );
+    }
+
+    virtual Type type(void) const = 0;
+    virtual valueptr copy(void) const = 0;
+    virtual void dump(std::string& buffer, int level, int indent) const = 0;
 };
 
-#define throw(format, args...) \
-    ({ throw json_exception(format, ##args); })
-
-class json::object
+struct json::value::null : public value
 {
-public:
-    virtual ~object(void) {};
-
-public:
-    virtual ObjectType type(void) const = 0;
-    virtual json::object*& element(int index) = 0;
-    virtual json::object*& element(const char* key) = 0;
-    virtual json::object* clone(void) const = 0;
-    virtual bool dump(std::string& content, int level, int indent) const = 0;
-
-protected:
-    static inline std::string nspace(int level, int indent)
+    Type type(void) const override
     {
-        level = abs(level);
-        level = level > 0 ? level - 1 : 0;
-        return std::string(level * indent, 0x20);
+        return vtNull;
     }
 
-    static inline int inc(int level)
+    valueptr copy(void) const override
     {
-        return level != 0 ? abs(level) + 1 : 0;
+        return new null();
+    }
+
+    void dump(std::string& buffer, int, int) const override
+    {
+        buffer += "null";
+    }
+};
+
+struct json::value::boolean : public value
+{
+    bool value;
+
+public:
+    boolean(bool value)
+        : value(value)
+    {}
+
+public:
+    Type type(void) const override
+    {
+        return vtBoolean;
+    }
+
+    valueptr copy(void) const override
+    {
+        return new boolean(value);
+    }
+
+    void dump(std::string& buffer, int, int) const override
+    {
+        buffer += value ? "true" : "false";
+    }
+};
+
+struct json::value::number_double : public value
+{
+    double value;
+
+public:
+    number_double(double value)
+        : value(value)
+    {}
+
+public:
+    Type type(void) const override
+    {
+        return vtNumberDouble;
+    }
+
+    valueptr copy(void) const override
+    {
+        return new number_double(value);
+    }
+
+    void dump(std::string& buffer, int, int) const override
+    {
+        buffer += stralgo::strf(value);
+    }
+};
+
+struct json::value::number_integer : public value
+{
+    long long value;
+
+public:
+    number_integer(long long value)
+        : value(value)
+    {}
+
+public:
+    Type type(void) const override
+    {
+        return vtNumberInteger;
+    }
+
+    valueptr copy(void) const override
+    {
+        return new number_integer(value);
+    }
+
+    void dump(std::string& buffer, int, int) const override
+    {
+        buffer += stralgo::strf(value);
+    }
+};
+
+struct json::value::string : public value
+{
+    std::string value;
+
+public:
+    string(const std::string& value)
+        : value(value)
+    {}
+
+public:
+    Type type(void) const override
+    {
+        return vtString;
+    }
+
+    valueptr copy(void) const override
+    {
+        return new string(value);
+    }
+
+    void dump(std::string& buffer, int, int) const override
+    {
+        dump_string(buffer, value);
+    }
+
+public:
+    static void dump_string(std::string& buffer, const std::string& str)
+    {
+        buffer += '"';
+
+        for (unsigned int i = 0; i < str.size(); ++i)
+        {
+            switch (str[i])
+            {
+            default: buffer += str[i]; break;
+
+            case 0x22 /* " */: buffer += "\x5c\x22"; break;
+            case 0x5c /* \ */: buffer += "\x5c\x5c"; break;
+            case 0x08 /* b */: buffer += "\x5c\x62"; break;
+            case 0x0c /* f */: buffer += "\x5c\x66"; break;
+            case 0x0a /* n */: buffer += "\x5c\x6e"; break;
+            case 0x0d /* r */: buffer += "\x5c\x72"; break;
+            case 0x09 /* t */: buffer += "\x5c\x74"; break;
+            }
+        }
+
+        buffer += '"';
+    }
+};
+
+struct json::value::array : public value
+{
+    std::vector<valuesptr> value;
+
+public:
+    ~array(void)
+    {
+        for (valuesptr& item : value)
+            item.reset();
+    }
+
+public:
+    valuesptr& get(unsigned int index) override
+    {
+        return value[index];
+    }
+
+    Type type(void) const override
+    {
+        return vtArray;
+    }
+
+    valueptr copy(void) const override
+    {
+        array* array = new struct array;
+
+        for (const valuesptr& item : value)
+            array->value.emplace_back(item->copy());
+
+        return array;
+    }
+
+    void dump(std::string& buffer, int level, int indent) const override
+    {
+        bool has_value = false, is_first = true;
+        buffer += '[';
+        ++level;
+        for (const valuesptr& item : value)
+        {
+            if (!item) continue;
+            else has_value = true;
+            if (is_first) is_first = false;
+            else buffer += ", ";
+            if (indent > 0)
+                (buffer += '\n').append(level * indent, ' ');
+            item->dump(buffer, level, indent);
+        }
+        --level;
+        if (indent > 0 && has_value)
+            (buffer += '\n').append(level * indent, ' ');
+        buffer += ']';
+    }
+};
+
+struct json::value::object : public value
+{
+    typedef std::unordered_map<std::string, valuesptr> container;
+    typedef container::value_type value_type;
+
+    container value;
+
+public:
+    ~object(void)
+    {
+        for (value_type& pair : value)
+            pair.second.reset();
+    }
+
+public:
+    unsigned int realsize(void) const
+    {
+        return std::accumulate(value.begin(), value.end(), 0,
+            [](unsigned int sum, const value_type& pair)
+            {
+                return pair.second ? sum + 1 : sum;
+            });
+    }
+
+public:
+    valuesptr& get(const std::string& key) override
+    {
+        return value[key];
+    }
+
+    Type type(void) const override
+    {
+        return vtObject;
+    }
+
+    valueptr copy(void) const override
+    {
+        object* object = new struct object;
+
+        for (const value_type& pair : value)
+            object->value[pair.first] = valuesptr(pair.second->copy());
+
+        return object;
+    }
+
+    void dump(std::string& buffer, int level, int indent) const override
+    {
+        bool has_value = false, is_first = true;
+        buffer += '{';
+        ++level;
+        for (const value_type& pair : value)
+        {
+            if (!pair.second) continue;
+            else has_value = true;
+            if (is_first) is_first = false;
+            else buffer += ", ";
+            if (indent > 0)
+                (buffer += '\n').append(level * indent, ' ');
+            string::dump_string(buffer, pair.first);
+            buffer += ": ";
+            pair.second->dump(buffer, level, indent);
+        }
+        --level;
+        if (indent > 0 && has_value)
+            (buffer += '\n').append(level * indent, ' ');
+        buffer += '}';
     }
 };
 
@@ -65,763 +313,370 @@ class json::implement
 {
     friend class json;
 
-    struct null;
-    struct boolean;
-    struct number;
-    struct string;
-    struct array;
-    struct dict;
+public:
+    implement(void) : value_() {}
+    implement(valuesptr& value) : value_(value) {}
 
 public:
-    implement(void) : object_() {}
-    implement(object*& object) : object_(object) {}
-
-public:
-    static json::object* parse_null  (stream& stream);
-    static json::object* parse_true  (stream& stream);
-    static json::object* parse_false (stream& stream);
-    static json::object* parse_number(stream& stream, int& ch);
-    static json::object* parse_string(stream& stream);
-    static json::object* parse_array (stream& stream);
-    static json::object* parse_dict  (stream& stream);
-    static json::object* parse       (stream& stream, int& ch);
-
-public:
-    static char* read(stream& stream, char* buffer, unsigned int size)
+    valuesptr& value(void) { return value_.value(); }
+    const valuesptr& value(void) const { return value_.value(); }
+    template <typename T> T* value(void) const
     {
-        if (stream.read(buffer, size) != size)
-            throw("stream error: read(%d).", size);
-
-        return buffer;
+        return dynamic_cast<T*>(value().get());
     }
 
-    static char read_char(stream& stream, bool skip_space = false)
+    bool isref(void) const { return value_.isref;   }
+    Type type (void) const { return value() ? value()->type() : vtUndefined; }
+
+public:
+    void value (valueptr  valueptr ) { value(valuesptr(valueptr)); }
+    void value (valuesptr valuesptr) { value() = valuesptr; }
+    bool append(valueptr  valueptr ) { return append(valuesptr(valueptr)); }
+    bool append(valuesptr valuesptr)
     {
-        char ch;
+        if (!value())
+            value(new value::array());
+        else if (type() != vtArray)
+            return false;
 
-        do { read(stream, &ch, sizeof(ch)); }
-        while (skip_space && stralgo::isspace(ch));
-
-        return ch;
+        if (!valuesptr)
+            return false;
+        else
+            return value<value::array>()->value.push_back(valuesptr), true;
     }
 
 public:
-    inline json::object*& obj(void)
+    static valueptr type2value(Type type)
     {
-        return object_.isref ? *object_.u.ref : object_.u.obj;
-    }
-
-
-public:
-    static inline std::string type_desc(json::ObjectType ot)
-    {
-        switch (ot)
+        switch (type)
         {
-        case otNull:    return "null";
-        case otBoolean: return "boolean";
-        case otNumber:  return "number";
-        case otString:  return "string";
-        case otArray:   return "array";
-        case otDict:    return "dict";
-        default:        return "undefined";
+        default:
+            return nullptr;
+        case vtNull:
+            return new value::null();
+        case vtBoolean:
+            return new value::boolean(false);
+        case vtNumberDouble:
+            return new value::number_double(0);
+        case vtNumberInteger:
+            return new value::number_integer(0);
+        case vtString:
+            return new value::string("");
+        case vtArray:
+            return new value::array();
+        case vtObject:
+            return new value::object();
         }
     }
 
-private:
-    static inline bool compare(stream& stream, const char* desc)
-    {
-        int   length = strlen(desc);
-        char* chars  = new char [length + 1];
+public:
+    static json::valueptr       parse(const stream& s);
+    static json::valueptr       parse_number(const stream& s);
+    static json::value::string* parse_string(const stream& s);
+    static json::value::array*  parse_array(const stream& s);
+    static json::value::object* parse_object(const stream& s);
 
-        if (!chars) return false;
-        else chars[length] = 0;
-
-        bool result = strcmp(read(stream, chars, length), desc) == 0;
-        delete [] chars;
-
-        return result;
-    }
+public:
+    template <bool skip_space>
+    static char read_char(const stream& s);
 
 private:
-    struct david
-    {
+    struct Value {
         bool isref;
-        union { object* obj; object** ref; } u;
-
+        valuesptr obj, *ref;
     public:
-        david(void) { isref = false; u.obj = nullptr; }
-        david(object*& object) { isref = true; u.ref = &object; }
-       ~david(void) { if (!isref && !!u.obj) delete u.obj; }
-    } object_;
-    std::string error_info_;
+        Value(void) : isref(false), obj(nullptr) {}
+        Value(valuesptr& value) : isref(true), ref(&value) {}
+    public:
+        valuesptr& value(void) { return isref ? *ref : obj; }
+        const valuesptr& value(void) const { return isref ? *ref : obj; }
+    } value_;
 };
 
-struct json::implement::null : public json::object
+template <>
+char json::implement::read_char<false>(const stream& s)
 {
-public:
-    ~null(void) {}
+    char ch;
 
-public:
-    inline ObjectType type(void) const override
-    {
-        return otNull;
-    }
+    return s.read(ch) ? ch : 0;
+}
 
-    inline json::object*& element(int index) override
-    {
-        throw("invalid member function: null::operator[](int).");
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        throw("invalid member function: null::operator[](string).");
-    }
-
-    inline json::object* clone(void) const override
-    {
-        return new class null;
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-        content += nspace(level, indent) + "null";
-
-        return true;
-    }
-};
-
-struct json::implement::boolean : public json::object
+template <>
+char json::implement::read_char<true>(const stream& s)
 {
-    bool value;
+    char ch;
 
-public:
-    boolean(void) : value(false) {}
-    boolean(bool boolean) : value(boolean) {}
-   ~boolean(void) {}
+    while (true)
+        if (!s.read(ch))
+            return 0;
+        else if (!stralgo::isspace(ch))
+            break;
 
-public:
-    inline ObjectType type(void) const override
-    {
-        return otBoolean;
-    }
+    return ch;
+}
 
-    inline json::object*& element(int index) override
-    {
-        throw("invalid member function: boolean::operator[](int).");
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        throw("invalid member function: boolean::operator[](string).");
-    }
-
-    inline json::object* clone(void) const override
-    {
-        return new class boolean(value);
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-        content += nspace(level, indent) + (value ? "true" : "false");
-
-        return true;
-    }
-};
-
-struct json::implement::number : public json::object
+json::valueptr json::implement::parse(const stream& s)
 {
-    double value;
+    typedef std::numeric_limits<double> double_limits;
 
-public:
-    number(void) : value(0) {}
-    number(double number) : value(number) {}
-   ~number(void) {}
-
-private:
-    static inline char getchar_nothrow(stream& stream)
+    switch (read_char<true>(s))
     {
-        try { return read_char(stream); }
-        catch (...) { return 0; }
-    }
-
-public:
-    char load(stream& stream, int ch)
-    {
-        std::string desc;
-        char c;
-
-        if (ch < 0)
-            c = read_char(stream, true);
+    case 'n':
+        if (s.read_chars(3) == "ull")
+            return new value::null();
         else
-            c = ch;
+            s.seek(-3, stream::stCurrent);
+        if (s.read_chars(2) == "an")
+            return new value::number_double(double_limits::quiet_NaN());
+        goto return_nullptr;
 
-        if (c == '-' or stralgo::isdigit(c))
-            desc += c;
-        else
-            throw("undefined number beginning: '%c'.", c);
+    case 'i':
+        if (s.read_chars(2) == "nf")
+            return new value::number_double(double_limits::infinity());
+        goto return_nullptr;
 
-        while (stralgo::isdigit((c = getchar_nothrow(stream))))
-            desc += c;
+    case 't':
+        if (s.read_chars(3) == "rue")
+            return new value::boolean(true);
+        goto return_nullptr;
 
-        if (c == '.')
-        {
-            desc += c;
-            while (stralgo::isdigit((c = getchar_nothrow(stream))))
-                desc += c;
-        }
+    case 'f':
+        if (s.read_chars(4) == "alse")
+            return new value::boolean(false);
 
-        if (c == 'e' || c == 'E')
-        {
-            desc += c, c = getchar_nothrow(stream);
+    case 0:
+    return_nullptr:
+        return nullptr;
 
-            if (c == '+' || c == '-' || stralgo::isdigit(c))
-                desc += c;
-            else
-                throw("undefined `e' sign: %c", c);
+    default :
+        s.seek(-1, stream::stCurrent);
+        return parse_number(s);
 
-            while(stralgo::isdigit((c = getchar_nothrow(stream))))
-                desc += c;
-        }
+    case '"':
+        return parse_string(s);
 
-        if (!desc.empty())
-            value = strtod(desc.c_str(), nullptr);
+    case '[':
+        return parse_array(s);
 
-        return c;
-    }
+    case '{':
+        return parse_object(s);
 
-public:
-    inline ObjectType type(void) const override
-    {
-        return otNumber;
-    }
+    };
 
-    inline json::object*& element(int index) override
-    {
-        throw("invalid member function: number::operator[](int).");
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        throw("invalid member function: number::operator[](string).");
-    }
-
-    inline json::object* clone(void) const override
-    {
-        return new class number(value);
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-       content += nspace(level, indent) + stralgo::format("%g", value);
-
-        return true;
-    }
-};
-
-struct json::implement::string : public json::object
-{
-    std::string value;
-
-public:
-    string(void) {}
-    string(const char* string) : value(string) {}
-    string(const string& string) { operator=(string); }
-   ~string(void) {}
-
-    inline string& operator=(const string& string)
-    {
-        if (this != &string)
-            value = string.value;
-
-        return *this;
-    }
-
-public:
-    inline bool operator<(const string& string) const
-    {
-        return value < string.value;
-    }
-
-public:
-    void load(stream& stream)
-    {
-        char ch4[5] = {0};
-        wchar_t wch;
-        char ch;
-
-        while (true)
-        {
-            switch (ch = read_char(stream))
-            {
-            case 0x5c:
-                switch (ch = read_char(stream))
-                {
-                case 0x5c: value += 0x5c; break; // '\'
-                case 0x22: value += 0x22; break; // '"'
-                case 0x2f: value += 0x2f; break; // '/'
-                case 0x62: value += 0x08; break; // 'b'
-                case 0x66: value += 0x0c; break; // 'f'
-                case 0x6e: value += 0x0a; break; // 'n'
-                case 0x72: value += 0x0d; break; // 'r'
-                case 0x74: value += 0x09; break; // 't'
-                case 0x75:                       // 'u'
-                    wch = strtol(read(stream, ch4, 4), nullptr, 16);
-                    value.append(reinterpret_cast<char*>(&wch), sizeof(wch));
-                    break;
-                default:
-                    throw("invalid ESC: '%c'.", ch);
-                }
-                break;
-            case 0x22:
-                return;
-            default:
-                value += ch;
-                break;
-            }
-        }
-    }
-
-public:
-    inline ObjectType type(void) const override
-    {
-        return otString;
-    }
-
-    inline json::object*& element(int index) override
-    {
-        throw("invalid member function: string::operator[](int).");
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        throw("invalid member function: string::operator[](string).");
-    }
-
-    inline json::object* clone(void) const override
-    {
-        class string* object = new class string;
-
-        if (object)
-            object->value = value;
-
-        return object;
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-        std::string nonascii;
-
-        content += nspace(level, indent);
-        content += '"';
-
-        for (char ch : value)
-        {
-            switch (ch)
-            {
-            case 0x5c /* \ */: content += "\x5c\x5c"; break;
-            case 0x22 /* " */: content += "\x5c\x22"; break;
-            case 0x08 /* b */: content += "\x5c\x62"; break;
-            case 0x0c /* f */: content += "\x5c\x66"; break;
-            case 0x0a /* n */: content += "\x5c\x6e"; break;
-            case 0x0d /* r */: content += "\x5c\x72"; break;
-            case 0x09 /* t */: content += "\x5c\x74"; break;
-            default:
-                if (ch & 0x80)
-                    nonascii += ch;
-                else
-                {
-                    dump_nonascii(content, nonascii);
-                    content += ch;
-                }
-                break;
-            }
-        }
-
-        dump_nonascii(content, nonascii);
-        content += '"';
-
-        return true;
-    }
-
-private:
-    void dump_nonascii(std::string& content, const std::string& nonascii) const
-    {
-        for (unsigned int i = 0; i < nonascii.size(); i += 2)
-            content += stralgo::format("\x5c\x75%x%x",
-                                       (unsigned char)nonascii[i],
-                                       (unsigned char)nonascii[i + 1]);
-
-        if (nonascii.size() & 1)
-            content += nonascii.back();
-    }
-};
-
-struct json::implement::array : public json::object
-{
-    std::vector<json::object*> elements;
-
-public:
-    ~array(void)
-    {
-        for (json::object* element : elements)
-            if (element)
-                delete element;
-    }
-
-public:
-    inline void append(json::object* object)
-    {
-        elements.push_back(object);
-    }
-
-    inline unsigned int count(void) const
-    {
-        return elements.size();
-    }
-
-public:
-    inline ObjectType type(void) const override
-    {
-        return otArray;
-    }
-
-    inline json::object*& element(int index) override
-    {
-        if (static_cast<unsigned int>(index) >= elements.size())
-            throw("index(%d) out of range[0, %d).", index, elements.size());
-
-        return elements[index];
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        throw("invalid member function: array::operator[](string).");
-    }
-
-    inline json::object* clone(void) const override
-    {
-        class array* object = new class array;
-
-        if (object)
-            for (json::object* element : elements)
-                object->elements.push_back
-                        (element ? element->clone() : nullptr);
-
-        return object;
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-        std::string next_line(level == 0 ? "" : "\n");
-        int inc_level = inc(level);
-        unsigned int count = 0;
-
-        if (level > 0)
-            content += nspace(level, indent);
-        content += '[';
-        if (elements.empty())
-            return content += ']', true;
-        content += next_line;
-
-        for (json::object* element : elements)
-        {
-            if (!element)
-                continue;
-
-            std::string element_content;
-            if (!element->dump(element_content, inc_level, indent))
-                return false;
-
-            content += element_content;
-            if (++count != elements.size())
-                content += ", ";
-            content += next_line;
-        }
-
-        content += nspace(level, indent);
-        content += ']';
-
-        return true;
-    }
-};
-
-struct json::implement::dict : public json::object
-{
-    std::map<string, json::object*> pairs;
-
-public:
-    ~dict(void)
-    {
-        for (auto& pair : pairs)
-            if (pair.second)
-                delete pair.second;
-    }
-
-public:
-    std::vector<std::string> keys(void) const
-    {
-        std::vector<std::string> keys;
-
-        for (auto& pair : pairs)
-            keys.push_back(pair.first.value);
-
-        return keys;
-    }
-
-public:
-    inline ObjectType type(void) const override
-    {
-        return otDict;
-    }
-
-    inline json::object*& element(int index) override
-    {
-        throw("invalid member function: dict::operator[](int).");
-    }
-
-    inline json::object*& element(const char* key) override
-    {
-        return pairs[key];
-    }
-
-    inline json::object* clone(void) const override
-    {
-        class dict* object = new class dict;
-
-        if (object)
-            for (auto& pair : pairs)
-                object->pairs[pair.first] =
-                        pair.second ? pair.second->clone() : nullptr;
-
-        return object;
-    }
-
-    bool dump(std::string& content, int level, int indent) const override
-    {
-        std::string next_line(level == 0 ? "" : "\n");
-        int inc_level = inc(level);
-        unsigned int count = 0;
-
-        if (level > 0)
-            content += nspace(level, indent);
-        content += '{';
-        if (pairs.empty())
-            return content += '}', true;
-        content += next_line;
-
-        for (auto& pair : pairs)
-        {
-            if (!pair.second)
-                continue;
-
-            ObjectType type = pair.second->type();
-            bool complex_type  = (type == otArray || type == otDict);
-            int  complex_level = complex_type ? inc_level : 0;
-            std::string key_content, value_content;
-
-            if (   !pair.first.dump(key_content, inc_level, indent)
-                || !pair.second->dump(value_content, -complex_level, indent))
-                return false;
-
-            content += stralgo::format
-                ("%s: %s", key_content.c_str(), value_content.c_str());
-            if (++count != pairs.size())
-                content += ", ";
-            content += next_line;
-        }
-
-        content += nspace(level, indent);
-        content += '}';
-
-        return true;
-    }
-};
-
-json::object* json::implement::parse_null(stream& stream)
-{
-    if (!compare(stream, "ull"))
-        throw("failed to parse null.");
-
-    return new null;
+    return nullptr;
 }
 
-json::object* json::implement::parse_true(stream& stream)
+json::valueptr json::implement::parse_number(const stream& s)
 {
-    if (!compare(stream, "rue"))
-        throw("failed to parse boolean:true.");
+    std::string number;
+    bool is_double = false;
+    char ch;
 
-    return new boolean(true);
-}
+    ch = read_char<false>(s);
+    number += ch;
+    if (ch == '-')
+        number += read_char<false>(s);
 
-json::object* json::implement::parse_false(stream& stream)
-{
-    if (!compare(stream, "alse"))
-        throw("failed to parse boolean:false.");
-
-    return new boolean(false);
-}
-
-json::object* json::implement::parse_number(stream& stream, int& ch)
-{
-    number* number = new implement::number;
-
-    if (number)
-        ch = number->load(stream, ch);
+    if (!stralgo::isdigit(number.back()))
+        return nullptr;
+    else if (number.back() != '0')
+        while (stralgo::isdigit((ch = read_char<false>(s))))
+            number += ch;
     else
-        ch = -1;
+        ch = read_char<false>(s);
 
-    return number;
+    if (ch == '.')
+    {
+        is_double = true;
+        number += ch;
+        while (stralgo::isdigit((ch = read_char<false>(s))))
+            number += ch;
+    }
+
+    if (ch == 'e' || ch == 'E')
+    {
+        is_double = true;
+        number += ch;
+        ch = read_char<false>(s);
+        if (ch == '+' || ch == '-')
+            number += ch;
+        else if (!stralgo::isdigit(ch))
+            return nullptr;
+        else
+            number += ch;
+        while (stralgo::isdigit((ch = read_char<false>(s))))
+            number += ch;
+    }
+
+    s.seek(-1, stream::stCurrent);
+
+    if (is_double)
+        return new value::number_double(stralgo::atof(number.c_str()));
+    else
+        return new value::number_integer(stralgo::atoll(number.c_str()));
 }
 
-json::object* json::implement::parse_string(stream& stream)
+json::value::string* json::implement::parse_string(const stream& s)
 {
-    string* string = new implement::string;
-
-    if (string)
-        string->load(stream);
-
-    return string;
-}
-
-json::object* json::implement::parse_array(stream& stream)
-{
-    array* array = new implement::array;
-    if (!array)
-        return nullptr;
-
-    int ch = read_char(stream, true);
-    if (ch == ']')
-        return array;
+    std::string str;
+    char ch, ch2;
 
     while (true)
     {
-        json::object* element = parse(stream, ch);
-        array->elements.push_back(element);
-
-        if (element->type() != otNumber || stralgo::isspace(ch))
-            ch = read_char(stream, true);
-        if (ch == ']') break; else
-        if (ch == ',') ch=-1; else throw("failed to parse array.");
+        switch ((ch = read_char<false>(s)))
+        {
+        default: str += ch; break;
+        case 0x5c:
+            switch ((ch2 = read_char<false>(s)))
+            {
+            default:   str += ch; str += ch2; break;
+            case 0x5c: str += 0x5c; break;
+            case 0x22: str += 0x22; break;
+            case 0x2f: str += 0x2f; break;
+            case 0x62: str += 0x08; break;
+            case 0x66: str += 0x0c; break;
+            case 0x6e: str += 0x0a; break;
+            case 0x72: str += 0x0d; break;
+            case 0x74: str += 0x09; break;
+            case 0x75: str += strtol(s.read_chars(2).c_str(), nullptr, 16);
+                       str += strtol(s.read_chars(2).c_str(), nullptr, 16);
+                break;
+            }
+            break;
+        case  0 : return nullptr;
+        case '"': return new value::string(str);
+        }
     }
-
-    return array;
 }
 
-json::object* json::implement::parse_dict(stream& stream)
+json::value::array* json::implement::parse_array(const stream& s)
 {
-    dict* dict = new implement::dict;
-    if (!dict)
-        return nullptr;
-
-    int ch = read_char(stream, true);
-    if (ch == '}')
-        return dict;
+    std::unique_ptr<value::array> array(new value::array());
+    if (read_char<true>(s) == ']')
+        return array.release();
+    else
+        s.seek(-1, stream::stCurrent);
 
     while (true)
     {
-        json::object* key = parse(stream, ch);
-        if (key->type() != otString)
-            throw("dict's key must be string.");
+        json::valueptr value = parse(s);
+        if (!value)
+            return nullptr;
+        else
+            array->value.push_back(valuesptr(value));
 
-        char colon = read_char(stream, true);
-        if (colon != ':')
-            throw("colon couldn't be find between key and value.");
-
-        json::object* value = parse(stream, ch);
-        dict->pairs[*dynamic_cast<string*>(key)] = value;
-        delete key;
-
-        if (value->type() != otNumber || stralgo::isspace(ch))
-            ch = read_char(stream, true);
-        if (ch == '}') break; else
-        if (ch == ',') ch=-1; else throw("failed to parse dict.");
+        switch (read_char<true>(s))
+        {
+        default:
+            return nullptr;
+        case ']':
+            return array.release();
+        case ',':
+            break;
+        }
     }
-
-    return dict;
 }
 
-json::object* json::implement::parse(stream& stream, int& ch)
+json::value::object* json::implement::parse_object(const stream& s)
 {
-    json::object* object = nullptr;
+    std::unique_ptr<value::object> object(new value::object());
+    std::unique_ptr<value::string> key;
+    char ch = read_char<true>(s);
 
-    if (ch < 0)
-        ch = implement::read_char(stream, true);
-
-    switch (ch)
+    while (true)
     {
-    case  0 : throw("parse ERROR.");
-    case 'n': object = implement::parse_null  (stream); ch = -1; break;
-    case 't': object = implement::parse_true  (stream); ch = -1; break;
-    case 'f': object = implement::parse_false (stream); ch = -1; break;
-    case '"': object = implement::parse_string(stream); ch = -1; break;
-    case '[': object = implement::parse_array (stream); ch = -1; break;
-    case '{': object = implement::parse_dict  (stream); ch = -1; break;
-    default : object = implement::parse_number(stream , ch    ); break;
-    }
+        switch (ch)
+        {
+        case '"':
+            key.reset(parse_string(s));
+            if (!key)
+        default:
+                return nullptr;
+            break;
+        case '}':
+            return object.release();
+        }
 
-    return object;
+        if (read_char<true>(s) != ':')
+            return nullptr;
+
+        json::valueptr value = parse(s);
+        if (!value)
+            return nullptr;
+        else
+            object->value[key->value] = valuesptr(value);
+
+        ch = read_char<true>(s);
+        if (ch == ',')
+            ch = read_char<true>(s);
+    }
 }
 
 json::json(void)
     : impl_(new implement)
 {}
 
-json::json(const char* filepath_or_content)
+json::json(Type type)
     : json()
 {
-    if (os::path::isfile(filepath_or_content))
-        load_file(filepath_or_content);
-    else
-        load(filepath_or_content);
+    impl_->value(implement::type2value(type));
 }
 
-json::json(stream& stream)
+json::json(const std::string& buffer)
     : json()
 {
-    load(stream);
+    load(buffer);
 }
 
-json::json(const json& _json)
+json::json(const stream& istream)
     : json()
 {
-    operator=(_json);
+    load(istream);
 }
 
-json::json(object*& object)
-    : impl_(new implement(object))
+json::json(valuesptr& value)
+    : impl_(new implement(value))
 {}
+
+json::json(const json& jsonobj)
+    : json()
+{
+    impl_->value(jsonobj.impl_->value());
+}
 
 json::~json(void)
 {
     delete impl_;
 }
 
-bool json::load(const char* content)
+bool json::load(const std::string& buffer)
 {
-    buffer_stream bs(content, strlen(content));
+    buffer_stream bufst(buffer.data(), buffer.size());
+    valueptr value = implement::parse(bufst);
 
-    return load(bs);
-}
-
-bool json::load(stream& stream)
-{
-    try
-    {
-        int ch = -1;
-        return !!(impl_->obj() = implement::parse(stream, ch));
-    }
-    catch (const char* error_info)
-    {
-        impl_->error_info_ = error_info;
+    if (!value)
         return false;
-    }
+    else
+        impl_->value(value);
+
+    return true;
 }
 
-bool json::load_file(const char* filepath)
+bool json::load(const stream& istream)
 {
-    file_stream fs(filepath, "r");
+    valueptr value;
 
-    return load(fs);
+    if (istream.seekable())
+        value = implement::parse(istream);
+    else
+        value = implement::parse(seek_stream(istream));
+
+    if (!value)
+        return false;
+    else
+        impl_->value(value);
+
+    return true;
 }
 
 std::string json::dump(void) const
@@ -829,325 +684,374 @@ std::string json::dump(void) const
     return dump(0);
 }
 
-std::string json::dump(int indent) const
+std::string json::dump(unsigned int indent) const
 {
-    if (!impl_->obj())
-        return "";
+    std::string buffer;
 
-    std::string content;
+    if (impl_->value())
+        impl_->value()->dump(buffer, 0, indent);
 
-    if (!impl_->obj()->dump(content, indent > 0 ? 1 : 0, indent))
-        throw("failed to dump json to string.");
-    else
-        content += '\n';
-
-    return content;
+    return buffer;
 }
 
-bool json::dump(stream& stream) const
+bool json::dump(stream& ostream) const
 {
-    return dump(stream, 0);
+    return dump(ostream, 0);
 }
 
-bool json::dump(stream& stream, int indent) const
+bool json::dump(stream&& ostream) const
 {
-    std::string content = dump(indent);
-
-    return stream.write(content.data(), content.size()) == content.size();
+    return dump(ostream, 0);
 }
 
-bool json::dump_file(const char* filepath) const
+bool json::dump(stream& ostream, unsigned int indent) const
 {
-    return dump_file(filepath, 0);
+    std::string buffer = dump(indent);
+
+    return ostream.write(buffer.data(), buffer.size()) == buffer.size();
 }
 
-bool json::dump_file(const char* filepath, int indent) const
+bool json::dump(stream&& ostream, unsigned int indent) const
 {
-    file_stream fstream(filepath, "w");
+    return dump(ostream, indent);
+}
 
-    return dump(fstream, indent);
+json& json::operator=(Type type)
+{
+    return impl_->value(implement::type2value(type)), *this;
 }
 
 json& json::operator=(std::nullptr_t)
 {
-    if (impl_->obj())
-        delete impl_->obj();
-
-    impl_->obj() = new implement::null;
-
-    return *this;
+    return impl_->value(new value::null()), *this;
 }
 
 json& json::operator=(bool boolean)
 {
-    if (impl_->obj())
-        delete impl_->obj();
-
-    impl_->obj() = new implement::boolean(boolean);
-
-    return *this;
+    return impl_->value(new value::boolean(boolean)), *this;
 }
 
 json& json::operator=(int number)
 {
-    return operator=(static_cast<double>(number));
+    return impl_->value(new value::number_integer(number)), *this;
+}
+
+json& json::operator=(unsigned int number)
+{
+    return impl_->value(new value::number_integer(number)), *this;
+}
+
+json& json::operator=(long number)
+{
+    return impl_->value(new value::number_integer(number)), *this;
+}
+
+json& json::operator=(unsigned long number)
+{
+    return impl_->value(new value::number_integer(number)), *this;
 }
 
 json& json::operator=(long long number)
 {
-    return operator=(static_cast<double>(number));
+    return impl_->value(new value::number_integer(number)), *this;
+}
+
+json& json::operator=(unsigned long long number)
+{
+    return impl_->value(new value::number_integer(number)), *this;
 }
 
 json& json::operator=(double number)
 {
-    if (impl_->obj())
-        delete impl_->obj();
-
-    impl_->obj() = new implement::number(number);
-
-    return *this;
+    return impl_->value(new value::number_double(number)), *this;
 }
 
 json& json::operator=(const char* string)
 {
-    if (impl_->obj())
-        delete impl_->obj();
-
-    impl_->obj() = new implement::string(string);
-
-    return *this;
+    return impl_->value(new value::string(string)), *this;
 }
 
-json& json::operator=(ObjectType object_type)
+json& json::operator=(const std::string& string)
 {
-    switch (object_type)
-    {
-    case otNull:    return operator=(nullptr);
-    case otBoolean: return operator=(false);
-    case otNumber:  return operator=(0.0);
-    case otString:  return operator=("");
-    default: break;
-    }
-
-    if (impl_->obj())
-        delete impl_->obj();
-
-    switch (object_type)
-    {
-    case otArray: impl_->obj() = new implement::array(); break;
-    case otDict:  impl_->obj() = new implement::dict();  break;
-    default: throw("invalid object type.");
-    }
-
-    return *this;
+    return impl_->value(new value::string(string)), *this;
 }
 
 json& json::operator=(const json& json)
 {
-    if (impl_->obj() != json.impl_->obj())
-    {
-        if (impl_->obj())
-            delete impl_->obj();
-
-        if (!json.impl_->obj())
-            impl_->obj() = json.impl_->obj()->clone();
-        else
-            impl_->obj() = nullptr;
-
-        impl_->error_info_ = json.impl_->error_info_;
-    }
+    if (this != &json && impl_->value() != json.impl_->value())
+        impl_->value(json.impl_->value());
 
     return *this;
 }
 
-void json::append(std::nullptr_t)
+bool json::append(Type type)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::append(null).",
-                implement::type_desc(type()).c_str());
-
-    dynamic_cast<implement::array*>(impl_->obj())
-        ->append(new implement::null);
+    return impl_->append(implement::type2value(type));
 }
 
-void json::append(bool boolean)
+bool json::append(std::nullptr_t)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::append(boolean).",
-                implement::type_desc(type()).c_str());
-
-    dynamic_cast<implement::array*>(impl_->obj())
-        ->append(new implement::boolean(boolean));
+    return impl_->append(new value::null());
 }
 
-void json::append(int number)
+bool json::append(bool boolean)
 {
-    append(static_cast<double>(number));
+    return impl_->append(new value::boolean(boolean));
 }
 
-void json::append(long long number)
+bool json::append(int number)
 {
-    append(static_cast<double>(number));
+    return impl_->append(new value::number_integer(number));
 }
 
-void json::append(double number)
+bool json::append(unsigned int number)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::append(number).",
-                implement::type_desc(type()).c_str());
-
-    dynamic_cast<implement::array*>(impl_->obj())
-        ->append(new implement::number(number));
+    return impl_->append(new value::number_integer(number));
 }
 
-void json::append(const char* string)
+bool json::append(long number)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::append(string).",
-                implement::type_desc(type()).c_str());
-
-    dynamic_cast<implement::array*>(impl_->obj())
-        ->append(new implement::string(string));
+    return impl_->append(new value::number_integer(number));
 }
 
-void json::append(ObjectType object_type)
+bool json::append(unsigned long number)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::append(object).",
-                implement::type_desc(type()).c_str());
+    return impl_->append(new value::number_integer(number));
+}
 
-    object* object = nullptr;
+bool json::append(long long number)
+{
+    return impl_->append(new value::number_integer(number));
+}
 
-    switch (object_type)
+bool json::append(unsigned long long number)
+{
+    return impl_->append(new value::number_integer(number));
+}
+
+bool json::append(double number)
+{
+    return impl_->append(new value::number_double(number));
+}
+
+bool json::append(const char* string)
+{
+    return impl_->append(new value::string(string));
+}
+
+bool json::append(const std::string& string)
+{
+    return impl_->append(new value::string(string));
+}
+
+bool json::append(const json& json)
+{
+    return impl_->append(json.impl_->value());
+}
+
+bool json::clear(void)
+{
+    switch (impl_->type())
     {
-    case otNull:    object = new implement::null;    break;
-    case otBoolean: object = new implement::boolean; break;
-    case otNumber:  object = new implement::number;  break;
-    case otString:  object = new implement::string;  break;
-    case otArray:   object = new implement::array;   break;
-    case otDict:    object = new implement::dict;    break;
-    default: throw("Invalid object type.");
+    default:
+        return false;
+    case vtArray:
+        impl_->value<value::array>()->value.clear();
+        return true;
+    case vtObject:
+        impl_->value<value::object>()->value.clear();
+        return true;
+    }
+}
+
+bool json::remove(unsigned int index)
+{
+    if (impl_->type() == vtArray)
+    {
+        value::array* array = impl_->value<value::array>();
+
+        if (index < array->value.size())
+        {
+            array->value.erase(array->value.begin() + index);
+            return true;
+        }
     }
 
-    dynamic_cast<implement::array*>(impl_->obj())->append(object);
+    return false;
 }
 
-unsigned int json::count(void) const
+bool json::remove(const std::string& key)
 {
-    if (type() != otArray)
-        throw("invalid member function: %s::count(void).",
-                implement::type_desc(type()).c_str());
+    if (impl_->type() == vtObject)
+    {
+        impl_->value<value::object>()->value.erase(key);
+        return true;
+    }
 
-    return dynamic_cast<implement::array*>(impl_->obj())->count();
+    return false;
 }
 
-json json::operator[](int index) const
+unsigned int json::size(void) const
 {
-    return impl_->obj()->element(index);
+    switch (impl_->type())
+    {
+    default:
+        return 0;
+    case vtString:
+        return impl_->value<value::string>()->value.size();
+    case vtArray:
+        return impl_->value<value::array>()->value.size();
+    case vtObject:
+        return impl_->value<value::object>()->realsize();
+    }
 }
 
-bool json::exists(const char* key) const
+json json::operator[](const json& js)
 {
-    implement::dict* dict = dynamic_cast<implement::dict*>(impl_->obj());
-
-    return dict->pairs.find(key) != dict->pairs.end();
+    switch (js.impl_->type())
+    {
+    default:
+        return json();
+    case vtNumberDouble:
+        return operator[](js.impl_->value<value::number_double>()->value);
+    case vtNumberInteger:
+        return operator[](js.impl_->value<value::number_integer>()->value);
+    case vtString:
+        return operator[](js.impl_->value<value::string>()->value);
+    }
 }
 
-std::vector<std::string> json::keys(void) const
+json json::operator[](unsigned int index)
 {
-    if (type() != otDict)
-        throw("invalid member function: %s::keys(void).",
-                implement::type_desc(type()).c_str());
+    if (impl_->type() == vtObject)
+    {
+        typedef value::object::value_type value_type;
 
-    return dynamic_cast<implement::dict*>(impl_->obj())->keys();
+        for (const value_type& pair : impl_->value<value::object>()->value)
+        {
+            if (pair.second && index-- == 0)
+            {
+                json json;
+
+                json["key"]   = pair.first;
+                json["value"] = operator[](pair.first);
+
+                return json;
+            }
+        }
+
+        return json();
+    }
+    else
+    {
+        if (!impl_->value())
+            impl_->value(new value::array());
+
+        return impl_->value()->get(index);
+    }
 }
 
-json json::operator[](const char* key) const
+json json::operator[](const std::string& key)
 {
-    if (impl_->obj() == nullptr)
-        impl_->obj() = new implement::dict;
+    if (!impl_->value())
+        impl_->value(new value::object());
 
-    return impl_->obj()->element(key);
+    return impl_->value()->get(key);
 }
 
-json::ObjectType json::type(void) const
+const json json::operator[](const json& js) const
 {
-    return !impl_->obj() ? otUndefined : impl_->obj()->type();
+    return const_cast<json*>(this)->operator[](js);
+}
+
+const json json::operator[](unsigned int index) const
+{
+    return const_cast<json*>(this)->operator[](index);
+}
+
+const json json::operator[](const std::string& key) const
+{
+    return const_cast<json*>(this)->operator[](key);
+}
+
+json json::copy(void) const
+{
+    json copy;
+
+    copy.impl_->value(impl_->value()->copy());
+
+    return copy;
+}
+
+json::Type json::type(void) const
+{
+    return impl_->type();
 }
 
 bool json::as_bool(void) const
 {
-    object* object = impl_->obj();
-    if (!object)
-        return false;
-
-    switch (object->type())
+    switch (impl_->type())
     {
-    case otUndefined:
-    case otNull:
-        return false;
-    case otBoolean:
-        return  dynamic_cast<implement::boolean*>(object)->value;
-    case otNumber:
-        return !dynamic_cast<implement::number*> (object)->value;
-    case otString:
-        return !dynamic_cast<implement::string*> (object)->value.empty();
-    case otArray:
-        return !dynamic_cast<implement::array*>  (object)->elements.empty();
-    case otDict:
-        return !dynamic_cast<implement::dict*>   (object)->pairs.empty();
     default:
-        throw("invalid object type.");
+        return false;
+    case vtBoolean:
+        return impl_->value<value::boolean>()->value;
+    case vtNumberDouble:
+        return impl_->value<value::number_double>()->value;
+    case vtNumberInteger:
+        return impl_->value<value::number_integer>()->value;
+    case vtString:
+        return impl_->value<value::string>()->value.size();
+    case vtArray:
+        return impl_->value<value::array>()->value.size();
+    case vtObject:
+        return impl_->value<value::object>()->realsize();
     }
 }
 
-double json::as_number(void) const
+double json::as_double(void) const
 {
-    if (impl_->obj()->type() != otNumber)
-        throw("json object is not number type.");
-
-    return dynamic_cast<implement::number*>(impl_->obj())->value;
-}
-
-const char* json::as_string(void) const
-{
-    if (impl_->obj()->type() != otString)
-        throw("json object is not string type.");
-
-    return dynamic_cast<implement::string*>(impl_->obj())->value.c_str();
-}
-
-std::string json::repr(void) const
-{
-    object* object = impl_->obj();
-    if (!object)
-        return "(null)";
-
-    switch (object->type())
+    switch (impl_->type())
     {
-    case otUndefined:
-        return "undefined";
-    case otNull:
-        return "null";
-    case otBoolean:
-        if (dynamic_cast<implement::boolean*>(object)->value)
-            return "true";
-        else
-            return "false";
-    case otNumber:
-        return stralgo::format("%g",
-               dynamic_cast<implement::number*> (object)->value);
-    case otString:
-        return dynamic_cast<implement::string*> (object)->value;
-    case otArray:
-    case otDict:
-        return dump();
     default:
-        throw("invalid object type.");
+        return 0;
+    case vtBoolean:
+        return impl_->value<value::boolean>()->value;
+    case vtNumberDouble:
+        return impl_->value<value::number_double>()->value;
+    case vtNumberInteger:
+        return impl_->value<value::number_integer>()->value;
     }
 }
 
-const char* json::error_info(void) const
+long long json::as_integer(void) const
 {
-    return impl_->error_info_.c_str();
+    switch (impl_->type())
+    {
+    default:
+        return 0;
+    case vtBoolean:
+        return impl_->value<value::boolean>()->value;
+    case vtNumberDouble:
+        return impl_->value<value::number_double>()->value;
+    case vtNumberInteger:
+        return impl_->value<value::number_integer>()->value;
+    }
+}
+
+std::string json::as_string(void) const
+{
+    switch (impl_->type())
+    {
+    default:
+        return "";
+    case vtBoolean:
+        return impl_->value<value::boolean>()->value ? "true" : "false";
+    case vtNumberDouble:
+        return stralgo::strf(impl_->value<value::number_double>()->value);
+    case vtNumberInteger:
+        return stralgo::strf(impl_->value<value::number_integer>()->value);
+    case vtString:
+        return impl_->value<value::string>()->value;
+    }
 }

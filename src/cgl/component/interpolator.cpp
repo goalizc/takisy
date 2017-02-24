@@ -13,14 +13,14 @@ class interpolator::implement
     };
 
 public:
-    implement(void) : lower_fy_(-1e100), upper_fy_(+1e100) {}
+    implement(void) : lower_(-1e100), upper_(+1e100) {}
 
 public:
-    void add_knot(double x, double y)
+    void add_knot(double x, double fy)
     {
         newton_polynomial_.push_back(newton_polynomial {
-            .dq   = y,
-            .knot = interpolator::knot_type {.x = x, .y = y},
+            .dq   = fy,
+            .knot = interpolator::knot_type { x, fy },
         });
 
         for (int i = newton_polynomial_.size() - 1; i > 0; --i)
@@ -32,7 +32,7 @@ public:
 
     double fy(double x) const
     {
-        if (newton_polynomial_.size() == 0)
+        if (newton_polynomial_.empty())
             return 0;
         else
         {
@@ -46,15 +46,15 @@ public:
                 fy     += foobar * newton_polynomial_[i - 1].dq;
             }
 
-            static_cast<void>(math::isnan(fy) ? fy = 0.0 : 0);
-
-            return fy < lower_fy_ ? lower_fy_ : fy > upper_fy_ ? upper_fy_ : fy;
+            if (math::isnan(fy))
+                return 0;
+            else
+                return fy < lower_ ? lower_ : fy > upper_ ? upper_ : fy;
         }
     }
 
 private:
-    double lower_fy_;
-    double upper_fy_;
+    double lower_, upper_;
     std::vector<newton_polynomial> newton_polynomial_;
 };
 
@@ -76,11 +76,7 @@ interpolator::~interpolator(void)
 interpolator& interpolator::operator=(const interpolator& interpolator)
 {
     if (this != &interpolator)
-    {
-        impl_->lower_fy_          = interpolator.impl_->lower_fy_;
-        impl_->upper_fy_          = interpolator.impl_->upper_fy_;
-        impl_->newton_polynomial_ = interpolator.impl_->newton_polynomial_;
-    }
+        *impl_ = *interpolator.impl_;
 
     return *this;
 }
@@ -92,14 +88,14 @@ interpolator& interpolator::clear(void)
     return *this;
 }
 
-double interpolator::lower_fy(void) const
+double interpolator::lower(void) const
 {
-    return impl_->lower_fy_;
+    return impl_->lower_;
 }
 
-double interpolator::upper_fy(void) const
+double interpolator::upper(void) const
 {
-    return impl_->upper_fy_;
+    return impl_->upper_;
 }
 
 unsigned int interpolator::knots_size(void) const
@@ -112,24 +108,33 @@ interpolator::knot_type interpolator::knot(unsigned int index) const
     return impl_->newton_polynomial_[index].knot;
 }
 
-interpolator& interpolator::clamp_fy(double lower, double upper)
+interpolator::knots_type interpolator::knots(void) const
 {
-    impl_->lower_fy_ = lower;
-    impl_->upper_fy_ = upper;
+    knots_type knots;
+    for (implement::newton_polynomial& element : impl_->newton_polynomial_)
+        knots.push_back(element.knot);
+
+    return knots;
+}
+
+interpolator& interpolator::clamp(double lower, double upper)
+{
+    impl_->lower_ = lower;
+    impl_->upper_ = upper;
 
     return *this;
 }
 
-interpolator& interpolator::lower_fy(double lower_fy)
+interpolator& interpolator::lower(double lower)
 {
-    impl_->lower_fy_ = lower_fy;
+    impl_->lower_ = lower;
 
     return *this;
 }
 
-interpolator& interpolator::upper_fy(double upper_fy)
+interpolator& interpolator::upper(double upper)
 {
-    impl_->upper_fy_ = upper_fy;
+    impl_->upper_ = upper;
 
     return *this;
 }
@@ -139,14 +144,19 @@ interpolator& interpolator::add_knot(const knot_type& knot)
     return add_knot(knot.x, knot.y);
 }
 
-interpolator& interpolator::add_knot(double x, double y)
+interpolator& interpolator::add_knot(double x, double fy)
 {
-    impl_->add_knot(x, y);
+    impl_->add_knot(x, fy);
 
     return *this;
 }
 
 double interpolator::fy(double x) const
+{
+    return impl_->fy(x);
+}
+
+double interpolator::operator[](double x) const
 {
     return impl_->fy(x);
 }

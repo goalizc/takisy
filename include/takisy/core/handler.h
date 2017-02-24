@@ -25,7 +25,6 @@ public:
     {
         handlers(void) : std::set<sptr>() {}
         handlers(const handlers&) {}
-        handlers& operator=(const handlers&) { return *this; }
     };
 
 public:
@@ -69,7 +68,6 @@ struct handler::Apply<0>
 };
 
 #define DECLARE_HANDLER(h, ...)                                         \
-public:                                                                 \
     template <typename Lambda>                                          \
     inline handler::sptr h(Lambda lambda)                               \
     {                                                                   \
@@ -91,7 +89,6 @@ public:                                                                 \
         h##_.clear();                                                   \
     }                                                                   \
                                                                         \
-private:                                                                \
     template <typename... Args>                                         \
     inline void h##Handle(Args&&... args)                               \
     {                                                                   \

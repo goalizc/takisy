@@ -3,7 +3,7 @@
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/image/format.h>
 
-bool stb::load(stream& stream, frames& frames) const
+bool stb::load(const stream& stream, frames& frames) const
 {
     canvas_adapter::pointer ca = nullptr;
     stbi_io_callbacks callback;

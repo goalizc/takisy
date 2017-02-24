@@ -7,44 +7,44 @@
 #include <takisy/cgl/basic/size.h>
 
 template <typename T>
-struct base_rect
+struct rect_type
 {
-    typedef base_rect self_type;
+    typedef rect_type self_type;
     typedef T         value_type;
 
     value_type left, top, right, bottom;
 
 public:
-    inline base_rect(void)
+    inline rect_type(void)
         : left(0), top(0), right(0), bottom(0)
     {}
 
-    inline base_rect(value_type width, value_type height)
-        : base_rect(0, 0, width, height)
+    inline rect_type(value_type width, value_type height)
+        : rect_type(0, 0, width, height)
     {}
 
-    inline base_rect(value_type left,  value_type top,
+    inline rect_type(value_type left,  value_type top,
                   value_type right, value_type bottom)
         : left(left), top(top), right(right), bottom(bottom)
     {}
 
     template <typename TT>
-    inline base_rect(const base_size<TT>& size)
-        : base_rect(size.width, size.height)
+    inline rect_type(const size_type<TT>& size)
+        : rect_type(size.width, size.height)
     {}
 
     template <typename TT, typename TTT>
-    inline base_rect(const base_point<TT>& lt, const base_point<TTT>& rb)
+    inline rect_type(const point_type<TT>& lt, const point_type<TTT>& rb)
         : left(lt.x), top(lt.y), right(rb.x), bottom(rb.y)
     {}
 
     template <typename TT, typename TTT>
-    inline base_rect(const base_point<TT>& p, const base_size<TTT>& sz)
+    inline rect_type(const point_type<TT>& p, const size_type<TTT>& sz)
         : left(p.x), top(p.y), right(p.x + sz.width), bottom(p.y + sz.height)
     {}
 
     template <typename Rect>
-    inline base_rect(const Rect& rect)
+    inline rect_type(const Rect& rect)
         : left(rect.left), top(rect.top), right(rect.right), bottom(rect.bottom)
     {}
 
@@ -74,42 +74,42 @@ public:
 
 public:
     template <typename TT>
-    inline bool operator==(const base_rect<TT>& rect) const
+    inline bool operator==(const rect_type<TT>& rect) const
     {
         return left == rect.left && right  == rect.right
             && top  == rect.top  && bottom == rect.bottom;
     }
 
     template <typename TT>
-    inline bool operator!=(const base_rect<TT>& rect) const
+    inline bool operator!=(const rect_type<TT>& rect) const
     {
         return !operator==(rect);
     }
 
 public:
-    inline base_point<value_type> left_top(void) const
+    inline point_type<value_type> left_top(void) const
     {
-        return base_point<value_type>(left, top);
+        return point_type<value_type>(left, top);
     }
 
-    inline base_point<value_type> left_bottom(void) const
+    inline point_type<value_type> left_bottom(void) const
     {
-        return base_point<value_type>(left, bottom);
+        return point_type<value_type>(left, bottom);
     }
 
-    inline base_point<value_type> right_top(void) const
+    inline point_type<value_type> right_top(void) const
     {
-        return base_point<value_type>(right, top);
+        return point_type<value_type>(right, top);
     }
 
-    inline base_point<value_type> right_bottom(void) const
+    inline point_type<value_type> right_bottom(void) const
     {
-        return base_point<value_type>(right, bottom);
+        return point_type<value_type>(right, bottom);
     }
 
-    inline base_point<value_type> center(void) const
+    inline point_type<value_type> center(void) const
     {
-        return base_point<value_type>((left + right) / 2, (top + bottom) / 2);
+        return point_type<value_type>((left + right) / 2, (top + bottom) / 2);
     }
 
     inline value_type width(void) const
@@ -122,9 +122,9 @@ public:
         return bottom - top;
     }
 
-    inline base_size<value_type> size(void) const
+    inline size_type<value_type> size(void) const
     {
-        return base_size<value_type>(width(), height());
+        return size_type<value_type>(width(), height());
     }
 
 public:
@@ -134,7 +134,7 @@ public:
     }
 
     template <typename TT>
-    inline bool inside(const base_point<TT>& point) const
+    inline bool inside(const point_type<TT>& point) const
     {
         return inside(point.x, point.y);
     }
@@ -145,7 +145,7 @@ public:
     }
 
     template <typename TT>
-    inline bool outside(const base_point<TT>& point) const
+    inline bool outside(const point_type<TT>& point) const
     {
         return outside(point.x, point.y);
     }
@@ -156,9 +156,9 @@ public:
     }
 
     template <typename TT>
-    inline bool intersectant(const base_rect<TT>& rect) const
+    inline bool intersectant(const rect_type<TT>& rect) const
     {
-        base_point<value_type>&& c = center(), rc = rect.center();
+        point_type<value_type> &&c = center(), &&rc = rect.center();
 
         return abs(c.x - rc.x) * 2 < width()  + rect.width()
             && abs(c.y - rc.y) * 2 < height() + rect.height();
@@ -243,12 +243,12 @@ public:
 
     inline void center(value_type x, value_type y)
     {
-        center(base_point<value_type>(x, y));
+        center(point_type<value_type>(x, y));
     }
 
 public:
     template <typename TT>
-    inline self_type move(const base_point<TT>& point) const
+    inline self_type move(const point_type<TT>& point) const
     {
         return move(point.x, point.y);
     }
@@ -259,7 +259,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type offset(const base_point<TT>& _offset) const
+    inline self_type offset(const point_type<TT>& _offset) const
     {
         return offset(_offset.x, _offset.y);
     }
@@ -290,13 +290,13 @@ public:
     }
 
     template <typename TT>
-    inline self_type intersect(const base_rect<TT>& rect) const
+    inline self_type intersect(const rect_type<TT>& rect) const
     {
         if (!intersectant(rect))
             return self_type(0, 0, 0, 0);
 
-        register self_type nthis = normalize();
-        register self_type nrect = rect.normalize();
+        self_type nthis = normalize();
+        self_type nrect = rect.normalize();
 
         return self_type(std::max(nthis.left,   nrect.left),
                          std::max(nthis.top,    nrect.top),
@@ -305,15 +305,15 @@ public:
     }
 
     template <typename TT>
-    inline self_type unit(const base_rect<TT>& rect) const
+    inline self_type unit(const rect_type<TT>& rect) const
     {
         if (empty())
             return rect;
         else if (rect.empty())
             return *this;
 
-        register self_type nthis = normalize();
-        register self_type nrect = rect.normalize();
+        self_type nthis = normalize();
+        self_type nrect = rect.normalize();
 
         return self_type(std::min(nthis.left,   nrect.left),
                          std::min(nthis.top,    nrect.top),
@@ -335,31 +335,31 @@ public:
 
 public:
     template <typename TT>
-    inline self_type operator+(const base_point<TT>& _offset)
+    inline self_type operator+(const point_type<TT>& _offset)
     {
         return offset(_offset);
     }
 
     template <typename TT>
-    inline self_type operator-(const base_point<TT>& _offset)
+    inline self_type operator-(const point_type<TT>& _offset)
     {
         return offset(-_offset);
     }
 
     template <typename TT>
-    inline self_type operator+(const base_size<TT>& size)
+    inline self_type operator+(const size_type<TT>& size)
     {
         return self_type(left, top, right + size.width, bottom + size.height);
     }
 
     template <typename TT>
-    inline self_type operator-(const base_size<TT>& size)
+    inline self_type operator-(const size_type<TT>& size)
     {
         return self_type(left, top, right - size.width, bottom - size.height);
     }
 
     template <typename TT>
-    inline self_type operator+=(const base_point<TT>& offset)
+    inline self_type operator+=(const point_type<TT>& offset)
     {
         left  += offset.x; top    += offset.y;
         right += offset.x; bottom += offset.y;
@@ -368,7 +368,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type operator-=(const base_point<TT>& offset)
+    inline self_type operator-=(const point_type<TT>& offset)
     {
         left  -= offset.x; top    -= offset.y;
         right -= offset.x; bottom -= offset.y;
@@ -377,7 +377,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type operator+=(const base_size<TT>& size)
+    inline self_type operator+=(const size_type<TT>& size)
     {
         right  += size.width;
         bottom += size.height;
@@ -386,7 +386,7 @@ public:
     }
 
     template <typename TT>
-    inline self_type operator-=(const base_size<TT>& size)
+    inline self_type operator-=(const size_type<TT>& size)
     {
         right  -= size.width;
         bottom -= size.height;
@@ -395,8 +395,8 @@ public:
     }
 };
 
-typedef base_rect<int>          rect;
-typedef base_rect<unsigned int> rectu;
-typedef base_rect<double>       rectf;
+typedef rect_type<int>          rect;
+typedef rect_type<unsigned int> rectu;
+typedef rect_type<double>       rectf;
 
 #endif //rect_h_20130722

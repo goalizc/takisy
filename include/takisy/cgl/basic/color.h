@@ -242,7 +242,7 @@ public:
         return *this;
     }
 
-    inline color clone(void) const
+    inline color copy(void) const
     {
         return *this;
     }
@@ -289,12 +289,12 @@ public:
 
     inline color multiply_copy(channel_type alpha) const
     {
-        return clone().multiply(alpha);
+        return copy().multiply(alpha);
     }
 
     inline color& premultiply(void)
     {
-        register unsigned int inc_a = a + 1;
+        unsigned int inc_a = a + 1;
 
         r = (r * inc_a) >> channel_shift;
         g = (g * inc_a) >> channel_shift;
@@ -305,7 +305,7 @@ public:
 
     inline color premultiply_copy(void) const
     {
-        return clone().premultiply();
+        return copy().premultiply();
     }
 
     inline color& visual(void)
@@ -315,7 +315,7 @@ public:
 
     inline color visual_copy(void) const
     {
-        return clone().visual();
+        return copy().visual();
     }
 
     inline color& transparent(void)
@@ -325,7 +325,7 @@ public:
 
     inline color transparent_copy(void) const
     {
-        return clone().transparent();
+        return copy().transparent();
     }
 
     inline color& opaque(void)
@@ -335,14 +335,14 @@ public:
 
     inline color opaque_copy(void) const
     {
-        return clone().opaque();
+        return copy().opaque();
     }
 
     color& blend(const color& fg_color);
 
     color blend_copy(const color& fg_color) const
     {
-        return clone().blend(fg_color);
+        return copy().blend(fg_color);
     }
 
 public:
@@ -353,7 +353,7 @@ public:
 
     inline color operator&(const color& c) const
     {
-        return (clone() &= c);
+        return (copy() &= c);
     }
 
     inline color& operator&=(const color& c)
@@ -365,7 +365,7 @@ public:
 
     inline color operator^(const color& c) const
     {
-        return (clone() ^= c);
+        return (copy() ^= c);
     }
 
     inline color& operator^=(const color& c)
@@ -377,7 +377,7 @@ public:
 
     inline color operator|(const color& c) const
     {
-        return (clone() |= c);
+        return (copy() |= c);
     }
 
     inline color& operator|=(const color& c)

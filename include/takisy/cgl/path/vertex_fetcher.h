@@ -18,7 +18,7 @@ public:
 
     inline path::vertex_type at(int i) const
     {
-        register int n = path_.size();
+        int n = path_.size();
 
         return path_.at(i < 0 ? (n + i % n) % n : i % n);
     }

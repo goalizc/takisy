@@ -48,24 +48,27 @@ public:
     }
 
 public:
-    static canvas_adapter::pointer load(stream& stream)
+    static canvas_adapter::pointer load(const stream& stream)
     {
         file_header file_header;
-        if (stream.read(file_header) != sizeof(file_header)
-            || file_header.flag != kBmpFlag)
+        if (!stream.read(file_header) || file_header.flag != kBmpFlag)
             return nullptr;
 
         info_header info_header;
-        if (stream.read(info_header) != sizeof(info_header)
-            || info_header.size != sizeof(info_header)
+        bool down2up = true;
+        if (!stream.read(info_header) || info_header.size != sizeof(info_header)
             || info_header.compression != 0)
             return nullptr;
+        else if (info_header.height < 0)
+        {
+            info_header.height = -info_header.height;
+            down2up = false;
+        }
 
         typedef pixel_format<unsigned char, b, g, r, R> pixel_format;
         static constexpr unsigned int pfsize = sizeof(pixel_format);
         canvas_adapter::pointer canvas;
         stretchy_buffer<pixel_format> palette;
-        bool down2up = true;
 
         switch (info_header.bit_depth)
         {
@@ -80,12 +83,6 @@ public:
         }
 
         canvas->resize(info_header.width, info_header.height);
-
-        if (info_header.height < 0)
-        {
-            info_header.height = -info_header.height;
-            down2up = false;
-        }
 
         unsigned int row_bits  = info_header.bit_depth * info_header.width;
         unsigned int row_bytes = math::ceil(row_bits / 32.0) * 4;
@@ -152,7 +149,7 @@ public:
         file_header.reserved_1 = 0;
         file_header.reserved_2 = 0;
         file_header.offset     = sizeof(file_header) + sizeof(info_header);
-        if (stream.write(file_header) != sizeof(file_header))
+        if (!stream.write(file_header))
             return false;
 
         info_header info_header;
@@ -167,7 +164,7 @@ public:
         info_header.y_pels_per_meter = 0x4c2;
         info_header.color_used       = 0;
         info_header.color_important  = 0;
-        if (stream.write(info_header) != sizeof(info_header))
+        if (!stream.write(info_header))
             return false;
 
         stretchy_buffer<unsigned char> row_buffer(row_bytes);
@@ -187,7 +184,7 @@ public:
     }
 };
 
-bool bmp::load(stream& stream, frames& frames) const
+bool bmp::load(const stream& stream, frames& frames) const
 {
     canvas_adapter::pointer canvas = implement::load(stream);
 

@@ -143,14 +143,14 @@ class gif::implement
     };
 
 private:
-    static stretchy_buffer<unsigned char> read_sub_blocks(stream& stream)
+    static stretchy_buffer<unsigned char> read_sub_blocks(const stream& stream)
     {
         stretchy_buffer<unsigned char> result;
 
         while (true)
         {
             unsigned char sub_block_bytes;
-            if (stream.read(sub_block_bytes) != sizeof(sub_block_bytes))
+            if (!stream.read(sub_block_bytes))
                 return stretchy_buffer<unsigned char>();
 
             if (sub_block_bytes == 0)
@@ -167,19 +167,19 @@ private:
     }
 
 public:
-    static bool load(stream& stream, frames& frames)
+    static bool load(const stream& stream, frames& frames)
     {
         typedef pixfmt_rgb8 pixfmt_palette;
         const unsigned int kPFPaletteBytes = pixfmt_palette::pixel_bytes();
 
         header header;
-        if (stream.read(header) != sizeof(header)
+        if (!stream.read(header)
             || header.flag != kGifFlag
             || (header.version != kVersion87a && header.version != kVersion89a))
             return false;
 
         logical_screen_descriptor lsd;
-        if (stream.read(lsd) != sizeof(lsd))
+        if (!stream.read(lsd))
             return false;
 
         stretchy_buffer<pixfmt_palette> gct;
@@ -199,27 +199,27 @@ public:
         while (true)
         {
             unsigned char flag;
-            if (stream.read(flag) != sizeof(flag))
+            if (!stream.read(flag))
                 return false;
 
             if (flag == kExtension)
             {
                 unsigned char extension_type;
-                if (stream.read(extension_type) != sizeof(extension_type))
+                if (!stream.read(extension_type))
                     return false;
 
                 switch (extension_type)
                 {
                 case etGrahicsControl:
                     gce.reset(new graphics_control_extension);
-                    if (stream.read(*gce) != sizeof(graphics_control_extension))
+                    if (!stream.read(*gce))
                         return false;
                     break;
                 case etPlainText:
                 case etApplication:
                     {
                         unsigned char skip_size;
-                        if (stream.read(skip_size) != sizeof(skip_size))
+                        if (!stream.read(skip_size))
                             return false;
                         stretchy_buffer<unsigned char> skip_data(skip_size);
                         if (stream.read(skip_data.data(), skip_size)
@@ -237,7 +237,7 @@ public:
             if (flag == kImageDescriptor)
             {
                 image_descriptor id;
-                if (stream.read(id) != sizeof(id))
+                if (!stream.read(id))
                     return false;
 
                 stretchy_buffer<pixfmt_palette> lct, *palette = &gct;
@@ -256,7 +256,7 @@ public:
                     return false;
 
                 unsigned char code_size;
-                if (stream.read(code_size) != sizeof(code_size))
+                if (!stream.read(code_size))
                     return false;
 
                 stretchy_buffer<unsigned char> data = read_sub_blocks(stream);
@@ -320,7 +320,7 @@ public:
     }
 };
 
-bool gif::load(stream& stream, frames& frames) const
+bool gif::load(const stream& stream, frames& frames) const
 {
     return implement::load(stream, frames);
 }

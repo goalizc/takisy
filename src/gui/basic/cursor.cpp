@@ -1,5 +1,5 @@
 #include <map>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/gui/basic/cursor.h>
 
 #ifdef __os_win__

@@ -1,188 +1,168 @@
-#ifndef graphics_h_20131115
-#define graphics_h_20131115
+#ifndef graphics_h_20150715
+#define graphics_h_20150715
 
 #include <takisy/cgl/basic/point.h>
+#include <takisy/cgl/basic/size.h>
+#include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/basic/color.h>
-#include <takisy/cgl/basic/canvas.h>
+#include <takisy/cgl/path/path.h>
+#include <takisy/cgl/font/font.h>
+#include <takisy/cgl/image/canvas_adapter.h>
+#include <takisy/cgl/brush.h>
+#include <takisy/cgl/pen.h>
 
-template <typename Canvas>
 class graphics
 {
-public:
-    typedef Canvas canvas_type;
+    class implement;
 
 public:
     graphics(void);
-    graphics(unsigned int width, unsigned int height);
-    template <typename PixelMatrix>
-    graphics(const PixelMatrix& pixel_matrix);
     graphics(const graphics& graphics);
    ~graphics(void);
 
-    template <typename PixelMatrix>
-    graphics& operator=(const PixelMatrix& pixel_matrix);
     graphics& operator=(const graphics& graphics);
 
 public:
-    inline void clear(void);
-    template <typename Brush>
-    inline void clear(const Brush& brush);
-
-    inline void resize(unsigned int width, unsigned int height);
-
-    template <typename GammaFunction>
-    inline void gamma(const GammaFunction& gf);
+    color pixel(int x, int y) const;
+    color pixel(const point& point) const;
 
 public:
-    inline unsigned int width(void) const;
-    inline unsigned int height(void) const;
+    void clear(const color& color);
+    void clear(const brush& brush);
 
-    inline color pixel(const point& point) const;
-    inline color pixel(int x, int y) const;
+    void pixel(int x, int y, const color& color);
+    void pixel(int x, int y, const color& color, unsigned char coverage);
+    void pixel(const point& point, const color& color);
+    void pixel(const point& point, const color& color, unsigned char coverage);
+    void pixel(int x, int y, const brush& brush);
+    void pixel(int x, int y, const brush& brush, unsigned char coverage);
+    void pixel(const point& point, const brush& brush);
+    void pixel(const point& point, const brush& brush, unsigned char coverage);
 
-    inline canvas_type& canvas(void);
-    inline typename canvas_type::pixel_format* pixels(void);
-    inline const typename canvas_type::pixel_format* pixels(void) const;
+    void draw_line(const pointf& p1, const pointf& p2, const pen& pen);
+    void draw_line(double p1x, double p1y, double p2x, double p2y, const pen& pen);
+
+    void draw_rectangle(const rectf& rect, const pen& pen);
+    void draw_rectangle(const pointf& p1, const pointf& p2, const pen& pen);
+    void draw_rectangle(const pointf& point, const sizef& size, const pen& pen);
+    void draw_rectangle(double p1x, double p1y, double p2x, double p2y, const pen& pen);
+
+    void draw_round_rectangle(const rectf& rect, double radius, const pen& pen);
+    void draw_round_rectangle(const pointf& p1, const pointf& p2, double radius, const pen& pen);
+    void draw_round_rectangle(const pointf& point, const sizef& size, double radius, const pen& pen);
+    void draw_round_rectangle(double p1x, double p1y, double p2x, double p2y, double radius, const pen& pen);
+    void draw_round_rectangle(const rectf& rect, double width, double height, const pen& pen);
+    void draw_round_rectangle(const pointf& p1, const pointf& p2, double width, double height, const pen& pen);
+    void draw_round_rectangle(const pointf& point, const sizef& size, double width, double height, const pen& pen);
+    void draw_round_rectangle(double p1x, double p1y, double p2x, double p2y, double width, double height, const pen& pen);
+
+    void draw_ellipse(const pointf& center, double width, double height, const pen& pen);
+    void draw_ellipse(double x, double y, double width, double height, const pen& pen);
+
+    void draw_circle(const pointf& center, double radius, const pen& pen);
+    void draw_circle(double x, double y, double radius, const pen& pen);
+
+    void draw_path(const path& path, const pen& pen);
+    void draw_path(const path& path, bool closed, const pen& pen);
+    void draw_path(const paths& paths, const pen& pen);
+    void draw_path(const paths& paths, bool closed, const pen& pen);
+
+    void draw_text(const point& point, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(const rect& rect, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(const point& p1, const point& p2, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(const point& point, const size& size, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(int x, int y, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const char* string, const char* codec, const font& font, const color& color);
+    void draw_text(const point& point, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(const rect& rect, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(const point& p1, const point& p2, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(const point& point, const size& size, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(int x, int y, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const char* string, const char* codec, const font& font, const brush& brush);
+    void draw_text(const point& point, const char* string, const font& font, const color& color);
+    void draw_text(const rect& rect, const char* string, const font& font, const color& color);
+    void draw_text(const point& p1, const point& p2, const char* string, const font& font, const color& color);
+    void draw_text(const point& point, const size& size, const char* string, const font& font, const color& color);
+    void draw_text(int x, int y, const char* string, const font& font, const color& color);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const char* string, const font& font, const color& color);
+    void draw_text(const point& point, const char* string, const font& font, const brush& brush);
+    void draw_text(const rect& rect, const char* string, const font& font, const brush& brush);
+    void draw_text(const point& p1, const point& p2, const char* string, const font& font, const brush& brush);
+    void draw_text(const point& point, const size& size, const char* string, const font& font, const brush& brush);
+    void draw_text(int x, int y, const char* string, const font& font, const brush& brush);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const char* string, const font& font, const brush& brush);
+    void draw_text(const point& point, const wchar_t* string, const font& font, const color& color);
+    void draw_text(const rect& rect, const wchar_t* string, const font& font, const color& color);
+    void draw_text(const point& p1, const point& p2, const wchar_t* string, const font& font, const color& color);
+    void draw_text(const point& point, const size& size, const wchar_t* string, const font& font, const color& color);
+    void draw_text(int x, int y, const wchar_t* string, const font& font, const color& color);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const wchar_t* string, const font& font, const color& color);
+    void draw_text(const point& point, const wchar_t* string, const font& font, const brush& brush);
+    void draw_text(const rect& rect, const wchar_t* string, const font& font, const brush& brush);
+    void draw_text(const point& p1, const point& p2, const wchar_t* string, const font& font, const brush& brush);
+    void draw_text(const point& point, const size& size, const wchar_t* string, const font& font, const brush& brush);
+    void draw_text(int x, int y, const wchar_t* string, const font& font, const brush& brush);
+    void draw_text(int p1x, int p1y, int p2x, int p2y, const wchar_t* string, const font& font, const brush& brush);
+
+    void draw_image(const canvas_adapter& canvas);
+    void draw_image(const canvas_adapter& canvas, int x, int y, unsigned int width, unsigned int height);
+    void draw_image(const canvas_adapter& canvas, const point& p1, const point& p2);
+    void draw_image(const canvas_adapter& canvas, const point& point, const size& size);
+    void draw_image(const canvas_adapter& canvas, const rect& rect);
+    void draw_image(int x, int y, const canvas_adapter& canvas);
+    void draw_image(int x, int y, const canvas_adapter& canvas, int cx, int cy, unsigned int width, unsigned int height);
+    void draw_image(int x, int y, const canvas_adapter& canvas, const point& p1, const point& p2);
+    void draw_image(int x, int y, const canvas_adapter& canvas, const point& point, const size& size);
+    void draw_image(int x, int y, const canvas_adapter& canvas, const rect& rect);
+    void draw_image(const point& xy, const canvas_adapter& canvas);
+    void draw_image(const point& xy, const canvas_adapter& canvas, int x, int y, unsigned int width, unsigned int height);
+    void draw_image(const point& xy, const canvas_adapter& canvas, const point& p1, const point& p2);
+    void draw_image(const point& xy, const canvas_adapter& canvas, const point& point, const size& size);
+    void draw_image(const point& xy, const canvas_adapter& canvas, const rect& rect);
+
+    void fill_rectangle(const rectf& rect, const color& color);
+    void fill_rectangle(const pointf& p1, const pointf& p2, const color& color);
+    void fill_rectangle(const pointf& point, const sizef& size, const color& color);
+    void fill_rectangle(double p1x, double p1y, double p2x, double p2y, const color& color);
+    void fill_rectangle(const rectf& rect, const brush& brush);
+    void fill_rectangle(const pointf& p1, const pointf& p2, const brush& brush);
+    void fill_rectangle(const pointf& point, const sizef& size, const brush& brush);
+    void fill_rectangle(double p1x, double p1y, double p2x, double p2y, const brush& brush);
+
+    void fill_round_rectangle(const rectf& rect, double radius, const color& color);
+    void fill_round_rectangle(const pointf& p1, const pointf& p2, double radius, const color& color);
+    void fill_round_rectangle(const pointf& point, const sizef& size, double radius, const color& color);
+    void fill_round_rectangle(double p1x, double p1y, double p2x, double p2y, double radius, const color& color);
+    void fill_round_rectangle(const rectf& rect, double width, double height, const color& color);
+    void fill_round_rectangle(const pointf& p1, const pointf& p2, double width, double height, const color& color);
+    void fill_round_rectangle(const pointf& point, const sizef& size, double width, double height, const color& color);
+    void fill_round_rectangle(double p1x, double p1y, double p2x, double p2y, double width, double height, const color& color);
+    void fill_round_rectangle(const rectf& rect, double radius, const brush& brush);
+    void fill_round_rectangle(const pointf& p1, const pointf& p2, double radius, const brush& brush);
+    void fill_round_rectangle(const pointf& point, const sizef& size, double radius, const brush& brush);
+    void fill_round_rectangle(double p1x, double p1y, double p2x, double p2y, double radius, const brush& brush);
+    void fill_round_rectangle(const rectf& rect, double width, double height, const brush& brush);
+    void fill_round_rectangle(const pointf& p1, const pointf& p2, double width, double height, const brush& brush);
+    void fill_round_rectangle(const pointf& point, const sizef& size, double width, double height, const brush& brush);
+    void fill_round_rectangle(double p1x, double p1y, double p2x, double p2y, double width, double height, const brush& brush);
+
+    void fill_ellipse(const pointf& center, double width, double height, const color& color);
+    void fill_ellipse(double x, double y, double width, double height, const color& color);
+    void fill_ellipse(const pointf& center, double width, double height, const brush& brush);
+    void fill_ellipse(double x, double y, double width, double height, const brush& brush);
+
+    void fill_circle(const pointf& center, double radius, const color& color);
+    void fill_circle(double x, double y, double radius, const color& color);
+    void fill_circle(const pointf& center, double radius, const brush& brush);
+    void fill_circle(double x, double y, double radius, const brush& brush);
+
+    void fill_path(const path& path, const color& color);
+    void fill_path(const paths& paths, const color& color);
+    void fill_path(const path& path, const brush& brush);
+    void fill_path(const paths& paths, const brush& brush);
 
 public:
-    template <typename PixelMatrix>
-    inline PixelMatrix& clone(PixelMatrix& pixel_matrix) const;
-    template <typename PixelMatrix>
-    inline PixelMatrix& clone(const point& lt,
-                              const point& rb, PixelMatrix& pixel_matrix) const;
-    template <typename PixelMatrix>
-    inline PixelMatrix& clone(int lt_x, int lt_y,
-                              int rb_x, int rb_y,
-                              PixelMatrix& pixel_matrix) const;
-
-public:
-    template <typename Brush>
-    inline void pixel(const point& point, const Brush& brush);
-    template <typename Brush>
-    inline void pixel(int x, int y, const Brush& brush);
-
-    template <typename Path, typename Brush>
-    inline void render(const Path& path, const Brush& brush);
-
-    template <typename PixelMatrix>
-    inline void paint(const PixelMatrix& pixel_matrix);
-    template <typename PixelMatrix>
-    inline void paint(const PixelMatrix& pixel_matrix,
-                      const point& lt, const point& rb);
-    template <typename PixelMatrix>
-    inline void paint(const point& position, const PixelMatrix& pixel_matrix);
-    template <typename PixelMatrix>
-    inline void paint(const point& position, const PixelMatrix& pixel_matrix,
-                      const point& lt, const point& rb);
-    template <typename PixelMatrix>
-    inline void paint(int x, int y, const PixelMatrix& pixel_matrix);
-    template <typename PixelMatrix>
-    inline void paint(const PixelMatrix& pixel_matrix,
-                      int lt_x, int lt_y, int rb_x, int rb_y);
-    template <typename PixelMatrix>
-    inline void paint(int x, int y, const PixelMatrix& pixel_matrix,
-                      int lt_x, int lt_y, int rb_x, int rb_y);
-
-    template <typename Brush>
-    inline void text(const char* string, const Brush& brush);
-    template <typename Brush>
-    inline void text(const point& lt, const char* string, const Brush& brush);
-    template <typename Brush>
-    inline void text(const point& lt,
-                     const point& rb, const char* string, const Brush& brush);
-    template <typename Brush>
-    inline void text(int lt_x, int lt_y,
-                     const char* string, const Brush& brush);
-    template <typename Brush>
-    inline void text(int lt_x, int lt_y,
-                     int rb_x, int rb_y,
-                     const char* string, const Brush& brush);
-
-public:
-    inline bool save(const char* filename);
-
-public:
-    template <typename DeviceContext>
-    inline void play(DeviceContext dc,
-                     bool up2down = true, int x = 0, int y = 0,
-                     unsigned int width = 0, unsigned int height = 0);
-
-private:
-    canvas_type canvas_;
+    class implement* impl_;
 };
 
-#include <takisy/cgl/graphics_implement.hpp>
-
-typedef graphics<canvas_G8>      graphics_G8;
-typedef graphics<canvas_Ga8>     graphics_Ga8;
-typedef graphics<canvas_aG8>     graphics_aG8;
-typedef graphics<canvas_rgb8>    graphics_rgb8;
-typedef graphics<canvas_bgr8>    graphics_bgr8;
-typedef graphics<canvas_rgba8>   graphics_rgba8;
-typedef graphics<canvas_bgra8>   graphics_bgra8;
-typedef graphics<canvas_argb8>   graphics_argb8;
-typedef graphics<canvas_abgr8>   graphics_abgr8;
-typedef graphics<canvas_mask8>   graphics_a8;
-typedef graphics_a8              graphics_mask8;
-
-typedef graphics<canvas_G8be>    graphics_G8be;
-typedef graphics<canvas_Ga8be>   graphics_Ga8be;
-typedef graphics<canvas_aG8be>   graphics_aG8be;
-typedef graphics<canvas_rgb8be>  graphics_rgb8be;
-typedef graphics<canvas_bgr8be>  graphics_bgr8be;
-typedef graphics<canvas_rgba8be> graphics_rgba8be;
-typedef graphics<canvas_bgra8be> graphics_bgra8be;
-typedef graphics<canvas_argb8be> graphics_argb8be;
-typedef graphics<canvas_abgr8be> graphics_abgr8be;
-typedef graphics<canvas_mask8be> graphics_a8be;
-typedef graphics_a8be            graphics_mask8be;
-
-typedef graphics<canvas_G8le>    graphics_G8le;
-typedef graphics<canvas_Ga8le>   graphics_Ga8le;
-typedef graphics<canvas_aG8le>   graphics_aG8le;
-typedef graphics<canvas_rgb8le>  graphics_rgb8le;
-typedef graphics<canvas_bgr8le>  graphics_bgr8le;
-typedef graphics<canvas_rgba8le> graphics_rgba8le;
-typedef graphics<canvas_bgra8le> graphics_bgra8le;
-typedef graphics<canvas_argb8le> graphics_argb8le;
-typedef graphics<canvas_abgr8le> graphics_abgr8le;
-typedef graphics<canvas_mask8le> graphics_a8le;
-typedef graphics_a8le            graphics_mask8le;
-
-typedef graphics<canvas_G16>      graphics_G16;
-typedef graphics<canvas_Ga16>     graphics_Ga16;
-typedef graphics<canvas_aG16>     graphics_aG16;
-typedef graphics<canvas_rgb16>    graphics_rgb16;
-typedef graphics<canvas_bgr16>    graphics_bgr16;
-typedef graphics<canvas_rgba16>   graphics_rgba16;
-typedef graphics<canvas_bgra16>   graphics_bgra16;
-typedef graphics<canvas_argb16>   graphics_argb16;
-typedef graphics<canvas_abgr16>   graphics_abgr16;
-typedef graphics<canvas_mask16>   graphics_a16;
-typedef graphics_a16              graphics_mask16;
-
-typedef graphics<canvas_G16be>    graphics_G16be;
-typedef graphics<canvas_Ga16be>   graphics_Ga16be;
-typedef graphics<canvas_aG16be>   graphics_aG16be;
-typedef graphics<canvas_rgb16be>  graphics_rgb16be;
-typedef graphics<canvas_bgr16be>  graphics_bgr16be;
-typedef graphics<canvas_rgba16be> graphics_rgba16be;
-typedef graphics<canvas_bgra16be> graphics_bgra16be;
-typedef graphics<canvas_argb16be> graphics_argb16be;
-typedef graphics<canvas_abgr16be> graphics_abgr16be;
-typedef graphics<canvas_mask16be> graphics_a16be;
-typedef graphics_a16be            graphics_mask16be;
-
-typedef graphics<canvas_G16le>    graphics_G16le;
-typedef graphics<canvas_Ga16le>   graphics_Ga16le;
-typedef graphics<canvas_aG16le>   graphics_aG16le;
-typedef graphics<canvas_rgb16le>  graphics_rgb16le;
-typedef graphics<canvas_bgr16le>  graphics_bgr16le;
-typedef graphics<canvas_rgba16le> graphics_rgba16le;
-typedef graphics<canvas_bgra16le> graphics_bgra16le;
-typedef graphics<canvas_argb16le> graphics_argb16le;
-typedef graphics<canvas_abgr16le> graphics_abgr16le;
-typedef graphics<canvas_mask16le> graphics_a16le;
-typedef graphics_a16le            graphics_mask16le;
-
-#endif //graphics_h_20131115
+#endif // graphics_h_20150715

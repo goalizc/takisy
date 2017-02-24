@@ -3,8 +3,8 @@
 #include <memory>
 #include <algorithm>
 #include <stdexcept>
-#include <takisy/core/macro.h>
-#include <takisy/core/algorithm.h>
+#include <takisy/core/algo.h>
+#include <takisy/core/osdet.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/widget.h>
@@ -128,7 +128,7 @@ const widget* widget::forefather(void) const
     return const_cast<widget*>(this)->forefather();
 }
 
-const std::vector<widget*>& widget::children(void) const
+std::vector<widget*> widget::children(void) const
 {
     return impl_->children_;
 }
@@ -456,9 +456,9 @@ void widget::size(Size _size)
     if (impl_->father_ && !impl_->father_->onChildSizing(this, _size))
         return;
 
-    _size.width  = algorithm::clamp(_size.width,
+    _size.width  = algo::clamp(_size.width,
             impl_->lower_.width, impl_->upper_.width);
-    _size.height = algorithm::clamp(_size.height,
+    _size.height = algo::clamp(_size.height,
             impl_->lower_.height, impl_->upper_.height);
 
     if (_size == size())
@@ -826,7 +826,7 @@ bool widget::as_window(cross_platform_window::Handle handle)
     {
         cross_platform_window window(handle);
 
-        window.xy(xy() + window.client_offset());
+        window.xy(xy() - window.client_offset());
         window.client_size(size());
         window.visible(visible());
         window.repaint();
@@ -881,7 +881,7 @@ void widget::onChildHidden(widget*)               {               }
 void widget::onPaint(graphics, Rect)              {               }
 void widget::onEndPaint(graphics, Rect)           {               }
 bool widget::onFocus(bool)                        { return false; }
-bool widget::onSetCursor(void)                    { return false; }
+bool widget::onSetCursor(Point)                   { return false; }
 bool widget::onKeyDown(sys::VirtualKey)           { return false; }
 bool widget::onKeyPress(unsigned int)             { return false; }
 bool widget::onKeyUp(sys::VirtualKey)             { return false; }
@@ -891,6 +891,8 @@ bool widget::onMouseMove(Point)                   { return false; }
 bool widget::onMouseEnter(void)                   { return false; }
 bool widget::onMouseLeave(void)                   { return false; }
 bool widget::onMouseWheel(int, Point)             { return false; }
+bool widget::onClose(void)                        { return true;  }
+void widget::onDestroy(void)                      {               }
 
 void* widget::property(const std::string& name) const
 {
@@ -930,15 +932,15 @@ void widget::property<char*>(const std::string& name, char* const& value)
 }
 
 template <>
-void widget::property<const char*>(
-        const std::string& name, const char* const& value)
+void widget::property<const char*>
+        (const std::string& name, const char* const& value)
 {
     property(name, value, strlen(value) + 1);
 }
 
 template <>
-void widget::property<std::string>(
-        const std::string& name, const std::string& value)
+void widget::property<std::string>
+        (const std::string& name, const std::string& value)
 {
     property(name, value.data(), value.size());
 }

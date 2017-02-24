@@ -1,4 +1,4 @@
-#include <takisy/core/algorithm.h>
+#include <takisy/core/algo.h>
 #include <takisy/gui/widget/progress.h>
 
 class progress::implement
@@ -87,7 +87,7 @@ void progress::max(double max)
 
 void progress::value(double value)
 {
-    value = algorithm::clamp(value, impl_->min_, impl_->max_);
+    value = algo::clamp(value, impl_->min_, impl_->max_);
 
     if (impl_->value_ != value)
     {

@@ -1,6 +1,6 @@
 #include <utility>
+#include <takisy/core/algo.h>
 #include <takisy/core/math.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/scroll.h>
 
@@ -128,7 +128,7 @@ void scroll::max(double max)
 void scroll::value(double value)
 {
     if (scrollable())
-        value = algorithm::clamp(value, impl_->min_, impl_->max_ - page());
+        value = algo::clamp(value, impl_->min_, impl_->max_ - page());
     else
         value = impl_->min_;
 
@@ -190,7 +190,7 @@ void scroll::end(void)
     value(max() - page());
 }
 
-bool scroll::onSetCursor(void)
+bool scroll::onSetCursor(Point)
 {
     if (scrollable())
     {
@@ -380,7 +380,9 @@ public:
     implement(void)
         : dragging_({.underway = false})
     {
+        vscroll_.width(7);
         vscroll_.show();
+        hscroll_.height(7);
         hscroll_.show();
     }
 
@@ -427,13 +429,15 @@ const class horizontal_scroll& scroll_area::horizontal_scroll(void) const
 
 void scroll_area::onSize(void)
 {
-    impl_->vscroll_.rect(width() - 7, 0, 7, height() - 7);
+    impl_->vscroll_.x(width() - impl_->vscroll_.width());
+    impl_->vscroll_.height(height() - impl_->hscroll_.height());
     impl_->vscroll_.page(height());
-    impl_->hscroll_.rect(0, height() - 7, width() - 7, 7);
+    impl_->hscroll_.y(height() - impl_->hscroll_.height());
+    impl_->hscroll_.width(width() - impl_->vscroll_.width());
     impl_->hscroll_.page(width());
 }
 
-bool scroll_area::onSetCursor(void)
+bool scroll_area::onSetCursor(Point)
 {
     if (impl_->dragging_.underway)
     {

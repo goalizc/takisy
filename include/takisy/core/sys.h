@@ -1,8 +1,7 @@
 #ifndef sys_h_20131122
 #define sys_h_20131122
 
-#include <takisy/cgl/basic/rect.h>
-#include <takisy/cgl/basic/color.h>
+#include <vector>
 
 class sys
 {
@@ -17,7 +16,7 @@ public:
         vkKana              = 0x15, vkHanguel    = 0x15, vkHangul      = 0x15,
         vkJunja             = 0x17, vkFinal      = 0x18, vkHanja       = 0x19,
         vkKanji             = 0x19, vkEscape     = 0x1B, vkConvert     = 0x1C,
-        vkNonconvert        = 0x1D, vkAccept     = 0x1E, vkModechange  = 0x1F,
+        vkNonconvert        = 0x1D, vkAccept     = 0x1E, vkModeChange  = 0x1F,
         vkSpace             = 0x20, vkPrior      = 0x21, vkNext        = 0x22,
         vkEnd               = 0x23, vkHome       = 0x24, vkLeft        = 0x25,
         vkUp                = 0x26, vkRight      = 0x27, vkDown        = 0x28,
@@ -35,7 +34,7 @@ public:
         vkKeyQ              = 0x51, vkKeyR       = 0x52, vkKeyS        = 0x53,
         vkKeyT              = 0x54, vkKeyU       = 0x55, vkKeyV        = 0x56,
         vkKeyW              = 0x57, vkKeyX       = 0x58, vkKeyY        = 0x59,
-        vkKeyZ              = 0x5A, vkLwin       = 0x5B, vkRwin        = 0x5C,
+        vkKeyZ              = 0x5A, vkLWin       = 0x5B, vkRWin        = 0x5C,
         vkApps              = 0x5D, vkSleep      = 0x5F, vkNumpad0     = 0x60,
         vkNumpad1           = 0x61, vkNumpad2    = 0x62, vkNumpad3     = 0x63,
         vkNumpad4           = 0x64, vkNumpad5    = 0x65, vkNumpad6     = 0x66,
@@ -69,6 +68,7 @@ public:
         vkLaunchMediaSelect = 0xB5, vkPa1        = 0xFD,
 
         // alias virtual key
+        vkEnter     = vkReturn,
         vkCtrl      = vkControl,
         vkLeftCtrl  = vkLControl,
         vkRightCtrl = vkRControl,
@@ -88,9 +88,10 @@ public:
 
 public:
     static unsigned long long rdtsc(void);
-    static bool               key_pressed(VirtualKey virtual_key);
-    static const char*        default_codec(void);
-    static void               default_codec(const char* codec);
+    static const char* default_codec(void);
+    static void default_codec(const char* codec);
+    static bool key_pressed(VirtualKey vkey);
+    static bool key_pressed(const std::vector<VirtualKey>& vkeys);
 };
 
 #endif //sys_h_20131122

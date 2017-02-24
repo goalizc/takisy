@@ -1,4 +1,3 @@
-#include <takisy/core/math.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/path/vertices_wrapper.h>
 #include <takisy/cgl/path/vertices.h>
@@ -130,8 +129,8 @@ private:
         double foobar = offset / _1.distance_to_next_vertex;
 
         return path::vertex_type {
-            .x = _2.vertex.x - (_2.vertex.x - _1.vertex.x) * foobar,
-            .y = _2.vertex.y - (_2.vertex.y - _1.vertex.y) * foobar,
+            _2.vertex.x - (_2.vertex.x - _1.vertex.x) * foobar,
+            _2.vertex.y - (_2.vertex.y - _1.vertex.y) * foobar,
         };
     }
 
@@ -192,7 +191,7 @@ dashed_line& dashed_line::operator=(const dashed_line& dl)
 {
     if (this != &dl)
     {
-        impl_->dash_array_ = dl.impl_->dash_array_.clone();
+        impl_->dash_array_ = dl.impl_->dash_array_.copy();
         impl_->closed_     = dl.impl_->closed_;
         impl_->offset_     = dl.impl_->offset_;
     }

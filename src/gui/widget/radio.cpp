@@ -250,6 +250,30 @@ int radio_group::selected_index(void) const
     return -1;
 }
 
+Size radio_group::optimal_size(OptimalPolicy policy) const
+{
+    Size optsize(0, 0);
+
+    for (const widget* item : impl_->items_)
+    {
+        Size item_optsize = item->optimal_size(policy);
+        if (optsize.width < item_optsize.width)
+            optsize.width = item_optsize.width;
+        optsize.height += item_optsize.height;
+    }
+
+    if (!impl_->items_.empty())
+    {
+        optsize.width  += spacing() + boxsize;
+        optsize.height += spacing() * (impl_->items_.size() - 1);
+    }
+
+    optsize.width  += margin() * 2;
+    optsize.height += margin() * 2;
+
+    return optsize;
+}
+
 unsigned int radio_group::margin(void) const
 {
     return impl_->margin_;
@@ -362,7 +386,7 @@ void radio_group::spacing(unsigned int spacing)
 
 void radio_group::onSize(void)
 {
-    int x = margin() + boxsize + ::spacing, y = margin();
+    int x = margin() + boxsize + spacing(), y = margin();
     int item_width = width() - x - margin();
     int item_height;
 
@@ -484,7 +508,7 @@ text_radio_group::text_radio_group(const vector<string>& items,
         for (const string& item : items)
             result.push_back(stralgo::decode(item, codec));
 
-        return std::move(result);
+        return result;
     }())
 {}
 

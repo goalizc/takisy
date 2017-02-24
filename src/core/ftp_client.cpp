@@ -1,4 +1,4 @@
-#include <cstring>
+#include <iostream>
 #include <takisy/core/os.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/core/ftp_client.h>
@@ -19,8 +19,7 @@ public:
 public:
     inline void print(const std::string& message) const
     {
-        printf("%s\n", message.c_str());
-        fflush(stdout);
+        std::cout << message << std::endl;
     }
 
     response get_response(void)
@@ -75,13 +74,12 @@ public:
             return tcp_stream(-1);
 
         unsigned int u8[6] = {0};
-        if (stralgo::unformat(rsp.detail, "%*[^(](%d,%d,%d,%d,%d,%d)",
-                              &u8[0], &u8[1], &u8[2], &u8[3],
-                              &u8[4], &u8[5]) != 6)
+        if (sscanf(rsp.detail.c_str(), "%*[^(](%d,%d,%d,%d,%d,%d)",
+                   &u8[0], &u8[1], &u8[2], &u8[3], &u8[4], &u8[5]) != 6)
             return tcp_stream(-1);
 
         return tcp_stream(
-            stralgo::format("%d.%d.%d.%d", u8[0], u8[1], u8[2], u8[3]).c_str(),
+            stralgo::format("$0.$1.$2.$3", u8[0], u8[1], u8[2], u8[3]).c_str(),
             u8[4] << 8 | u8[5]);
     }
 
@@ -138,12 +136,12 @@ ftp_client::response ftp_client::login(void) const
 ftp_client::response
     ftp_client::login(const char* user, const char* password) const
 {
-    response rsp = sendcmd("USER %s", user);
+    response rsp = sendcmd("USER $0", user);
 
     if (rsp.status[0] != '3')
         return rsp;
 
-    return sendcmd("PASS %s", password);
+    return sendcmd("PASS $0", password);
 }
 
 ftp_client::response ftp_client::quit(void) const
@@ -162,12 +160,12 @@ ftp_client::response ftp_client::noop(void) const
 
 ftp_client::response ftp_client::mkdir(const char* path) const
 {
-    return sendcmd("MKD %s", path);
+    return sendcmd("MKD $0", path);
 }
 
 ftp_client::response ftp_client::rmdir(const char* path) const
 {
-    return sendcmd("RMD %s", path);
+    return sendcmd("RMD $0", path);
 }
 
 ftp_client::response ftp_client::pwd(void) const
@@ -205,21 +203,21 @@ ftp_client::response ftp_client::list(const char* path, stream& ostream) const
     }
 
     if (path)
-        rsp = sendcmd("LIST %s", path);
+        rsp = sendcmd("LIST $0", path);
     else
         rsp = sendcmd("LIST");
 
     if (rsp.status[0] != '1')
         return rsp;
 
-    ostream.plunder(tcp);
+    ostream.obtain(tcp);
 
     return impl_->get_response();
 }
 
 ftp_client::response ftp_client::cd(const char* path) const
 {
-    return sendcmd("CWD %s", path);
+    return sendcmd("CWD $0", path);
 }
 
 ftp_client::response ftp_client::cdup(void) const
@@ -229,7 +227,7 @@ ftp_client::response ftp_client::cdup(void) const
 
 ftp_client::response ftp_client::type(char type) const
 {
-    return sendcmd("TYPE %c", type);
+    return sendcmd("TYPE $0", type);
 }
 
 ftp_client::response ftp_client::ascii(void) const
@@ -244,7 +242,7 @@ ftp_client::response ftp_client::binary(void) const
 
 ftp_client::response ftp_client::size(const char* remotefile) const
 {
-    return sendcmd("SIZE %s", remotefile);
+    return sendcmd("SIZE $0", remotefile);
 }
 
 ftp_client::response ftp_client::put(const char* localfile) const
@@ -261,7 +259,7 @@ ftp_client::response
 }
 
 ftp_client::response
-    ftp_client::put(stream& istream, const char* remotefile) const
+    ftp_client::put(const stream& istream, const char* remotefile) const
 {
     response rsp;
 
@@ -280,11 +278,11 @@ ftp_client::response
         return rsp;
     }
 
-    rsp = sendcmd("STOR %s", remotefile);
+    rsp = sendcmd("STOR $0", remotefile);
     if (rsp.status[0] != '1')
         return rsp;
 
-    tcp.plunder(istream);
+    tcp.obtain(istream);
     tcp.close();
 
     return impl_->get_response();
@@ -292,7 +290,7 @@ ftp_client::response
 
 ftp_client::response ftp_client::del(const char* remotefile) const
 {
-    return sendcmd("DELE %s", remotefile);
+    return sendcmd("DELE $0", remotefile);
 }
 
 ftp_client::response ftp_client::get(const char* remotefile) const
@@ -324,7 +322,7 @@ ftp_client::response
     if (rsp.status[0] != '2')
         return rsp;
 
-    unsigned long total = atol(rsp.detail.c_str());
+    unsigned long total = stralgo::atol(rsp.detail);
 
     tcp_stream tcp = impl_->create_tcp_stream_from_pasv();
     if (!tcp.readable())
@@ -334,15 +332,15 @@ ftp_client::response
         return rsp;
     }
 
-    rsp = sendcmd("RETR %s", remotefile);
+    rsp = sendcmd("RETR $0", remotefile);
     if (rsp.status[0] != '1')
         return rsp;
 
-    unsigned long getted = ostream.plunder(tcp);
+    unsigned long getted = ostream.obtain(tcp);
     if (getted != total)
     {
         rsp.status[0] = 0;
-        rsp.detail    = stralgo::format("getted/total: %ld/%ld", getted, total);
+        rsp.detail    = stralgo::format("getted/total: $0/$1", getted, total);
         return rsp;
     }
 
@@ -352,12 +350,12 @@ ftp_client::response
 ftp_client::response
     ftp_client::rename(const char* srcname, const char* dstname) const
 {
-    response rsp = sendcmd("RNFR %s", srcname);
+    response rsp = sendcmd("RNFR $0", srcname);
 
     if (rsp.status[0] != '3')
         return rsp;
 
-    return sendcmd("RNTO %s", dstname);
+    return sendcmd("RNTO $0", dstname);
 }
 
 ftp_client::response ftp_client::abort(void) const

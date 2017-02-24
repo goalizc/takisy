@@ -1,83 +1,94 @@
-#include <cstdlib>
-#include <takisy/core/os.h>
+#include <algorithm>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/parser/ini.h>
 
+class ini::implement
+{
+public:
+    std::map<std::string, section_type> sections;
+};
+
 ini::ini(void)
+    : impl_(new implement)
 {}
 
-ini::ini(const char* filepath_or_content)
+ini::ini(const std::string& buffer)
+    : ini()
 {
-    if (os::path::isfile(filepath_or_content))
-        load_file(filepath_or_content);
-    else
-        load(filepath_or_content);
+    load(buffer);
 }
 
-ini::ini(stream& stream)
+ini::ini(const stream& istream)
+    : ini()
 {
-    load(stream);
+    load(istream);
 }
 
-ini::ini(const ini& ini)
-    : sections_(ini.sections_)
-{}
+ini::ini(const ini& _ini)
+    : ini()
+{
+    operator=(_ini);
+}
+
+ini::ini(ini&& _ini)
+    : ini()
+{
+    operator=(std::move(_ini));
+}
 
 ini::~ini(void)
-{}
+{
+    delete impl_;
+}
 
 ini& ini::operator=(const ini& ini)
 {
     if (this != &ini)
-        sections_ = ini.sections_;
+        impl_->sections = ini.impl_->sections;
 
     return *this;
 }
 
-bool ini::load(const char* content)
+ini& ini::operator=(ini&& ini)
 {
-    buffer_stream bs(content, strlen(content));
+    std::swap(impl_, ini.impl_);
 
-    return load(bs);
+    return *this;
 }
 
-bool ini::load(stream& stream)
+bool ini::load(const std::string& buffer)
 {
-    std::string section_name = "default";
+    return load(buffer_stream(buffer.data(), buffer.size()));
+}
 
-    while (stream.readable())
+bool ini::load(const stream& istream)
+{
+    std::string section = "global";
+
+    while (istream.readable())
     {
-        std::string line;
-        char ch;
-
-        while (stream.read(&ch, sizeof(ch)) == sizeof(ch) && ch != '\n')
-            line += ch;
-
-        if (stralgo::trim(line).empty())
+        std::string line = stralgo::trim(istream.read_line());
+        if (line.empty())
             continue;
 
         switch (line.front())
         {
-        case '[':
-            {
-                std::string::size_type pos = line.find(']', 1);
-                if (pos == std::string::npos)
-                    return false;
-                else
-                    section_name = line.substr(1, pos - 1);
-            }
         case ';':
+            break;
+        case '[':
+            if (line.back() != ']')
+                return false;
+            else
+                section = stralgo::trim(line.substr(1, line.size() - 2));
             break;
         default:
             {
-                stralgo::strings parts    = stralgo::split(line, ';', 1);
-                stralgo::strings keyvalue = stralgo::split(parts[0], '=', 1);
-
+                stralgo::strings keyvalue = stralgo::split(line, "=", 1);
                 if (keyvalue.size() != 2)
                     return false;
-
-                sections_[section_name]
-                    [stralgo::trim(keyvalue[0])] = stralgo::trim(keyvalue[1]);
+                else
+                    impl_->sections[section][stralgo::trim(keyvalue[0])]
+                        = stralgo::trim(keyvalue[1]);
             }
             break;
         }
@@ -86,113 +97,50 @@ bool ini::load(stream& stream)
     return true;
 }
 
-bool ini::load_file(const char* filepath)
-{
-    file_stream fs(filepath, "r");
-
-    return load(fs);
-}
-
 std::string ini::dump(void) const
 {
-    std::string content;
+    return dump(0);
+}
 
-    for (const decltype(sections_)::value_type& section : sections_)
+std::string ini::dump(unsigned int indent) const
+{
+    std::string buffer;
+
+    for (const auto& section : impl_->sections)
     {
-        content += stralgo::format("[%s]\n", section.first.c_str());
-
-        for (const section_type::value_type& pair : section.second)
-            content += stralgo::format("    %s=%s\n", pair.first.c_str(),
-                                                      pair.second.as_string());
-
-        content += "\n";
+        buffer += '[' + section.first + "]\n";
+        for (const auto& keyvalue : section.second)
+            buffer += std::string(indent, 0x20)
+                    + keyvalue.first + " = " + keyvalue.second  + '\n';
+        buffer += '\n';
     }
 
-    return content;
+    return buffer;
 }
 
-bool ini::dump(stream& stream) const
+bool ini::dump(stream& ostream) const
 {
-    std::string content = dump();
-
-    return stream.write(content.data(), content.size()) == content.size();
+    return dump(ostream, 0);
 }
 
-bool ini::dump_file(const char* filepath) const
+bool ini::dump(stream&& ostream) const
 {
-    file_stream fstream(filepath, "w");
-
-    return dump(fstream);
+    return dump(ostream, 0);
 }
 
-ini::section_type& ini::operator[](const std::string& section_name)
+bool ini::dump(stream& ostream, unsigned int indent) const
 {
-    return sections_[section_name];
+    std::string buffer = dump(indent);
+
+    return ostream.write(buffer.data(), buffer.size()) == buffer.size();
 }
 
-ini::value::value(void)
-{}
-
-ini::value::value(const std::string& value)
-    : value_(value)
-{}
-
-ini::value::value(const value& value)
-    : value_(value.value_)
-{}
-
-ini::value::~value(void)
-{}
-
-ini::value& ini::value::operator=(const value& value)
+bool ini::dump(stream&& ostream, unsigned int indent) const
 {
-    if (this != &value)
-        value_ = value.value_;
-
-    return *this;
+    return dump(ostream, indent);
 }
 
-void ini::value::operator=(bool boolean)
+ini::section_type& ini::operator[](const std::string& section)
 {
-    value_ = boolean ? "true" : "false";
-}
-
-void ini::value::operator=(int number)
-{
-    operator=(static_cast<double>(number));
-}
-
-void ini::value::operator=(long long number)
-{
-    operator=(static_cast<double>(number));
-}
-
-void ini::value::operator=(double number)
-{
-    value_ = stralgo::format("%g", number);
-}
-
-void ini::value::operator=(const char* string)
-{
-    value_ = string;
-}
-
-bool ini::value::as_bool(void) const
-{
-    return stralgo::lowerc(value_) == "true";
-}
-
-double ini::value::as_number(void) const
-{
-    return strtod(value_.c_str(), nullptr);
-}
-
-const char* ini::value::as_string(void) const
-{
-    return value_.c_str();
-}
-
-ini::value::operator const char*(void) const
-{
-    return as_string();
+    return impl_->sections[section];
 }

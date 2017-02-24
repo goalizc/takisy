@@ -1,87 +1,102 @@
-#ifndef json_h_20140926
-#define json_h_20140926
+#ifndef json_h_20170119
+#define json_h_20170119
 
-#include <vector>
+#include <memory>
 #include <string>
 #include <takisy/core/stream.h>
 
 class json
 {
-    class object;
+    class value;
     class implement;
 
+    typedef value* valueptr;
+    typedef std::shared_ptr<value> valuesptr;
+
 public:
-    enum ObjectType
+    enum Type
     {
-        otUndefined = 0,
-        otNull      = 1,
-        otBoolean   = 2,
-        otNumber    = 3,
-        otString    = 4,
-        otArray     = 5,
-        otDict      = 6,
+        vtUndefined,
+        vtNull,
+        vtBoolean, vtNumberDouble, vtNumberInteger, vtString,
+        vtArray, vtObject
     };
 
 public:
     json(void);
-    json(const char* filepath_or_content);
-    json(stream& stream);
+    json(Type type);
+    json(const std::string& buffer);
+    json(const stream& istream);
+    json(valuesptr& value);
     json(const json& json);
-    json(object*&);
    ~json(void);
 
 public:
-    bool load(const char* content);
-    bool load(stream& stream);
-    bool load_file(const char* filepath);
+    bool load(const std::string& buffer);
+    bool load(const stream& istream);
 
     std::string dump(void) const;
-    std::string dump(int indent) const;
-    bool dump(stream& stream) const;
-    bool dump(stream& stream, int indent) const;
-    bool dump_file(const char* filepath) const;
-    bool dump_file(const char* filepath, int indent) const;
+    std::string dump(unsigned int indent) const;
+    bool dump(stream& ostream) const;
+    bool dump(stream&& ostream) const;
+    bool dump(stream& ostream, unsigned int indent) const;
+    bool dump(stream&& ostream, unsigned int indent) const;
 
-public: // set value
+public:
+    json& operator=(Type type);
     json& operator=(std::nullptr_t);
     json& operator=(bool boolean);
     json& operator=(int number);
+    json& operator=(unsigned int number);
+    json& operator=(long number);
+    json& operator=(unsigned long number);
     json& operator=(long long number);
+    json& operator=(unsigned long long number);
     json& operator=(double number);
     json& operator=(const char* string);
-    json& operator=(ObjectType object_type);
+    json& operator=(const std::string& string);
     json& operator=(const json& json);
 
-public: // only for array
-    void append(std::nullptr_t);
-    void append(bool boolean);
-    void append(int number);
-    void append(long long number);
-    void append(double number);
-    void append(const char* string);
-    void append(ObjectType object_type);
-    unsigned int count(void) const;
-    json operator[](int index) const;
+public:
+    bool append(Type type);
+    bool append(std::nullptr_t);
+    bool append(bool boolean);
+    bool append(int number);
+    bool append(unsigned int number);
+    bool append(long number);
+    bool append(unsigned long number);
+    bool append(long long number);
+    bool append(unsigned long long number);
+    bool append(double number);
+    bool append(const char* string);
+    bool append(const std::string& string);
+    bool append(const json& json);
 
-public: // only for dict
-    bool exists(const char* key) const;
-    std::vector<std::string> keys(void) const;
-    json operator[](const char* key) const;
+    bool clear(void);
+    bool remove(unsigned int index);
+    bool remove(const std::string& key);
 
 public:
-    ObjectType  type     (void) const;
-
-    bool        as_bool  (void) const;
-    double      as_number(void) const;
-    const char* as_string(void) const;
-
-    std::string repr     (void) const;
+    unsigned int size(void) const;
+    json operator[](const json& json);
+    json operator[](unsigned int index);
+    json operator[](const std::string& key);
+    const json operator[](const json& json) const;
+    const json operator[](unsigned int index) const;
+    const json operator[](const std::string& key) const;
 
 public:
-    const char* error_info(void) const;
+    json copy(void) const;
+
+public:
+    Type        type(void) const;
+    bool        as_bool(void) const;
+    double      as_double(void) const;
+    long long   as_integer(void) const;
+    std::string as_string(void) const;
 
 private:
     class implement* impl_;
 };
 
-#endif // json_h_20140926
+#endif // json_h_20170119

@@ -13,8 +13,8 @@ public:
     explicit
     image(const char* uri);
     image(const char* uri, const format& format);
-    image(stream& stream);
-    image(stream& stream, const format& format);
+    image(const stream& stream);
+    image(const stream& stream, const format& format);
     image(const image& image);
    ~image(void);
 
@@ -27,8 +27,8 @@ public:
 public:
     bool load_uri(const char* uri);
     bool load_uri(const char* uri, const format& format);
-    bool load_stream(stream& stream);
-    bool load_stream(stream& stream, const format& format);
+    bool load_stream(const stream& stream);
+    bool load_stream(const stream& stream, const format& format);
     bool dump_uri(const char* uri) const;
     bool dump_uri(const char* uri, const format& format) const;
     bool dump_stream(stream& stream) const;

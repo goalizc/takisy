@@ -1,8 +1,6 @@
 #ifndef releivo_h_20140110
 #define releivo_h_20140110
 
-#include <takisy/core/algorithm.h>
-
 class releivo
 {
 public:

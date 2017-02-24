@@ -2,7 +2,7 @@
 #include <list>
 #include <vector>
 #include <algorithm>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 
 #ifdef __os_win__
 

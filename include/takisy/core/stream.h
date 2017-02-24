@@ -16,36 +16,38 @@ public:
     virtual ~stream(void) {}
 
 public:
-    virtual bool seek(long offset, SeekType seek_type) = 0;
-    virtual long tell(void) const = 0; // -1: invalid position
+    virtual long tell(void) const = 0;
+    virtual bool seekable(void) const = 0;
     virtual bool readable(void) const = 0;
     virtual bool writable(void) const = 0;
-    virtual unsigned long read(void* buffer, unsigned long size) = 0;
+    virtual bool seek(long offset, SeekType seek_type) const = 0;
+    virtual unsigned long read(void* buffer, unsigned long size) const = 0;
     virtual unsigned long write(const void* buffer, unsigned long size) = 0;
 
 public:
-    template <typename ValueType>
-    inline unsigned long read(ValueType& value)
-    {
-        return read(&value, sizeof(value));
-    }
-
-    template <typename ValueType>
-    inline unsigned long write(const ValueType& value)
-    {
-        return write(&value, sizeof(value));
-    }
-
-    std::string read_all(void);
-    std::string read_line(void);
-    std::string read_chars(unsigned long nchars);
-
-    // read all data from from_uri(uri)/src into *this
-    unsigned long plunder(const char* uri);
-    unsigned long plunder(stream& src);
+    static std::shared_ptr<stream> from_uri(const std::string& uri);
 
 public:
-    static std::shared_ptr<stream> from_uri(const char* uri);
+    template <typename T>
+    inline bool read(T& value) const
+    {
+        return read(&value, sizeof(value)) == sizeof(value);
+    }
+
+    template <typename T>
+    inline bool write(const T& value)
+    {
+        return write(&value, sizeof(value)) == sizeof(value);
+    }
+
+    std::string read_all(void) const;
+    std::string read_line(void) const;
+    std::string read_chars(unsigned long nchars) const;
+    std::string read_until(char terminator) const;
+    std::string read_until(const std::string& terminator) const;
+
+    unsigned long obtain(const std::string& uri);
+    unsigned long obtain(const stream& src);
 };
 
 class seek_stream : public stream
@@ -53,7 +55,7 @@ class seek_stream : public stream
     class implement;
 
 public:
-    seek_stream(stream& stream);
+    seek_stream(const stream& stream);
    ~seek_stream(void);
 
 private:
@@ -61,11 +63,12 @@ private:
     seek_stream& operator=(const seek_stream&);
 
 public:
-    bool seek(long, SeekType) override;
     long tell(void) const override;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long, SeekType) const override;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void*, unsigned long) override;
 
 private:
@@ -81,16 +84,19 @@ public:
     buffer_stream(const void* buffer, unsigned long size);
     buffer_stream(const stretchy_buffer<unsigned char>& buffer);
     buffer_stream(const buffer_stream& bs);
+    buffer_stream(buffer_stream&& bs);
    ~buffer_stream(void);
 
     buffer_stream& operator=(const buffer_stream& bs);
+    buffer_stream& operator=(buffer_stream&& bs);
 
 public:
-    bool seek(long offset, SeekType seek_type) override;
     long tell(void) const override;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long offset, SeekType seek_type) const override;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
@@ -114,11 +120,12 @@ public:
     void close(void);
 
 public:
-    bool seek(long offset, SeekType seek_type) override;
     long tell(void) const override;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long offset, SeekType seek_type) const override;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
@@ -141,11 +148,12 @@ public:
     void close(void);
 
 public:
-    bool seek(long, SeekType) override final;
     long tell(void) const override final;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long, SeekType) const override final;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
@@ -168,11 +176,12 @@ public:
     void close(void);
 
 public:
-    bool seek(long, SeekType) override final;
     long tell(void) const override final;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long, SeekType) const override final;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
@@ -204,11 +213,12 @@ public:
     struct endpoint read_endpoint(void) const;
 
 public:
-    bool seek(long, SeekType) override final;
     long tell(void) const override final;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long, SeekType) const override final;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
 private:
@@ -241,11 +251,12 @@ public:
     const char* header(const char* key) const;
 
 public:
-    bool seek(long, SeekType) override final;
     long tell(void) const override;
+    bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    unsigned long read(void* buffer, unsigned long size) override;
+    bool seek(long, SeekType) const override final;
+    unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void*, unsigned long) override final;
 
 public:

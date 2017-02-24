@@ -25,8 +25,8 @@ public:
 
     public:
         void align(void);
-        unsigned int read(register unsigned int n);
-        unsigned int peek(register unsigned int n);
+        unsigned int read(unsigned int n);
+        unsigned int peek(unsigned int n);
 
     private:
         class implement* impl_;

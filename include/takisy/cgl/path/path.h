@@ -58,6 +58,7 @@ public:
 
 public:
     void clear(void);
+    void renew(void);
     void append(path* path);
 
 public:

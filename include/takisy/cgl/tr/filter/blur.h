@@ -1,9 +1,9 @@
 #ifndef blur_h_20131127
 #define blur_h_20131127
 
+#include <takisy/core/algo.h>
 #include <takisy/core/math.h>
 #include <takisy/core/memory.h>
-#include <takisy/core/algorithm.h>
 #include <takisy/core/stretchy_buffer.h>
 
 class blur
@@ -50,8 +50,8 @@ private:
     {
         typedef typename Canvas::pixel_format pixel_format;
         constexpr unsigned int channels = pixel_format::channels();
-        constexpr auto min = algorithm::min<int>;
-        constexpr auto max = algorithm::max<int>;
+        constexpr auto min = algo::min<int>;
+        constexpr auto max = algo::max<int>;
 
         const pixel_format* c1pxls = c1.pixels().data();
               pixel_format* c2pxls = c2.pixels().data();
@@ -120,8 +120,8 @@ private:
     {
         typedef typename Canvas::pixel_format pixel_format;
         constexpr unsigned int channels = pixel_format::channels();
-        constexpr auto min = algorithm::min<int>;
-        constexpr auto max = algorithm::max<int>;
+        constexpr auto min = algo::min<int>;
+        constexpr auto max = algo::max<int>;
 
         const pixel_format* c1pxls = c1.pixels().data();
               pixel_format* c2pxls = c2.pixels().data();

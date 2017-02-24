@@ -51,7 +51,7 @@ public:
     response size(const char* remotefile) const;
     response put(const char* localfile) const;
     response put(const char* localfile, const char* remotefile) const;
-    response put(stream& istream, const char* remotefile) const;
+    response put(const stream& istream, const char* remotefile) const;
     response del(const char* remotefile) const;
     response get(const char* remotefile) const;
     response get(const char* remotefile, const char* localfile) const;

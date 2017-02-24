@@ -1,326 +1,541 @@
 #ifndef stralgo_hpp_20140508
 #define stralgo_hpp_20140508
 
-#include <cstdio>
+#include <algorithm>
 #include <cctype>
+#include <cstdio>
+#include <cstdlib>
 #include <cwctype>
 #include <string>
+#include <tuple>
 #include <vector>
-#include <algorithm>
-#include <takisy/cgl/basic/size.h>
-#include <takisy/cgl/font/font.h>
 
 struct stralgo
 {
-    typedef std::vector<std::string>  strings;
-    typedef std::vector<std::wstring> wstrings;
-
-    #define __wrap__(function, ret_t, arg_t) \
-        static inline ret_t function(arg_t arg) { return ::function(arg); }
-
-        __wrap__(isalnum,  bool, char); __wrap__(iswalnum,  bool,    wchar_t);
-        __wrap__(isalpha,  bool, char); __wrap__(iswalpha,  bool,    wchar_t);
-        __wrap__(iscntrl,  bool, char); __wrap__(iswcntrl,  bool,    wchar_t);
-        __wrap__(isdigit,  bool, char); __wrap__(iswdigit,  bool,    wchar_t);
-        __wrap__(isgraph,  bool, char); __wrap__(iswgraph,  bool,    wchar_t);
-        __wrap__(islower,  bool, char); __wrap__(iswlower,  bool,    wchar_t);
-        __wrap__(isprint,  bool, char); __wrap__(iswprint,  bool,    wchar_t);
-        __wrap__(ispunct,  bool, char); __wrap__(iswpunct,  bool,    wchar_t);
-        __wrap__(isspace,  bool, char); __wrap__(iswspace,  bool,    wchar_t);
-        __wrap__(isupper,  bool, char); __wrap__(iswupper,  bool,    wchar_t);
-        __wrap__(isxdigit, bool, char); __wrap__(iswxdigit, bool,    wchar_t);
-        __wrap__(tolower,  char, char); __wrap__(towlower,  wchar_t, wchar_t);
-        __wrap__(toupper,  char, char); __wrap__(towupper,  wchar_t, wchar_t);
-    #undef __wrap__
-
-    static std::string format(const std::string& format, ...);
-    static int       unformat(const std::string& buffer,
-                              const std::string& format, ...);
-
-    static strings      codecs(void);
-    static std::wstring decode(const std::string& text,
-                               const std::string& codec);
-    static std::string  encode(const std::wstring& text,
-                               const std::string& codec);
-    static std::string convert(const std::string& text,
-                               const std::string& text_codec,
-                               const std::string& convert_codec);
-
-    template <typename CharType>
-    static std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str,
-              const std::basic_string<CharType>& token,
-              int max_split, bool compress_token = true)
-    {
-        typedef std::basic_string<CharType> string_type;
-        typename string_type::size_type pos = 0, last_pos = pos;
-        std::vector<string_type> result;
-
-        while ((pos = str.find(token, pos)) != string_type::npos
-               && result.size() < static_cast<unsigned int>(max_split))
-        {
-            if (!compress_token || pos != last_pos || pos == 0)
-                result.push_back(str.substr(last_pos, pos - last_pos));
-            last_pos = pos += token.size();
+    template <typename CharT>
+    class basic_string : public std::basic_string<CharT> {
+        typedef std::basic_string<CharT> base_type;
+        typedef basic_string self_type;
+    public:
+        using base_type::base_type;
+        using base_type::operator=;
+    public:
+        basic_string(void) : base_type() {}
+        basic_string(const base_type& other) : base_type(other) {}
+        basic_string(base_type&& other) : base_type(std::move(other)) {}
+        self_type& operator=(const base_type& other) {
+            base_type::operator=(other);
+            return *this;
         }
+        self_type& operator=(base_type&& other) {
+            base_type::operator=(std::move(other));
+            return *this;
+        }
+    public:
+        bool startswith(const base_type& prefix) const {
+            if (base_type::size() < prefix.size())
+                return false;
+            for (unsigned int i = 0; i < prefix.size(); ++i)
+                if (base_type::operator[](i) != prefix[i])
+                    return false;
+            return true;
+        }
+        bool endswith(const base_type& suffix) const {
+            if (base_type::size() < suffix.size())
+                return false;
+            for (unsigned int i = base_type::size() - suffix.size(), j = 0;
+                    j < suffix.size(); ++i, ++j)
+                if (base_type::operator[](i) != suffix[i])
+                    return false;
+            return true;
+        }
+    public:
+        self_type lower(void) const { return stralgo::lower(*this); }
+        self_type upper(void) const { return stralgo::upper(*this); }
+    public:
+        self_type trim (CharT ch = 0x20) const {
+            return stralgo::trim (*this, ch);
+        }
+        self_type triml(CharT ch = 0x20) const {
+            return stralgo::triml(*this, ch);
+        }
+        self_type trimr(CharT ch = 0x20) const {
+            return stralgo::trimr(*this, ch);
+        }
+    public:
+        self_type replace(const base_type& aim, const base_type& goal) const {
+            return stralgo::replace(*this, aim, goal);
+        }
+    public:
+        std::vector<self_type>
+            split(const base_type& token, bool compress_token = true) const {
+            return stralgo::split(*this, token, -1, compress_token);
+        }
+        std::vector<self_type>
+            split(const base_type& token,
+                  int max_split, bool compress_token = true) const {
+            return stralgo::split(*this, token, max_split, compress_token);
+        }
+    };
 
-        result.push_back(str.substr(last_pos));
+    class string : public basic_string<char> {
+        typedef basic_string<char> base_type;
+        typedef string self_type;
+    public:
+        using base_type::base_type;
+        using base_type::operator=;
+    public:
+        string(void) : base_type() {}
+        string(const base_type& other) : base_type(other) {}
+        string(base_type&& other) : base_type(std::move(other)) {}
+        self_type& operator=(const base_type& other) {
+            base_type::operator=(other);
+            return *this;
+        }
+        self_type& operator=(base_type&& other) {
+            base_type::operator=(std::move(other));
+            return *this;
+        }
+    public:
+        template <typename T>
+        T as(void) const {
+            return stralgo::frts<T>(base_type::c_str());
+        }
+        template <typename... Args>
+        self_type sprintf(const Args&... args) const {
+            return stralgo::sprintf(base_type::c_str(), args...);
+        }
+        template <typename... Args>
+        self_type format(const Args&... args) const {
+            return stralgo::format(base_type::c_str(), args...);
+        }
+    };
+
+    typedef basic_string<wchar_t> wstring;
+    typedef std::vector<basic_string<char>> strings;
+    typedef std::vector<wstring> wstrings;
+
+#define __wrap__(isxxx, ret, arg_t) \
+    static ret isxxx(arg_t arg) { return ::isxxx(arg); }
+
+    __wrap__(isalnum,  bool, char); __wrap__(iswalnum,  bool,    wchar_t);
+    __wrap__(isalpha,  bool, char); __wrap__(iswalpha,  bool,    wchar_t);
+    __wrap__(iscntrl,  bool, char); __wrap__(iswcntrl,  bool,    wchar_t);
+    __wrap__(isdigit,  bool, char); __wrap__(iswdigit,  bool,    wchar_t);
+    __wrap__(isgraph,  bool, char); __wrap__(iswgraph,  bool,    wchar_t);
+    __wrap__(islower,  bool, char); __wrap__(iswlower,  bool,    wchar_t);
+    __wrap__(isprint,  bool, char); __wrap__(iswprint,  bool,    wchar_t);
+    __wrap__(ispunct,  bool, char); __wrap__(iswpunct,  bool,    wchar_t);
+    __wrap__(isspace,  bool, char); __wrap__(iswspace,  bool,    wchar_t);
+    __wrap__(isupper,  bool, char); __wrap__(iswupper,  bool,    wchar_t);
+    __wrap__(isxdigit, bool, char); __wrap__(iswxdigit, bool,    wchar_t);
+    __wrap__(tolower,  char, char); __wrap__(towlower,  wchar_t, wchar_t);
+    __wrap__(toupper,  char, char); __wrap__(towupper,  wchar_t, wchar_t);
+#undef __wrap__
+
+    template <int base = 10, typename Integer>
+    static stralgo::string strf(Integer integer)
+    {
+        static_assert(2 <= base && base <= 36,
+                      "`int base' should be between 2 and 36.");
+        static_assert(std::is_integral<Integer>::value,
+                      "`typename Integer' must be an integral type.");
+
+        static constexpr const char literal[] =
+                "zyxwvutsrqponmlkjihgfedcba987654321" "0"
+                "123456789abcdefghijklmnopqrstuvwxyz";
+        static constexpr const char *zero = &literal[35];
+        bool is_negative = std::is_signed<Integer>::value && integer < 0;
+        stralgo::string result;
+
+        do { result += zero[integer % base]; integer /= base; }
+        while (integer);
+
+        if (is_negative)
+            result += '-';
+
+        std::reverse(result.begin(), result.end());
 
         return result;
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str,
-              const std::basic_string<CharType>& token,
-              bool compress_token = true)
+    static string strf(char ch) { return string(1, ch); }
+    static string strf(float number);
+    static string strf(double number);
+    static string strf(long double number);
+    static string strf(bool boolean) { return boolean ? "true" : "false"; };
+    static const char* strf(const char* str) { return str; }
+    static const std::string& strf(const std::string& str) { return str; }
+    static std::string&& strf(std::string&& str) { return std::move(str); }
+    static const basic_string<char>& strf(const basic_string<char>& str)
+        { return str; }
+    static basic_string<char>&& strf(basic_string<char>&& str)
+        { return std::move(str); }
+    static const string& strf(const string& str) { return str; }
+    static string&& strf(string&& str) { return std::move(str); }
+    static string sprintf(const std::string& pattern, ...);
+    template <typename... Args>
+    static string format(const std::string& pattern, const Args&... args)
     {
-        return split(str, token, -1, compress_token);
+        strings strings;
+        strsf(strings, args...);
+        return format_ss(pattern.c_str(), strings);
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str, const CharType* token,
+    template <typename Integer, bool skip_space = true>
+    static Integer frts(const char* str)
+    {
+        static_assert(std::is_integral<Integer>::value,
+                      "`typename Integer' must be an integral type.");
+
+        static constexpr const unsigned int signed_len[64] =
+            { 0, 3, 5, 0, 10, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 39 };
+        static constexpr const unsigned int unsigned_len[64] =
+            { 0, 3, 5, 0, 10, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 39 };
+        static constexpr const unsigned int len_limit =
+            std::is_signed<Integer>::value
+                ? signed_len[sizeof(Integer)] : unsigned_len[sizeof(Integer)];
+        bool positive = true;
+        Integer integer = 0;
+
+        while (skip_space && isspace(*str))
+            ++str;
+
+        if (std::is_signed<Integer>::value && *str == '-')
+            positive = false, ++str;
+
+        unsigned int len = 0;
+        while (isdigit(*str) && len++ < len_limit)
+            integer = integer * 10 + *str++ - '0';
+
+        return positive ? integer : -integer;
+    }
+
+    template <typename Integer, bool skip_space = true>
+    static Integer frts(const std::string& str)
+    {
+        return frts<Integer>(str.c_str());
+    }
+
+    static double atof(const char* str) { return ::atof(str); }
+    static double atof(const std::string& str) { return ::atof(str.c_str()); }
+
+#define atox(name, type)                                          \
+    static type name(const char* str) { return frts<type>(str); } \
+    static type name(const std::string& str) { return frts<type>(str.c_str()); }
+
+    atox(atoi,   int)
+    atox(atoui,  unsigned int)
+    atox(atol,   long)
+    atox(atoul,  unsigned long)
+    atox(atoll,  long long)
+    atox(atoull, unsigned long long)
+#undef atox
+
+    static strings codecs (void);
+    static wstring decode (const std::string&,  const string&);
+    static  string encode (const std::wstring&, const string&);
+    static  string convert(const std::string&,  const string&, const string&);
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const std::basic_string<CharT>& str,
+                const std::basic_string<CharT>& aim,
+                const std::basic_string<CharT>& goal, int max_replace = -1)
+    {
+        typedef basic_string<CharT> string;
+        typename string::size_type pos = 0, lastpos = pos;
+        unsigned int replaced = 0;
+        string result;
+
+        while ((pos = str.find(aim, pos)) != string::npos
+               && replaced < static_cast<unsigned int>(max_replace))
+        {
+            result += str.substr(lastpos, pos - lastpos);
+            result += goal;
+            lastpos = pos += aim.size();
+            ++replaced;
+        }
+
+        result += str.substr(lastpos);
+
+        return std::move(result);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const std::basic_string<CharT>& str,
+                const std::basic_string<CharT>& aim, const CharT* goal,
+                int max_replace = -1)
+    {
+        return replace(str, aim, std::basic_string<CharT>(goal), max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const std::basic_string<CharT>& str,
+                const CharT* aim, const std::basic_string<CharT>& goal,
+                int max_replace = -1)
+    {
+        return replace(str, std::basic_string<CharT>(aim), goal, max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const std::basic_string<CharT>& str,
+                const CharT* aim, const CharT* goal, int max_replace = -1)
+    {
+        return replace(str, std::basic_string<CharT>(aim),
+                            std::basic_string<CharT>(goal), max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const CharT* str,
+                const std::basic_string<CharT>& aim,
+                const std::basic_string<CharT>& goal,
+                int max_replace = -1)
+    {
+        return replace(std::basic_string<CharT>(str), aim, goal, max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const CharT* str,
+                const std::basic_string<CharT>& aim, const CharT* goal,
+                int max_replace = -1)
+    {
+        return replace(std::basic_string<CharT>(str),
+                       aim, std::basic_string<CharT>(goal), max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const CharT* str,
+                const CharT* aim, const std::basic_string<CharT>& goal,
+                int max_replace = -1)
+    {
+        return replace(std::basic_string<CharT>(str),
+                       std::basic_string<CharT>(aim), goal, max_replace);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT>
+        replace(const CharT* str, const CharT* aim, const CharT* goal,
+                int max_replace = -1)
+    {
+        return replace(std::basic_string<CharT>(str),
+                       std::basic_string<CharT>(aim),
+                       std::basic_string<CharT>(goal), max_replace);
+    }
+
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const std::basic_string<CharT>& str,
+              const std::basic_string<CharT>& token,
               int max_split, bool compress_token = true)
     {
-        return split(str, std::basic_string<CharType>(token),
+        typedef basic_string<CharT> string;
+        typename string::size_type pos = 0, lastpos = pos;
+        std::vector<string> result;
+
+        while ((pos = str.find(token, pos)) != string::npos
+               && result.size() < static_cast<unsigned int>(max_split))
+        {
+            if (!compress_token || pos != lastpos || pos == 0)
+                result.emplace_back(str.substr(lastpos, pos - lastpos));
+            lastpos = pos += token.size();
+        }
+
+        result.emplace_back(str.substr(lastpos));
+
+        return std::move(result);
+    }
+
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const std::basic_string<CharT>& str, const CharT* token,
+              int max_split, bool compress_token = true)
+    {
+        return split(str, std::basic_string<CharT>(token),
                      max_split, compress_token);
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str, const CharType* token,
-              bool compress_token = true)
-    {
-        return split(str, token, -1, compress_token);
-    }
-
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str, CharType token,
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const CharT* str, const std::basic_string<CharT>& token,
               int max_split, bool compress_token = true)
     {
-        return split(str, std::basic_string<CharType>(1, token),
+        return split(std::basic_string<CharT>(str), token,
                      max_split, compress_token);
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const std::basic_string<CharType>& str, CharType token,
-              bool compress_token = true)
-    {
-        return split(str, token, -1, compress_token);
-    }
-
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const CharType* str, const CharType* token,
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const CharT* str, const CharT* token,
               int max_split, bool compress_token = true)
     {
-        return split(std::basic_string<CharType>(str),
-                     std::basic_string<CharType>(token),
+        return split(std::basic_string<CharT>(str),
+                     std::basic_string<CharT>(token),
                      max_split, compress_token);
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const CharType* str, const CharType* token,
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const std::basic_string<CharT>& str,
+              const std::basic_string<CharT>& token,
               bool compress_token = true)
     {
         return split(str, token, -1, compress_token);
     }
 
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const CharType* str, CharType token,
-              int max_split, bool compress_token = true)
-    {
-        return split(std::basic_string<CharType>(str),
-                     std::basic_string<CharType>(1, token),
-                     max_split, compress_token);
-    }
-
-    template <typename CharType>
-    static inline std::vector<std::basic_string<CharType>>
-        split(const CharType* str, CharType token,
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const std::basic_string<CharT>& str, const CharT* token,
               bool compress_token = true)
     {
         return split(str, token, -1, compress_token);
     }
 
-    static inline std::string& lower(std::string& str)
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const CharT* str, const std::basic_string<CharT>& token,
+              bool compress_token = true)
     {
-        for (std::string::value_type& ch : str)
-            ch = tolower(ch);
+        return split(str, token, -1, compress_token);
+    }
+
+    template <typename CharT>
+    static std::vector<basic_string<CharT>>
+        split(const CharT* str, const CharT* token, bool compress_token = true)
+    {
+        return split(str, token, -1, compress_token);
+    }
+
+    template <typename CharT>
+    static basic_string<CharT> lower(std::basic_string<CharT>&& str)
+    {
+        for (CharT& ch : str)
+            if ('A' <= ch && ch <= 'Z')
+                ch += 32;
+
         return str;
     }
 
-    static inline std::string& upper(std::string& str)
+    template <typename CharT>
+    static basic_string<CharT> upper(std::basic_string<CharT>&& str)
     {
-        for (std::string::value_type& ch : str)
-            ch = toupper(ch);
+        for (CharT& ch : str)
+            if ('a' <= ch && ch <= 'z')
+                ch -= 32;
+
         return str;
     }
 
-    static inline std::wstring& lower(std::wstring& str)
+    template <typename CharT>
+    static basic_string<CharT> lower(const std::basic_string<CharT>& str)
     {
-        for (std::wstring::value_type& ch : str)
-            ch = towlower(ch);
-        return str;
+        return lower(std::basic_string<CharT>(str));
     }
 
-    static inline std::wstring& upper(std::wstring& str)
+    template <typename CharT>
+    static basic_string<CharT> upper(const std::basic_string<CharT>& str)
     {
-        for (std::wstring::value_type& ch : str)
-            ch = towupper(ch);
-        return str;
+        return upper(std::basic_string<CharT>(str));
     }
 
-    static inline std::string lowerc(std::string str)
+    template <typename CharT>
+    static basic_string<CharT> lower(const CharT* str)
     {
-        return lower(str);
+        return lower(std::basic_string<CharT>(str));
     }
 
-    static inline std::string upperc(std::string str)
+    template <typename CharT>
+    static basic_string<CharT> upper(const CharT* str)
     {
-        return upper(str);
+        return upper(std::basic_string<CharT>(str));
     }
 
-    static inline std::wstring lowerc(std::wstring str)
+    template <typename CharT>
+    static basic_string<CharT>
+        trim(std::basic_string<CharT>&& str, CharT ch = 0x20)
     {
-        return lower(str);
+        return triml(trimr(str, ch), ch);
     }
 
-    static inline std::wstring upperc(std::wstring str)
-    {
-        return upper(str);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        ltrim(std::basic_string<CharType>& str)
-    {
-        return ltrim(str, (CharType)0x20);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        ltrim(std::basic_string<CharType>& str, CharType ch)
+    template <typename CharT>
+    static basic_string<CharT>
+        triml(std::basic_string<CharT>&& str, CharT ch = 0x20)
     {
         return str.erase(0, str.find_first_not_of(ch));
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        rtrim(std::basic_string<CharType>& str)
-    {
-        return rtrim(str, (CharType)0x20);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        rtrim(std::basic_string<CharType>& str, CharType ch)
+    template <typename CharT>
+    static basic_string<CharT>
+        trimr(std::basic_string<CharT>&& str, CharT ch = 0x20)
     {
         return str.erase(str.find_last_not_of(ch) + 1);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        trim(std::basic_string<CharType>& str)
+    template <typename CharT>
+    static basic_string<CharT>
+        trim(const std::basic_string<CharT>& str, CharT ch = 0x20)
     {
-        return trim(str, (CharType)0x20);
+        return trim(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>&
-        trim(std::basic_string<CharType>& str, CharType ch)
+    template <typename CharT>
+    static basic_string<CharT>
+        triml(const std::basic_string<CharT>& str, CharT ch = 0x20)
     {
-        return ltrim(rtrim(str, ch), ch);
+        return triml(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        ltrimc(std::basic_string<CharType> str)
+    template <typename CharT>
+    static basic_string<CharT>
+        trimr(const std::basic_string<CharT>& str, CharT ch = 0x20)
     {
-        return ltrimc(str, (CharType)0x20);
+        return trimr(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        ltrimc(const CharType* str)
+    template <typename CharT>
+    static basic_string<CharT> trim(const CharT* str, CharT ch = 0x20)
     {
-        return ltrimc(std::basic_string<CharType>(str), (CharType)0x20);
+        return trim(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        ltrimc(std::basic_string<CharType> str, CharType ch)
+    template <typename CharT>
+    static basic_string<CharT> triml(const CharT* str, CharT ch = 0x20)
     {
-        return ltrim(str, ch);
+        return triml(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        ltrimc(const CharType* str, CharType ch)
+    template <typename CharT>
+    static basic_string<CharT> trimr(const CharT* str, CharT ch = 0x20)
     {
-        return ltrim(std::basic_string<CharType>(str), ch);
+        return trimr(std::basic_string<CharT>(str), ch);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        rtrimc(std::basic_string<CharType> str)
+private:
+    template <typename Arg>
+    static void strsf(strings& strings, const Arg& arg)
     {
-        return rtrimc(str, (CharType)0x20);
+        strings.emplace_back(strf(arg));
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        rtrimc(const CharType* str)
+    template <typename Arg, typename... Others>
+    static void strsf(strings& strings,
+                    const Arg& arg, const Others&... others)
     {
-        return rtrimc(std::basic_string<CharType>(str), (CharType)0x20);
+        strings.emplace_back(strf(arg)); strsf(strings, others...);
     }
 
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        rtrimc(std::basic_string<CharType> str, CharType ch)
-    {
-        return rtrim(str, ch);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        rtrimc(const CharType* str, CharType ch)
-    {
-        return rtrim(std::basic_string<CharType>(str), ch);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        trimc(std::basic_string<CharType> str)
-    {
-        return trimc(str, (CharType)0x20);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        trimc(const CharType* str)
-    {
-        return trimc(std::basic_string<CharType>(str), (CharType)0x20);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        trimc(std::basic_string<CharType> str, CharType ch)
-    {
-        return trim(str, ch);
-    }
-
-    template <typename CharType>
-    static inline std::basic_string<CharType>
-        trimc(const CharType* str, CharType ch)
-    {
-        return trim(std::basic_string<CharType>(str), ch);
-    }
+    static string format_ss(const char* pattern, const strings& strings);
 };
+
+template <> bool stralgo::string::as<bool>(void) const;
+template <> float stralgo::string::as<float>(void) const;
+template <> double stralgo::string::as<double>(void) const;
+template <> long double stralgo::string::as<long double>(void) const;
 
 #endif //stralgo_hpp_20140508

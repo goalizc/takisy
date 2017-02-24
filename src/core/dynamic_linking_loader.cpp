@@ -1,6 +1,6 @@
 #include <map>
 #include <string>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/core/dynamic_linking_loader.h>
 
 #ifdef __os_win__

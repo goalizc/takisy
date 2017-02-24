@@ -41,27 +41,25 @@ class png::implement
         }
 
     public:
-        bool load(stream& stream)
+        bool load(const stream& stream)
         {
-            return stream.read(length)     == sizeof(length)
-                && stream.read(chunk_type) == sizeof(chunk_type)
-                && read_chunk_data(stream)
-                && stream.read(crc)        == sizeof(crc)
-                && calculate_crc()         == crc;
+            return !stream.read(length)
+                && !stream.read(chunk_type) && read_chunk_data(stream)
+                && !stream.read(crc) && calculate_crc() == crc;
         }
 
         bool dump(stream& stream)
         {
             crc = calculate_crc();
 
-            return stream.write(length)             == sizeof(length)
-                && stream.write(chunk_type)         == sizeof(chunk_type)
-                && stream.write(chunk_data, length) == length
-                && stream.write(crc)                == sizeof(crc);
+            return !stream.write(length)
+                && !stream.write(chunk_type)
+                &&  stream.write(chunk_data, length) == length
+                && !stream.write(crc);
         }
 
     private:
-        bool read_chunk_data(stream& stream)
+        bool read_chunk_data(const stream& stream)
         {
             if (chunk_data)
             {
@@ -190,8 +188,8 @@ private:
                                          unsigned int bit_count,
                                          unsigned int x)
     {
-        register unsigned int _1 = x * bit_count;
-        register unsigned int _2 = 8 - bit_count;
+        unsigned int _1 = x * bit_count;
+        unsigned int _2 = 8 - bit_count;
 
         return (row_buffer[_1 / 8] >> (8 - _1 % 8 - bit_count)) << _2;
     }
@@ -200,16 +198,16 @@ private:
     unsigned int get_index(unsigned char* row_buffer, unsigned int bit_count,
                            unsigned int x, unsigned int mask)
     {
-        register unsigned int _1 = x * bit_count;
+        unsigned int _1 = x * bit_count;
 
         return (row_buffer[_1 / 8] >> (8 - _1 % 8 - bit_count)) & mask;
     }
 
 public:
-    static canvas_adapter::pointer load(stream& stream)
+    static canvas_adapter::pointer load(const stream& stream)
     {
         etbe_uint64 flag;
-        if (stream.read(flag) != sizeof(flag) || flag != kPngFlag)
+        if (!stream.read(flag) || flag != kPngFlag)
             throw "this file is not png format";
 
         chunk chunk;
@@ -276,8 +274,9 @@ public:
                 break;
 
             case ct_IDAT:
-                data.append(reinterpret_cast<zlib::buffer_type::element_type*>
-                                (chunk.chunk_data), chunk.length);
+                data.append(reinterpret_cast<zlib::buffer_type::value_type*>
+                                (chunk.chunk_data),
+                            chunk.length);
                 break;
 
             default:
@@ -341,7 +340,7 @@ public:
         } filter_row_t;
 
         // write png flag
-        if (stream.write(png_flag) != sizeof(png_flag))
+        if (!stream.write(png_flag))
             return false;
 
         // write ihdr chunk
@@ -402,7 +401,7 @@ public:
     }
 };
 
-bool png::load(stream& stream, frames& frames) const
+bool png::load(const stream& stream, frames& frames) const
 {
     try
     {

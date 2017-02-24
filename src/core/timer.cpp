@@ -1,7 +1,7 @@
 #include <list>
 #include <algorithm>
 #include <stdexcept>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/core/timer.h>
 
 #ifdef __os_win__

@@ -2,7 +2,7 @@
 #define cross_platform_window_h_20160318
 
 #include <string>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/gui/basic/define.h>
 
 #ifdef __os_win__

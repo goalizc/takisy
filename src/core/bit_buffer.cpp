@@ -50,32 +50,31 @@ void bit_buffer::input::align(void)
         ++impl_->Bi_, impl_->bi_ = 0;
 }
 
-unsigned int bit_buffer::input::read(register unsigned int n)
+unsigned int bit_buffer::input::read(unsigned int n)
 {
     static const unsigned int kMask[] =
         { 0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f, 0x3f, 0x7f, 0xff, };
-    register unsigned int result       = 0;
-    register unsigned int fetched_bits = 0;
-    const unsigned char*& buffer = impl_->buffer_;
-    unsigned int& Bi = impl_->Bi_;
-    unsigned int& bi = impl_->bi_;
+    unsigned int fetched_bits = 0;
+    unsigned int &Bi = impl_->Bi_;
+    unsigned int &bi = impl_->bi_;
+    unsigned int result = 0;
 
     while (n)
     {
         if (Bi >= impl_->size_)
             throw ecOutOfBuffer;
 
-        register unsigned int r_bi = 8 - bi;
+        unsigned int r_bi = 8 - bi;
 
         if (r_bi >= n)
         {
-            result |= ((buffer[Bi] >> bi) & kMask[n]) << fetched_bits;
+            result |= ((impl_->buffer_[Bi] >> bi) & kMask[n]) << fetched_bits;
             r_bi == n ? ++Bi, bi = 0 : bi += n;
             n = 0;
         }
         else
         {
-            result |= (buffer[Bi] >> bi) << fetched_bits;
+            result |= (impl_->buffer_[Bi] >> bi) << fetched_bits;
             ++Bi, bi = 0, n -= r_bi, fetched_bits += r_bi;
         }
     }
@@ -83,7 +82,7 @@ unsigned int bit_buffer::input::read(register unsigned int n)
     return result;
 }
 
-unsigned int bit_buffer::input::peek(register unsigned int n)
+unsigned int bit_buffer::input::peek(unsigned int n)
 {
     unsigned int Bi = impl_->Bi_, bi = impl_->bi_;
     unsigned int ret = read(n);
@@ -126,7 +125,7 @@ bit_buffer::output& bit_buffer::output::operator=(const bit_buffer::output& bbo)
 {
     if (this != & bbo)
     {
-        impl_->buffer_     = bbo.impl_->buffer_.clone();
+        impl_->buffer_     = bbo.impl_->buffer_.copy();
         impl_->bit_buffer_ = bbo.impl_->bit_buffer_;
         impl_->bit_count_  = bbo.impl_->bit_count_;
     }

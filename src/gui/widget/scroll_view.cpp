@@ -17,7 +17,7 @@ private:
 scroll_view::scroll_view(widget* content)
     : impl_(new implement(content))
 {
-    vertical_scroll().range(0, impl_->content_->height());
+    vertical_scroll().min(0);
     vertical_scroll().step(32);
     vertical_scroll().show();
     vertical_scroll().onScroll(
@@ -28,7 +28,7 @@ scroll_view::scroll_view(widget* content)
             impl_->content_moving_ = false;
         });
 
-    horizontal_scroll().range(0, impl_->content_->width());
+    horizontal_scroll().min(0);
     horizontal_scroll().step(32);
     horizontal_scroll().show();
     horizontal_scroll().onScroll(
@@ -42,6 +42,7 @@ scroll_view::scroll_view(widget* content)
     add(content);
     add(&vertical_scroll());
     add(&horizontal_scroll());
+    onChildSize(content);
 }
 
 scroll_view::~scroll_view(void)
@@ -66,7 +67,9 @@ void scroll_view::onChildSize(widget* child)
 {
     if (child == impl_->content_)
     {
-        vertical_scroll().range(0, impl_->content_->height());
-        horizontal_scroll().range(0, impl_->content_->width());
+        vertical_scroll()
+            .max(impl_->content_->height() + horizontal_scroll().height());
+        horizontal_scroll()
+            .max(impl_->content_->width() + vertical_scroll().width());
     }
 }

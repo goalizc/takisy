@@ -141,14 +141,11 @@ std::string codec::unicode2utf8(const std::wstring& unicode)
             result += 0x80 | (uchr &  0x3f);
         }
         else
-        if (uchr < 0x10000)
         {
             result += 0xe0 |  (uchr >> 12);
             result += 0x80 | ((uchr >>  6) & 0x3f);
             result += 0x80 | ((uchr >>  0) & 0x3f);
         }
-        else
-            result += static_cast<std::string::value_type>(0);
     }
 
     return result;

@@ -1,9 +1,9 @@
 ########################################################################
 # 目录定义
 ########################################################################
-inc_dir         = /cygdrive/z/takisy/include
-src_dir         = /cygdrive/z/takisy/src
-lib_dir         = /cygdrive/z/takisy/lib
+inc_dir         = include
+src_dir         = src
+lib_dir         = lib
 bin_dir         =
 
 ########################################################################
@@ -11,7 +11,12 @@ bin_dir         =
 ########################################################################
 # app, static, shared
 target_type     = static
-target          = takisy.cyg
+target          = cygtakisy
+
+########################################################################
+# 外部依赖
+########################################################################
+dependency      =
 
 ########################################################################
 # 外部库定义
@@ -35,7 +40,7 @@ cxxflags        = -g -std=gnu++11 -Wall -Werror
 ldflags         =
 
 ########################################################################
-# 相关目录
+# 头文件包含与链接库
 ########################################################################
 inc_dir        := $(addprefix -I,$(inc_dir))
 ext_inc_dir    := $(addprefix -I,$(ext_inc_dir))
@@ -45,7 +50,7 @@ ext_lib        := $(addprefix -l,$(ext_lib))
 ########################################################################
 # 相关文件
 ########################################################################
-srcs = $(shell find $(src_dir) -type f -name "*.cpp")
+srcs = $(shell find $(src_dir) -type f -name "*.cpp" -print)
 objs = $(srcs:%.cpp=%.cygo)
 dpds = $(srcs:%.cpp=%.cygd)
 
@@ -66,30 +71,30 @@ endif # app
 
 all: prebuild $(target) postbuild
 
-$(patsubst %.cpp,%.cygo,$(srcs)): %.cygo: %.cpp
-	@echo 'CPP_O   $@'
+$(objs): %.cygo: %.cpp
+	@echo 'cxx.o   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -c "$<" -o $@
 
 -include $(dpds)
 
-$(patsubst %.cpp,%.cygd,$(srcs)): %.cygd: %.cpp
-	@echo 'CPP_D   $@'
+$(dpds): %.cygd: %.cpp
+	@echo 'cxx.d   $@'
 	@$(cxx) $(cxxflags) $(inc_dir) $(ext_inc_dir) -MM "$<" | \
-	sed 's/^$(notdir $(basename $@)).o/$(subst /,\/,$(basename $@)).cygo $(subst /,\/,$(basename $@)).cygd/' > $@
+	sed 's?^$(notdir $*)\.o?$*.cygo $*.cygd?g' > $@
 
 $(target): $(objs)
 ifeq ($(target_type),app)
-	@echo 'CPP     $@'
-	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) $(ldflags) -o $@
-	@$(strip) $@:
+	@echo 'cxx     $@'
+	@$(cxx) $^ $(ldflags) $(ext_lib_dir) $(ext_lib) -o $@
+	@$(strip) $@
 else
 ifeq ($(target_type),static)
-	@echo 'AR      $@'
+	@echo 'ar      $@'
 	@$(ar) rcs $@ $^
 else
 ifeq ($(target_type),shared)
-	@echo 'CPP_SO  $@'
-	@$(cxx) $^ $(ext_lib_dir) $(ext_lib) -shared -o $@
+	@echo 'cxx.so  $@'
+	@$(cxx) $^ -shared $(ldflags) $(ext_lib_dir) $(ext_lib) -o $@
 endif # shared
 endif # static
 endif # app
@@ -98,7 +103,7 @@ clean:
 	@$(rm) $(dpds) $(objs) $(target)
 
 rebuild: clean
-	@make
+	@make -f makefile.cygwin
 
 # Add PREBUILD event code here and add this target to target 'all'.
 prebuild:

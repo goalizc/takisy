@@ -4,23 +4,26 @@
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/list.h>
-#include "../basic/text.hpp"
 #include "edit_box.h"
 
 class list::implement
 {
     friend class list;
 
+    struct brush
+    {
+        brush_sptr text, background, selection;
+    };
+
     struct item
     {
-        class text text;
-        brush_sptr fgbrush, bgbrush, selbrush;
-        bool       editable;
+        text text;
+        bool editable;
+        std::shared_ptr<brush> brush;
 
     public:
         item(const std::wstring& _text)
-            : text(_text), fgbrush(nullptr), bgbrush(nullptr), selbrush(nullptr)
-            , editable(false)
+            : text(_text), editable(false), brush(nullptr)
         {
             text.margin(2);
             text.word_wrap(false);
@@ -30,7 +33,7 @@ class list::implement
 public:
     implement(list& self)
         : self(self)
-        , edit_trigger_(etNoEditTrigger), selmode_(smSingleSelection)
+        , selmode_(smSingleSelection), edit_trigger_(etNoEditTrigger)
         , selbegin_(0), current_(0)
     {}
 
@@ -46,7 +49,8 @@ public:
 
     void vupdate(void)
     {
-        self.vertical_scroll().range(0, accumulate(items_.size()));
+        self.vertical_scroll()
+            .max(accumulate(items_.size()) + self.horizontal_scroll().height());
         self.repaint();
     }
 
@@ -59,9 +63,10 @@ public:
             });
 
         if (iter == items_.end())
-            self.horizontal_scroll().range(0, 0);
+            self.horizontal_scroll().max(0);
         else
-            self.horizontal_scroll().range(0, iter->text.world().width);
+            self.horizontal_scroll()
+                .max(iter->text.world().width + self.vertical_scroll().width());
 
         self.repaint();
     }
@@ -74,17 +79,16 @@ public:
 
     void adjust_hvscroll(const Size& oldworld, const Size& newworld)
     {
-        class vertical_scroll& vscroll = self.vertical_scroll();
-        vscroll.max(vscroll.max() + newworld.height - oldworld.height);
-
+        class vertical_scroll&   vscroll = self.vertical_scroll();
         class horizontal_scroll& hscroll = self.horizontal_scroll();
-        if (newworld.width > hscroll.max())
-            hscroll.max(newworld.width);
-        else
-        if (newworld.width < hscroll.max() && oldworld.width == hscroll.max())
-            return hupdate();
+        unsigned int width = hscroll.max() - vscroll.width();
 
-        self.repaint();
+        vscroll.max(vscroll.max() + newworld.height - oldworld.height);
+        if (newworld.width > width)
+            hscroll.max(newworld.width + vscroll.width());
+        else
+        if (newworld.width < width && oldworld.width == hscroll.max())
+            return hupdate();
     }
 
     Rect item_rect(unsigned int index)
@@ -109,9 +113,10 @@ public:
 
 private:
     list& self;
+    brush brush_;
     std::vector<item> items_;
-    unsigned int edit_trigger_;
     SelectionMode selmode_;
+    unsigned int edit_trigger_;
     unsigned int selbegin_, current_;
     std::set<unsigned int> selecteds_;
 };
@@ -132,13 +137,14 @@ list::list(const std::vector<std::string>& items, const std::string& codec)
         for (const std::string& item : items)
             result.push_back(stralgo::decode(item, codec));
 
-        return std::move(result);
+        return result;
     }())
 {}
 
 list::list(const std::vector<std::wstring>& items)
     : impl_(new implement(*this))
 {
+    vertical_scroll().min(0);
     vertical_scroll().step(36);
     vertical_scroll().show();
     vertical_scroll().onScroll(
@@ -147,6 +153,7 @@ list::list(const std::vector<std::wstring>& items)
             repaint();
         });
 
+    horizontal_scroll().min(0);
     horizontal_scroll().step(36);
     horizontal_scroll().show();
     horizontal_scroll().onScroll(
@@ -242,24 +249,24 @@ const font* list::font(unsigned int index) const
 
 brush_sptr list::text_brush(unsigned int index) const
 {
-    if (index < impl_->items_.size())
-        return impl_->items_[index].fgbrush;
+    if (index < impl_->items_.size() && impl_->items_[index].brush)
+        return impl_->items_[index].brush->text;
 
     return nullptr;
 }
 
 brush_sptr list::background_brush(unsigned int index) const
 {
-    if (index < impl_->items_.size())
-        return impl_->items_[index].bgbrush;
+    if (index < impl_->items_.size() && impl_->items_[index].brush)
+        return impl_->items_[index].brush->background;
 
     return nullptr;
 }
 
 brush_sptr list::selection_brush(unsigned int index) const
 {
-    if (index < impl_->items_.size())
-        return impl_->items_[index].selbrush;
+    if (index < impl_->items_.size() && impl_->items_[index].brush)
+        return impl_->items_[index].brush->selection;
 
     return nullptr;
 }
@@ -336,6 +343,7 @@ void list::remove(unsigned int index)
 
 void list::clear(void)
 {
+    clear_selection();
     impl_->items_.clear();
     impl_->update();
 }
@@ -481,85 +489,109 @@ void list::font(unsigned int index, const class font* font)
 
 void list::text_color(const color& color)
 {
-    text_brush(make_color_brush_sptr(color));
+    text_brush(make_brushsptr<color_brush>(color));
 }
 
 void list::text_color(unsigned int index, const color& color)
 {
-    text_brush(index, make_color_brush_sptr(color));
+    text_brush(index, make_brushsptr<color_brush>(color));
 }
 
 void list::text_brush(const brush_sptr& brush)
 {
+    impl_->brush_.text = brush;
+
     for (implement::item& item : impl_->items_)
-        item.fgbrush = brush;
+        if (item.brush)
+            item.brush->text.reset();
 
     repaint();
 }
 
 void list::text_brush(unsigned int index, const brush_sptr& brush)
 {
-    if (index < impl_->items_.size()
-        && impl_->items_[index].fgbrush != brush)
+    if (index < impl_->items_.size())
     {
-        impl_->items_[index].fgbrush = brush;
-        repaint();
+        if (!impl_->items_[index].brush)
+            impl_->items_[index].brush.reset(new implement::brush);
+
+        if (impl_->items_[index].brush->text != brush)
+        {
+            impl_->items_[index].brush->text = brush;
+            repaint();
+        }
     }
 }
 
 void list::background_color(const color& color)
 {
-    background_brush(make_color_brush_sptr(color));
+    background_brush(make_brushsptr<color_brush>(color));
 }
 
 void list::background_color(unsigned int index, const color& color)
 {
-    background_brush(index, make_color_brush_sptr(color));
+    background_brush(index, make_brushsptr<color_brush>(color));
 }
 
 void list::background_brush(const brush_sptr& brush)
 {
+    impl_->brush_.background = brush;
+
     for (implement::item& item : impl_->items_)
-        item.bgbrush = brush;
+        if (item.brush)
+            item.brush->background.reset();
 
     repaint();
 }
 
 void list::background_brush(unsigned int index, const brush_sptr& brush)
 {
-    if (index < impl_->items_.size()
-        && impl_->items_[index].bgbrush != brush)
+    if (index < impl_->items_.size())
     {
-        impl_->items_[index].bgbrush = brush;
-        repaint();
+        if (!impl_->items_[index].brush)
+            impl_->items_[index].brush.reset(new implement::brush);
+
+        if (impl_->items_[index].brush->background != brush)
+        {
+            impl_->items_[index].brush->background = brush;
+            repaint();
+        }
     }
 }
 
 void list::selection_color(const color& color)
 {
-    selection_brush(make_color_brush_sptr(color));
+    selection_brush(make_brushsptr<color_brush>(color));
 }
 
 void list::selection_color(unsigned int index, const color& color)
 {
-    selection_brush(index, make_color_brush_sptr(color));
+    selection_brush(index, make_brushsptr<color_brush>(color));
 }
 
 void list::selection_brush(const brush_sptr& brush)
 {
+    impl_->brush_.selection = brush;
+
     for (implement::item& item : impl_->items_)
-        item.selbrush = brush;
+        if (item.brush)
+            item.brush->selection.reset();
 
     repaint();
 }
 
 void list::selection_brush(unsigned int index, const brush_sptr& brush)
 {
-    if (index < impl_->items_.size()
-        && impl_->items_[index].selbrush != brush)
+    if (index < impl_->items_.size())
     {
-        impl_->items_[index].selbrush = brush;
-        repaint();
+        if (!impl_->items_[index].brush)
+            impl_->items_[index].brush.reset(new implement::brush);
+
+        if (impl_->items_[index].brush->selection != brush)
+        {
+            impl_->items_[index].brush->selection = brush;
+            repaint();
+        }
     }
 }
 
@@ -605,8 +637,8 @@ void list::edit(unsigned int index, const std::wstring& text)
         edit_box& eb = edit_box::
             pop(this, impl_->item_rect(index), impl_->items_[index].text, text);
 
-        handler::sptr handler = horizontal_scroll().onScroll(
-                                vertical_scroll().onScroll(
+        handler::sptr handler = vertical_scroll().onScroll(
+                                horizontal_scroll().onScroll(
             [this, index, &eb](scroll*)
             {
                 eb.xy(impl_->item_rect(index).left_top());
@@ -621,8 +653,8 @@ void list::edit(unsigned int index, const std::wstring& text)
         eb.onEditFinish(
             [this, handler](edit_box*)
             {
-                horizontal_scroll().onScrollRemove(handler);
                 vertical_scroll().onScrollRemove(handler);
+                horizontal_scroll().onScrollRemove(handler);
             });
     }
 }
@@ -643,16 +675,41 @@ long list::hittest(Point point) const
 
 void list::scrollto(unsigned int index)
 {
+    scrollto(index, aUndefined);
+}
+
+void list::scrollto(unsigned int index, unsigned int alignment)
+{
     if (index >= impl_->items_.size())
         index  = impl_->items_.size() - 1;
 
-    unsigned int top    = impl_->accumulate(index);
-    unsigned int bottom = top + impl_->items_[index].text.world().height;
+    int item_height = impl_->items_[index].text.world().height;
+    int top    = impl_->accumulate(index);
+    int middle = top - (height() - item_height) / 2;
+    int bottom = top + item_height - height();
 
-    if (top < vertical_scroll().valued())
-        vertical_scroll().value(top);
-    else if (bottom > vertical_scroll().valued() + height())
-        vertical_scroll().value(bottom - height());
+    if (alignment == aUndefined)
+    {
+        if (top < vertical_scroll().valued())
+            vertical_scroll().value(top);
+        else if (bottom > vertical_scroll().valued())
+            vertical_scroll().value(bottom);
+    }
+    else
+    {
+        switch (alignment & aVertical)
+        {
+        case aTop:
+            vertical_scroll().value(top);
+            break;
+        case aCenter:
+            vertical_scroll().value(middle);
+            break;
+        case aBottom:
+            vertical_scroll().value(bottom);
+            break;
+        }
+    }
 }
 
 void list::onSize(void)
@@ -666,7 +723,7 @@ void list::onPaint(graphics graphics, Rect rect)
 {
     class color_scheme cs = color_scheme();
     color selcolor = focused() ? cs.selection() : cs.inactive_selection();
-    brush_sptr textbrush = make_color_brush_sptr(cs.text());
+    brush_sptr textbrush = make_brushsptr<color_brush>(cs.text());
     int y = -vertical_scroll().valued();
 
     for (int i = 0; i < (int)impl_->items_.size() && y < rect.bottom; ++i)
@@ -676,25 +733,31 @@ void list::onPaint(graphics graphics, Rect rect)
 
         if (y + height > rect.top)
         {
-            rectf item_rect(0, y, width(), y + height);
+            rectf itrct(0, y, width(), y + height);
 
-            if (item.bgbrush)
-                graphics.fill_rectangle(item_rect, *item.bgbrush);
+            if (item.brush && item.brush->background)
+                graphics.fill_rectangle(itrct, *item.brush->background);
+            else if (impl_->brush_.background)
+                graphics.fill_rectangle(itrct, *impl_->brush_.background);
 
             if (selected(i))
             {
-                if (item.selbrush)
-                    graphics.fill_rectangle(item_rect, *item.selbrush);
+                if (item.brush && item.brush->selection)
+                    graphics.fill_rectangle(itrct, *item.brush->selection);
+                else if (impl_->brush_.selection)
+                    graphics.fill_rectangle(itrct, *impl_->brush_.selection);
                 else
-                for (double i = 0.5; i < height; i += 1)
-                    graphics.draw_line(0, y + i, width(), y + i,
-                                       selcolor * (i * 64 / height + 10));
-                graphics.draw_rectangle(item_rect.inflate(-0.5), selcolor * 100);
+                    for (int i = 0; i < height; i += 1)
+                        graphics.draw_line(0, y + i, width(), y + i,
+                                           selcolor * (i * 64 / height + 128));
+                graphics.draw_rectangle(itrct.inflate(-0.5), selcolor * 100);
             }
 
             item.text.offset(horizontal_scroll().valued(), -y);
-            if (item.fgbrush)
-                item.text.draw(graphics, rect, nullptr, *item.fgbrush);
+            if (item.brush && item.brush->text)
+                item.text.draw(graphics, rect, nullptr, *item.brush->text);
+            else if (impl_->brush_.text)
+                item.text.draw(graphics, rect, nullptr, *impl_->brush_.text);
             else
                 item.text.draw(graphics, rect, nullptr, *textbrush);
         }
@@ -704,10 +767,10 @@ void list::onPaint(graphics graphics, Rect rect)
 
     if (current() < impl_->items_.size())
     {
-        rectf item_rect = impl_->item_rect(current());
+        rectf itrct = impl_->item_rect(current());
         pen pen(1, selcolor, {1, 1});
         pen.offset(0.5);
-        graphics.draw_rectangle(item_rect.inflate(-0.5), pen);
+        graphics.draw_rectangle(itrct.inflate(-0.5), pen);
     }
 }
 
@@ -814,7 +877,7 @@ bool list::onKeyDown(sys::VirtualKey vkey)
         vertical_scroll().page_down();
         break;
     default:
-        break;
+        return false;
     }
 
     return true;

@@ -1,14 +1,14 @@
 #include <map>
 #include <set>
 #include <takisy/core/sys.h>
-#include <takisy/core/macro.h>
+#include <takisy/core/osdet.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/basic/cursor.h>
-#include <takisy/gui/basic/graphics.h>
+#include <takisy/cgl/graphics.h>
 #include <takisy/gui/widget/widget.h>
 #include <takisy/gui/cross_platform_window.h>
+#include "../cgl/impl/graphics.hpp"
 #include "basic/impl/color_scheme.hpp"
-#include "basic/impl/graphics.hpp"
 
 typedef widget* LPWIDGET;
 
@@ -189,7 +189,7 @@ public:
                 .biYPelsPerMeter = 0,
                 .biClrUsed       = 0,
                 .biClrImportant  = 0, },
-            .bmiColors = {0},
+            .bmiColors = {{0}},
         };
 
         SetDIBitsToDevice(hdc_,
@@ -345,7 +345,7 @@ LRESULT CALLBACK cross_platform_window::implement::widgetProc
             Point    ht_point  = cursor_point();
             LPWIDGET ht_widget = hittest(widget, ht_point);
 
-            if (!onEvent(ht_widget, onSetCursor))
+            if (!onEvent(ht_widget, onSetCursor, ht_point))
                 cursor::set(cursor::ctArrow);
 
             LPWIDGET ew = onEventStop(wndinfo.enter, ht_widget, onMouseEnter);
@@ -479,16 +479,13 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
     case WM_MOVE:
         if (client)
             client->xy(Point {
-                .x = static_cast<short>(LOWORD(lparam)),
-                .y = static_cast<short>(HIWORD(lparam))
+                static_cast<short>(LOWORD(lparam)),
+                static_cast<short>(HIWORD(lparam))
             });
         break;
     case WM_SIZE:
         if (client)
-            client->size(Size {
-                .width  = LOWORD(lparam),
-                .height = HIWORD(lparam)
-            });
+            client->size(Size { LOWORD(lparam), HIWORD(lparam) });
         break;
     case WM_SHOWWINDOW:
         if (client)
@@ -510,7 +507,13 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
             return 0;
         }
         break;
+    case WM_CLOSE:
+        if (client && !client->onClose())
+            return 0;
+        break;
     case WM_NCDESTROY:
+        if (client)
+            client->onDestroy();
         windows__.erase(hwnd);
         windows_as__.erase(hwnd);
         windows_widget__.erase(hwnd);

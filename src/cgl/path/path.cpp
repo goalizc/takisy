@@ -229,6 +229,11 @@ void paths::clear(void)
     impl_->paths_.clear();
 }
 
+void paths::renew(void)
+{
+    impl_->paths_ = stretchy_buffer<std::shared_ptr<path>, true>();
+}
+
 void paths::append(path* path)
 {
     impl_->paths_.append(std::shared_ptr<class path>(path));

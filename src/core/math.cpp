@@ -1,7 +1,7 @@
 #include <ctime>
 #include <takisy/core/math.h>
 
-unsigned int math::random_seed_ = time(nullptr);
+unsigned int math::seed_ = time(nullptr);
 
 // float math::sqrt(float n)
 // {

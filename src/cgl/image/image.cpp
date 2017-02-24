@@ -1,8 +1,6 @@
 #include <ctime>
 #include <vector>
 #include <algorithm>
-#include <takisy/core/os.h>
-#include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/image/image.h>
 
 class image::implement
@@ -53,16 +51,16 @@ image::image(const char* uri, const format& format)
     load_uri(uri, format);
 }
 
-image::image(stream& stream)
+image::image(const stream& istream)
     : image()
 {
-    load_stream(stream);
+    load_stream(istream);
 }
 
-image::image(stream& stream, const format& format)
+image::image(const stream& istream, const format& format)
     : image()
 {
-    load_stream(stream, format);
+    load_stream(istream, format);
 }
 
 image::image(const image& _image)
@@ -81,7 +79,7 @@ image& image::operator=(const image& image)
     if (this != &image)
     {
         impl_->load_timestamp_ = image.impl_->load_timestamp_;
-        impl_->frames_         = image.impl_->frames_.clone();
+        impl_->frames_         = image.impl_->frames_.copy();
     }
 
     return *this;
@@ -117,43 +115,49 @@ void image::deregister_format(const format* format)
 
 bool image::load_uri(const char* uri)
 {
-    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
+    std::shared_ptr<stream> streamptr = stream::from_uri(uri);
 
-    if (!stream_ptr)
+    if (!streamptr)
         return false;
 
-    return load_stream(*stream_ptr);
+    return load_stream(*streamptr);
 }
 
 bool image::load_uri(const char* uri, const format& format)
 {
-    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
+    std::shared_ptr<stream> streamptr = stream::from_uri(uri);
 
-    if (!stream_ptr)
+    if (!streamptr)
         return false;
 
-    return load_stream(*stream_ptr, format);
+    return load_stream(*streamptr, format);
 }
 
-bool image::load_stream(stream& stream)
+bool image::load_stream(const stream& istream)
 {
-    seek_stream seek_stream(stream);
+    seek_stream skstream(istream);
+    const stream* stptr;
+
+    if (istream.seekable())
+        stptr = &istream;
+    else
+        stptr = &skstream;
 
     for (const format* format : implement::formats_)
     {
-        seek_stream.seek(0, stream::stBegin);
+        stptr->seek(0, stream::stBegin);
 
-        if (load_stream(seek_stream, *format))
+        if (load_stream(*stptr, *format))
             return true;
     }
 
     return false;
 }
 
-bool image::load_stream(stream& stream, const format& format)
+bool image::load_stream(const stream& istream, const format& format)
 {
     format::frames frames;
-    bool loaded = format.load(stream, frames);
+    bool loaded = format.load(istream, frames);
 
     if (loaded || impl_->frames_.empty())
     {
@@ -171,22 +175,22 @@ bool image::dump_uri(const char* uri) const
 
 bool image::dump_uri(const char* uri, const format& format) const
 {
-    std::shared_ptr<stream> stream_ptr = stream::from_uri(uri);
+    std::shared_ptr<stream> streamptr = stream::from_uri(uri);
 
-    if (!stream_ptr)
+    if (!streamptr)
         return false;
 
-    return dump_stream(*stream_ptr, format);
+    return dump_stream(*streamptr, format);
 }
 
-bool image::dump_stream(stream& stream) const
+bool image::dump_stream(stream& ostream) const
 {
-    return dump_stream(stream, png());
+    return dump_stream(ostream, png());
 }
 
-bool image::dump_stream(stream& stream, const format& format) const
+bool image::dump_stream(stream& ostream, const format& format) const
 {
-    return format.dump(impl_->frames_, stream);
+    return format.dump(impl_->frames_, ostream);
 }
 
 canvas_adapter& image::new_frame(unsigned int width, unsigned int height)

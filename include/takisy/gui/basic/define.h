@@ -12,15 +12,21 @@ typedef rect  Rect;
 enum Alignment
 {
     // for compare operation
-    aCenter      = 0x0000,
-    aLeft        = 0x0001,
-    aRight       = 0x0010,
-    aTop         = 0x0100,
-    aBottom      = 0x1000,
+    aCenter      = 0x00000,
+    aLeft        = 0x00001,
+    aRight       = 0x00010,
+    aTop         = 0x00100,
+    aBottom      = 0x01000,
+    aUndefined   = 0x10000,
+
     aLeftTop     = aLeft  | aTop,
+    aTopLeft     = aLeft  | aTop,
     aLeftBottom  = aLeft  | aBottom,
+    aBottomLeft  = aLeft  | aBottom,
     aRightTop    = aRight | aTop,
+    aTopRight    = aRight | aTop,
     aRightBottom = aRight | aBottom,
+    aBottomRight = aRight | aBottom,
 
     // for bit operation
     aHorizontal  = aLeft  | aRight,

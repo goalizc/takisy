@@ -1,7 +1,0 @@
-/cygdrive/z/takisy/src/algorithm/stralgo.cygo /cygdrive/z/takisy/src/algorithm/stralgo.cygd: /cygdrive/z/takisy/src/algorithm/stralgo.cpp \
- /cygdrive/z/takisy/include/takisy/core/codec.h \
- /cygdrive/z/takisy/include/takisy/algorithm/stralgo.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/size.h \
- /cygdrive/z/takisy/include/takisy/cgl/basic/point.h \
- /cygdrive/z/takisy/include/takisy/core/math.h \
- /cygdrive/z/takisy/include/takisy/cgl/font/font.h
