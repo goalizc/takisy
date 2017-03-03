@@ -1,5 +1,5 @@
 #include <memory>
-#include <third_party/gpc.h>
+#include <3rdparty/gpc.h>
 #include <takisy/core/memory.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/path/vertices.h>
@@ -14,7 +14,7 @@ public:
                       const path&          edge,
                             path::ClipType clip_type)
     {
-        gpc_vertex_list gvl     = {1, memory::malloc<gpc_vertex>()};
+        gpc_vertex_list gvl     = {1, memory::std::malloc<gpc_vertex>(1)};
         gpc_polygon     subject = {0, nullptr, nullptr};
         gpc_polygon     clip    = {0, nullptr, nullptr};
         gpc_polygon     result  = {0, nullptr, nullptr};
@@ -51,7 +51,7 @@ public:
         gpc_free_polygon(&result);
         gpc_free_polygon(&clip);
         gpc_free_polygon(&subject);
-        memory::free(gvl.vertex, gvl.num_vertices);
+        memory::std::free(gvl.vertex);
 
         return clip_result;
     }
@@ -59,8 +59,7 @@ public:
 private:
     static gpc_vertex_list& fill(gpc_vertex_list& gvl, const path& path)
     {
-        if (path.size() > static_cast<unsigned int>(gvl.num_vertices))
-            memory::realloc(gvl.vertex, gvl.num_vertices, path.size());
+        gvl.vertex = memory::std::realloc(gvl.vertex, path.size());
         gvl.num_vertices = path.size();
 
         for (unsigned int i = 0; i < path.size(); ++i)

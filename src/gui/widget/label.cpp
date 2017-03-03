@@ -139,7 +139,7 @@ unsigned int label::alignment(void) const
     return impl_->text_.alignment();
 }
 
-Size label::optimal_size(OptimalPolicy policy) const
+Size label::optimal(OptimalPolicy policy) const
 {
     if (policy == opFixedWidth || !impl_->text_.word_wrap())
         return impl_->text_.world();

@@ -48,22 +48,29 @@ public:
         return frand() * (upper_bound - lower_bound) + lower_bound;
     }
 
+public:
     template <typename T>
-    static inline T sqr(T n)
+    static inline T abs(const T& n)
     {
-        return n * n;
+        return ::abs(n);
     }
 
-    static inline double sqrt(double n)
+    static inline double ceil(double n)
     {
-        return ::sqrt(n);
+        return ::ceil(n);
     }
 
-    static inline double cbrt(double n)
+    static inline double floor(double n)
     {
-        return ::cbrt(n);
+        return ::floor(n);
     }
 
+    static inline double fmod(double n, double m)
+    {
+        return ::fmod(n, m);
+    }
+
+public:
     static inline double exp(double n)
     {
         return ::exp(n);
@@ -96,24 +103,53 @@ public:
     }
 
     template <typename T>
-    static inline T abs(const T& n)
+    static inline T sqr(T n)
     {
-        return n < 0 ? -n : n;
+        return n * n;
     }
 
-    static inline double ceil(double n)
+    static inline float sqrtf(float n)
     {
-        return ::ceil(n);
+        return ::sqrtf(n);
     }
 
-    static inline double floor(double n)
+    static inline double sqrt(double n)
     {
-        return ::floor(n);
+        return ::sqrt(n);
     }
 
-    static inline double fmod(double n, double m)
+    static inline double cbrt(double n)
     {
-        return ::fmod(n, m);
+        return ::cbrt(n);
+    }
+
+    template <typename T>
+    static inline double hypot(T x, T y)
+    {
+    #if 0
+        return ::hypot(x, y);
+    #else
+        return sqrt(x * x + y * y);
+    #endif
+    }
+
+    template <typename PointType>
+    static inline double hypot(const PointType& point)
+    {
+        return hypot(point.x, point.y);
+    }
+
+public:
+    template <int rad>
+    static inline constexpr double rad2deg(void)
+    {
+        return rad * (180 / pi);
+    }
+
+    template <int deg>
+    static inline constexpr double deg2rad(void)
+    {
+        return deg * (pi / 180);
     }
 
     static inline double rad2deg(double rad)
@@ -156,17 +192,6 @@ public:
         return ::atan(fnval);
     }
 
-    static inline double hypot(double x, double y)
-    {
-        return ::hypot(x, y);
-    }
-
-    template <typename PointType>
-    static inline double hypot(const PointType& point)
-    {
-        return hypot(point.x, point.y);
-    }
-
     static inline double atan2(double x, double y)
     {
         return ::atan2(y, x);
@@ -178,6 +203,7 @@ public:
         return atan2(point.x, point.y);
     }
 
+public:
     template <typename FloatType>
     static inline bool isnan(FloatType n)
     {

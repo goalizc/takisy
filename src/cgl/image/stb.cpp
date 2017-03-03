@@ -1,5 +1,5 @@
 #define  STB_IMAGE_IMPLEMENTATION
-#include <third_party/stb/stb_image.h>
+#include <3rdparty/stb/stb_image.h>
 #include <takisy/core/stretchy_buffer.h>
 #include <takisy/cgl/image/format.h>
 

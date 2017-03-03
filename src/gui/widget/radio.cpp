@@ -49,9 +49,9 @@ bool radio::selected(void) const
     return impl_->selected_;
 }
 
-Size radio::optimal_size(OptimalPolicy policy) const
+Size radio::optimal(OptimalPolicy policy) const
 {
-    Size optsize = impl_->content_->optimal_size(policy);
+    Size optsize = impl_->content_->optimal(policy);
 
     optsize.width += boxsize + spacing;
 
@@ -97,7 +97,7 @@ void radio::onSize(void)
 
         content->x(boxsize + spacing);
         content->width(width() - content->x());
-        content->height(content->optimal_size(opFixedWidth).height);
+        content->height(content->optimal(opFixedWidth).height);
         content->y(int(height() - content->height()) / 2);
     }
 }
@@ -250,13 +250,13 @@ int radio_group::selected_index(void) const
     return -1;
 }
 
-Size radio_group::optimal_size(OptimalPolicy policy) const
+Size radio_group::optimal(OptimalPolicy policy) const
 {
     Size optsize(0, 0);
 
     for (const widget* item : impl_->items_)
     {
-        Size item_optsize = item->optimal_size(policy);
+        Size item_optsize = item->optimal(policy);
         if (optsize.width < item_optsize.width)
             optsize.width = item_optsize.width;
         optsize.height += item_optsize.height;
@@ -394,7 +394,7 @@ void radio_group::onSize(void)
     {
         item->x(x);
         item->width(item_width);
-        item->height(item->optimal_size(opFixedWidth).height);
+        item->height(item->optimal(opFixedWidth).height);
 
         item_height = item->height();
         if (item_height < boxsize)

@@ -33,14 +33,15 @@ public:
         if ((width_ == 0 && height_ == 0) || angle_from == angle_to)
             return result;
 
-        if (math::abs(angle_to - angle_from) >= math::deg2rad(360))
+        if (math::abs(angle_to - angle_from) >= math::deg2rad<360>())
         {
             angle_from = 0;
-            angle_to   = math::deg2rad(360);
+            angle_to   = math::deg2rad<360>();
         }
 
-        double s = width_ + height_, step = math::deg2rad(30);
-        while (s * (step /= 2) > math::deg2rad(600) && step > math::deg2rad(3));
+        double wph = width_ + height_, step = math::deg2rad<30>();
+        while (wph * (step /= 2) > math::deg2rad<600>()
+               && step > math::deg2rad<3>());
 
         double angle;
         if (angle_from < angle_to)
@@ -150,7 +151,7 @@ double ellipse::height(void) const
 
 vertices ellipse::build(void)
 {
-    return impl_->build(0, math::deg2rad(360), false);
+    return impl_->build(0, math::deg2rad<360>(), false);
 }
 
 vertices ellipse::build_sector(double angle_from, double angle_to)

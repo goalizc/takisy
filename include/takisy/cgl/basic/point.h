@@ -79,12 +79,12 @@ public:
     template <typename TT>
     inline double distance(const point_type<TT>& point) const
     {
-        return math::sqrt(math::sqr(x - point.x) + math::sqr(y - point.y));
+        return math::hypot(x - point.x, y - point.y);
     }
 
-    inline double distance(axis_type _x, axis_type _y)
+    inline double distance(axis_type xx, axis_type yy)
     {
-        return math::sqrt(math::sqr(x - _x) + math::sqr(y - _y));
+        return math::hypot(x - xx, y - yy);
     }
 
 public:

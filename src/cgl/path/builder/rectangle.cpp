@@ -65,13 +65,13 @@ vertices rectangle::build(path::vertex_type::axis_type l,
     if (b - t < height * 2) height = (b - t) / 2;
 
     round_rectangle.append(ellipse(l + width, t + height, width, height)
-                   .build_segment(math::deg2rad(180), math::deg2rad(270)));
+                   .build_segment(math::deg2rad<180>(), math::deg2rad<270>()));
     round_rectangle.append(ellipse(r - width, t + height, width, height)
-                   .build_segment(math::deg2rad(270), math::deg2rad(360)));
+                   .build_segment(math::deg2rad<270>(), math::deg2rad<360>()));
     round_rectangle.append(ellipse(r - width, b - height, width, height)
-                   .build_segment(math::deg2rad(  0), math::deg2rad( 90)));
+                   .build_segment(math::deg2rad<  0>(), math::deg2rad< 90>()));
     round_rectangle.append(ellipse(l + width, b - height, width, height)
-                   .build_segment(math::deg2rad( 90), math::deg2rad(180)));
+                   .build_segment(math::deg2rad< 90>(), math::deg2rad<180>()));
 
     return round_rectangle;
 }

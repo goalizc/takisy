@@ -1,250 +1,151 @@
 #ifndef canvas_h_20131115
 #define canvas_h_20131115
 
-#include <takisy/core/algo.h>
+#include <algorithm>
 #include <takisy/core/memory.h>
 #include <takisy/core/stretchy_buffer.h>
-#include <takisy/cgl/basic/size.h>
 #include <takisy/cgl/basic/color.h>
 #include <takisy/cgl/basic/gamma.h>
 #include <takisy/cgl/basic/pixel_format.h>
 
-template <typename PixelFormat,
-          typename GammaType = gamma_null>
-class canvas
-{
+template <typename PixelFormat, typename GammaType = gamma_null>
+class canvas {
 public:
     typedef PixelFormat pixel_format;
     typedef GammaType   gamma_type;
     typedef stretchy_buffer<pixel_format, false, true> pixels_type;
 
 public:
-    canvas(void)
-        : size_(0, 0)
-    {}
-
+    canvas(void) : width_(0), height_(0) {}
     canvas(unsigned int width, unsigned int height)
-        : size_(width, height), pixels_(width * height)
-    {}
+        : width_(width), height_(height), pixels_(width * height) {}
+    canvas(const canvas& canvas) { operator=(canvas); }
+    canvas(canvas&& canvas) { operator=(std::move(canvas)); }
+    template <typename PixelMatrix>
+    canvas(const PixelMatrix& pixel_matrix)
+        : canvas() { operator=(pixel_matrix); }
+   ~canvas(void) {}
 
-    canvas(const canvas& canvas)
-        : size_(canvas.size_), gamma_(canvas.gamma_)
-        , pixels_(canvas.pixels_.copy())
-    {}
-
-    canvas(canvas&& canvas)
-        : size_(canvas.size_), gamma_(canvas.gamma_)
-        , pixels_(canvas.pixels_)
-    {}
-
-    template <typename PixalMatrix>
-    canvas(const PixalMatrix& pixel_matrix)
-    {
-        operator=(pixel_matrix);
-    }
-
-    ~canvas(void)
-    {}
-
-    canvas& operator=(const canvas& canvas)
-    {
-        if (this != &canvas)
-        {
-            size_   = canvas.size_;
-            gamma_  = canvas.gamma_;
-            pixels_ = canvas.pixels_.copy();
+    canvas& operator=(const canvas& canvas) {
+        if (this != &canvas) {
+            width_ = canvas.width_; height_ = canvas.height_;
+            gamma_ = canvas.gamma_; pixels_ = canvas.pixels_.copy();
         }
-
         return *this;
     }
 
-    canvas& operator=(canvas&& canvas)
-    {
-        if (this != &canvas)
-        {
-            size_   = canvas.size_;
-            gamma_  = canvas.gamma_;
-            pixels_ = canvas.pixels_;
-        }
-
+    canvas& operator=(canvas&& canvas) {
+        width_ = canvas.width_; height_ = canvas.height_;
+        gamma_ = canvas.gamma_; pixels_ = canvas.pixels_;
         return *this;
     }
 
-    template <typename PixalMatrix>
-    canvas& operator=(const PixalMatrix& pixel_matrix)
-    {
-        size_.width  = pixel_matrix.width();
-        size_.height = pixel_matrix.height();
-
-        pixels_.resize(size_.width * size_.height);
-
-        clear(
-            [&pixel_matrix](int x, int y)
-            {
-                return pixel_matrix.pixel(x, y);
-            });
-
+    template <typename PixelMatrix>
+    canvas& operator=(const PixelMatrix& pixel_matrix) {
+        resize(pixel_matrix.width(), pixel_matrix.height());
+        clear([&pixel_matrix](unsigned int x, unsigned int y) {
+            return pixel_matrix.pixel(x, y);
+        });
         return *this;
     }
 
 public:
-    inline void clear(void)
-    {
-        clear(color::black(0));
+    void clear(void) {
+        memset(pixels_.data(), 0, pixels_.size() * pixel_format::pixel_bytes());
     }
 
     template <typename Brush>
-    void clear(const Brush& brush)
-    {
-        for (unsigned int y = 0; y < size_.height; ++y)
-        for (unsigned int x = 0; x < size_.width;  ++x)
+    void clear(const Brush& brush) {
+        for (unsigned int y = 0; y < height_; ++y)
+        for (unsigned int x = 0; x < width_;  ++x)
             unsafe_pixel(x, y) = brush(x, y);
     }
 
-    inline void clear(const color& color)
-    {
-        memory::memset<pixel_format>(pixels_.data(), color, pixels_.size());
+    void clear(const color& color) {
+        typedef memory::std memstd;
+        memstd::memset<pixel_format>(pixels_.data(), color, pixels_.size());
     }
 
-    void resize(unsigned int width, unsigned int height)
-    {
-        if (size_.width == width)
-        {
-            size_.height = height;
-            pixels_.resize(size_.width * size_.height);
-        }
-        else
-        {
+    void resize(unsigned int width, unsigned int height) {
+        if (width_ == width) {
+            height_ = height;
+            pixels_.resize(width * height);
+        } else {
             pixels_type pixels(width * height);
-
-            unsigned int xlimit = width  < size_.width  ? width  : size_.width;
-            unsigned int ylimit = height < size_.height ? height : size_.height;
-
+            unsigned int xlimit = width  < width_  ? width  : width_;
+            unsigned int ylimit = height < height_ ? height : height_;
             for (unsigned int y = 0; y < ylimit; ++y)
-                memcpy(&pixels [y * width],
-                       &pixels_[y * size_.width],
+                memcpy(&pixels[y * width], row(y),
                        xlimit * pixel_format::pixel_bytes());
-
-            size_.width  = width;
-            size_.height = height;
-
+            width_ = width; height_ = height;
             pixels_.swap(pixels);
         }
     }
 
-    inline void swap(canvas& canvas)
-    {
-        algo::swap(size_ ,  canvas.size_);
-        algo::swap(gamma_,  canvas.gamma_);
-        algo::swap(pixels_, canvas.pixels_);
+    void swap(canvas& canvas) {
+        std::swap(width_,  canvas.width_);
+        std::swap(height_, canvas.height_);
+        std::swap(gamma_,  canvas.gamma_);
+        pixels_.swap(canvas.pixels_);
     }
 
     template <typename GammaFunction>
-    inline void gamma(const GammaFunction& gamma_function)
-    {
+    void gamma(const GammaFunction& gamma_function) {
         return gamma_.refresh_gamma_lut(gamma_function);
     }
 
 public:
-    inline unsigned int width(void) const
-    {
-        return size_.width;
-    }
+    unsigned int width(void)  const { return width_;  }
+    unsigned int height(void) const { return height_; }
 
-    inline unsigned int height(void) const
-    {
-        return size_.height;
-    }
-
-    inline const pixel_format& pixel(int x, int y) const
-    {
-        x = x < 0 ? 0 : (x >= (int)size_.width  ? size_.width - 1  : x);
-        y = y < 0 ? 0 : (y >= (int)size_.height ? size_.height - 1 : y);
-
+    pixels_type& pixels(void)
+        { return pixels_; }
+    const pixels_type& pixels(void) const
+        { return pixels_; }
+    pixel_format* row(int y)
+        { return pixels_.data() + y * width_; }
+    const pixel_format* row(int y) const
+        { return pixels_.data() + y * width_; }
+    pixel_format& unsafe_pixel(int x, int y)
+        { return row(y)[x]; }
+    const pixel_format& unsafe_pixel(int x, int y) const
+        { return row(y)[x]; }
+    const pixel_format& pixel(int x, int y) const {
+        x = x < 0 ? 0 : x >= (int)width_  ? (int)width_  - 1 : x;
+        y = y < 0 ? 0 : y >= (int)height_ ? (int)height_ - 1 : y;
         return row(y)[x];
-    }
-
-    inline pixel_format& unsafe_pixel(int x, int y)
-    {
-        return row(y)[x];
-    }
-
-    inline const pixel_format& unsafe_pixel(int x, int y) const
-    {
-        return row(y)[x];
-    }
-
-    inline pixel_format* row(int y)
-    {
-        return pixels_.data() + y * size_.width;
-    }
-
-    inline const pixel_format* row(int y) const
-    {
-        return pixels_.data() + y * size_.width;
-    }
-
-    inline pixels_type& pixels(void)
-    {
-        return pixels_;
-    }
-
-    inline const pixels_type& pixels(void) const
-    {
-        return pixels_;
     }
 
 public:
     template <typename Brush>
-    inline void pixel(unsigned int x, unsigned int y, const Brush& brush)
-    {
-        pixel(x, y, brush(x, y));
-    }
-
-    inline void pixel(unsigned int x, unsigned int y, const color& color)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y).blend(color);
-    }
-
-    inline void pixel(unsigned int x, unsigned int y,
-                      const absolute_color& color)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y) = color;
-    }
-
+    void pixel(unsigned int x, unsigned int y, const Brush& brush)
+        { pixel(x, y, brush(x, y)); }
+    void pixel(unsigned int x, unsigned int y, const color& color)
+        { if (is_validxy(x, y)) unsafe_pixel(x, y).blend(color); }
+    void pixel(unsigned int x, unsigned int y, const absolute_color& color)
+        { if (is_validxy(x, y)) unsafe_pixel(x, y) = color; }
     template <typename Brush>
-    inline void pixel(unsigned int x, unsigned int y,
-                      const Brush& brush, color::channel_type covarage)
-    {
-        pixel(x, y, brush(x, y), covarage);
-    }
+    void pixel(unsigned int x, unsigned int y,
+               const Brush& brush, color::channel_type covarage)
+        { pixel(x, y, brush(x, y), covarage); }
+    void pixel(unsigned int x, unsigned int y,
+               const color& color, color::channel_type covarage)
+        { if (is_validxy(x, y))
+            unsafe_pixel(x, y).blend(color, gamma_.gamma_value(covarage)); }
+    void pixel(unsigned int x, unsigned int y,
+               const absolute_color& color, color::channel_type covarage)
+        { if (is_validxy(x, y))
+            unsafe_pixel(x, y) = color * gamma_.gamma_value(covarage); }
 
-    inline void pixel(unsigned int x, unsigned int y,
-                      const color& color, color::channel_type covarage)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y).blend(color, gamma_.gamma_value(covarage));
-    }
-
-    inline void pixel(unsigned int x, unsigned int y,
-                      const absolute_color& color, color::channel_type covarage)
-    {
-        if (valid_xy(x, y))
-            unsafe_pixel(x, y) = color * gamma_.gamma_value(covarage);
+private:
+    bool is_validxy(unsigned int x, unsigned int y) const {
+        return x < width_ && y < height_;
     }
 
 private:
-    inline bool valid_xy(unsigned int x, unsigned int y) const
-    {
-        return x < size_.width && y < size_.height;
-    }
-
-private:
-    sizeu size_;
-    gamma_type gamma_;
-    pixels_type pixels_;
+    unsigned int width_, height_;
+    gamma_type   gamma_;
+    pixels_type  pixels_;
 };
 
 typedef canvas<pixfmt_G8>      canvas_G8;

@@ -87,38 +87,39 @@ public:
             c_->s  = 0;
             c_->rc = 1;
             c_->b  = (T*)malloc(sizeof(T) * c_->c);
-            if (bc) for (unsigned i = 0; i < c_->c; ++i)
-                new (&c_->b[i]) T();
-            else if (b0)
-                memset(c_->b, 0, c_->c * sizeof(T));
+            if (bc) new (c_->b) T [c_->c];
+            else if (b0) memset(c_->b, 0, c_->c * sizeof(T));
         } else if (capacity > c_->c) {
             unsigned nc = c_->c;
             do { nc <<= 1; } while (nc < capacity);
             c_->b = (T*)realloc(c_->b, sizeof(T) * nc);
-            if (bc) for (unsigned i = c_->c; i < nc; ++i)
-                new (&c_->b[i]) T();
-            else if (b0)
-                memset(c_->b + c_->c, 0, (nc - c_->c) * sizeof(T));
+            if (bc) new (c_->b + c_->c) T [nc - c_->c];
+            else if (b0) memset(c_->b + c_->c, 0, (nc - c_->c) * sizeof(T));
             c_->c = nc;
         }
     }
+
     void resize(unsigned size) {
         recapacity(size); c_->s = size;
     }
+
     stretchy_buffer copy(void) const {
         stretchy_buffer stbuf;
         if (!empty()) stbuf.append(c_->b, c_->s);
         return stbuf;
     }
+
     void swap(stretchy_buffer& stbuf) {
         std::swap(c_, stbuf.c_);
     }
     void clear(void) {
         if (c_) c_->s = 0;
     }
+
     void insert(unsigned index, const T& value) {
         insert(index, &value, 1);
     }
+
     void insert(unsigned index, const T* values, unsigned count) {
         if (index >= size())
             append(values, count);
@@ -129,29 +130,36 @@ public:
             c_->s += count;
         }
     }
+
     void insert(unsigned index, std::initializer_list<T> initlist) {
         insert(index, initlist.begin(), initlist.size());
     }
+
     void append(const T& value) {
         append(&value, 1);
     }
+
     void append(const T* values, unsigned count) {
         recapacity(size() + count);
         move(values, c_->b + c_->s, count);
         c_->s += count;
     }
+
     void append(std::initializer_list<T> initlist) {
         append(initlist.begin(), initlist.size());
     }
+
     void remove(void) {
         if (!empty()) --c_->s;
     }
+
     void remove(unsigned index) {
         if (index < size()) {
             move(c_->b + index + 1, c_->b + index, c_->s - index - 1);
             --c_->s;
         }
     }
+
     void remove(unsigned from ,unsigned to) {
         if (from == to)
             return;
@@ -174,6 +182,7 @@ private:
                 to[i] = from[i];
         } else memmove(to, from, sizeof(T) * count);
     }
+
     void release(void) {
         if (!c_) return;
         if (--c_->rc == 0) {

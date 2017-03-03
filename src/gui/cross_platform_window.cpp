@@ -508,12 +508,12 @@ LRESULT CALLBACK cross_platform_window::implement::windowProc
         }
         break;
     case WM_CLOSE:
-        if (client && !client->onClose())
+        if (client && !client->onWindowClose())
             return 0;
         break;
     case WM_NCDESTROY:
         if (client)
-            client->onDestroy();
+            client->onWindowDestroy();
         windows__.erase(hwnd);
         windows_as__.erase(hwnd);
         windows_widget__.erase(hwnd);

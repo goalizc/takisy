@@ -125,8 +125,8 @@ public:
                 }
                 break;
             case 24: case 32:
-                memory::std::memcpy(canvas->row_buffer(row_index),
-                                    row_buffer.data(), canvas->row_bytes());
+                memcpy(canvas->row_buffer(row_index),
+                       row_buffer.data(), canvas->row_bytes());
                 break;
             default:
                 return nullptr;

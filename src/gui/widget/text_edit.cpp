@@ -1,4 +1,3 @@
-#include <ctime>
 #include <takisy/core/sys.h>
 #include <takisy/core/osdet.h>
 #include <takisy/core/codec.h>
@@ -7,7 +6,7 @@
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/text_edit.h>
 #include <takisy/gui/cross_platform_window.h>
-#include "edit_box.h"
+#include "editbox.h"
 
 namespace takisy {
 namespace gui
@@ -17,8 +16,8 @@ namespace gui
 
 class text_edit::implement
 {
+    friend class editbox;
     friend class text_edit;
-    friend class edit_box;
 
 public:
     static const unsigned int lower_blink_interval = 200;
@@ -804,7 +803,7 @@ bool text_edit::onKeyPress(unsigned int chr)
     {
         if (chr == 13) // enter
             chr =  10;
-        if (impl_->text_.typewrite(codec::gbk2unicode(chr)))
+        if (impl_->text_.typewrite(codec::gbk2uni(chr)))
             impl_->update();
     }
 
@@ -909,10 +908,10 @@ bool text_edit::onMouseMove(Point point)
     return true;
 }
 
-edit_box& edit_box::pop(widget* father, const Rect& rect,
-                        const class text& text, const std::wstring& content)
+editbox& editbox::pop(widget* father, const Rect& rect,
+                      const class text& text, const std::wstring& content)
 {
-    static edit_box eb;
+    static editbox eb;
 
     eb.horizontal_scroll().hide();
     eb.vertical_scroll().hide();
@@ -934,7 +933,7 @@ edit_box& edit_box::pop(widget* father, const Rect& rect,
     return eb;
 }
 
-bool edit_box::onFocus(bool focus)
+bool editbox::onFocus(bool focus)
 {
     if (!focus)
         return onKeyPress(27);
@@ -942,7 +941,7 @@ bool edit_box::onFocus(bool focus)
     return text_edit::onFocus(focus);
 }
 
-bool edit_box::onKeyPress(unsigned int chr)
+bool editbox::onKeyPress(unsigned int chr)
 {
     if (chr == 13 || chr == 27)
     {

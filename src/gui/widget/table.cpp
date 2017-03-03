@@ -4,7 +4,7 @@
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/table.h>
-#include "edit_box.h"
+#include "editbox.h"
 
 class table::implement
 {
@@ -1377,6 +1377,9 @@ void table::onPaint(graphics graphics, Rect rect)
             y = impl_->draw_row(graphics, txtbrush, selbrush, x, y, row);
         else
             y += impl_->rows_[row].gridline.width() + rowheight;
+
+        if (y >= rect.bottom)
+            break;
     }
 
     rectf item_rect = impl_->item_rect(current());
@@ -1512,7 +1515,7 @@ bool table::onKeyPress(unsigned int chr)
     if (    (edit_trigger() & etAnyKeyPressed)
         || ((edit_trigger() & etEnterPressed) && chr == 13))
     {
-        chr = codec::gbk2unicode(chr);
+        chr = codec::gbk2uni(chr);
 
         if (stralgo::iswprint(chr))
             item(current()).edit(std::wstring(1, chr));
@@ -1930,10 +1933,11 @@ void table::item::edit(const std::wstring& text)
     impl->host.scrollto(impl->index);
 
     std::shared_ptr<item> self(new item(*this));
-    edit_box& eb = edit_box::pop(&impl->host, rect(), impl->item.text, text);
+    editbox& eb = editbox::pop(&impl->host, rect(), impl->item.text, text);
 
-    handler::sptr handler = impl->host.vertical_scroll().onScroll(
-                            impl->host.horizontal_scroll().onScroll(
+    handler::sptr handler =
+        impl->host.vertical_scroll().onScroll(
+        impl->host.horizontal_scroll().onScroll(
         [self, &eb](scroll*)
         {
             eb.xy(self->rect().left_top());
@@ -1941,12 +1945,12 @@ void table::item::edit(const std::wstring& text)
 
     eb.background_color(color::white());
     eb.onEditComplete(
-        [self](edit_box*, const std::wstring& txt)
+        [self](editbox*, const std::wstring& txt)
         {
             self->text(txt);
         });
     eb.onEditFinish(
-        [self, handler](edit_box*)
+        [self, handler](editbox*)
         {
             self->impl->host.vertical_scroll().onScrollRemove(handler);
             self->impl->host.horizontal_scroll().onScrollRemove(handler);

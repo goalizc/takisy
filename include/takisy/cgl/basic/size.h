@@ -70,6 +70,12 @@ public:
     }
 
 public:
+    inline void resize(value_type _width, value_type _height)
+    {
+        width  = _width;
+        height = _height;
+    }
+
     inline void expand(value_type dx, value_type dy)
     {
         width  += dx;

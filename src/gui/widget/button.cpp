@@ -43,12 +43,12 @@ widget* button::content(void) const
     return impl_->content_;
 }
 
-Size button::optimal_size(OptimalPolicy policy) const
+Size button::optimal(OptimalPolicy policy) const
 {
     if (impl_->content_)
-        return impl_->content_->optimal_size(policy);
+        return impl_->content_->optimal(policy);
     else
-        return optimal_size();
+        return optimal();
 }
 
 void button::content(widget* content)
@@ -171,7 +171,7 @@ const label& text_button::text(void) const
     return impl_->label_;
 }
 
-Size text_button::optimal_size(OptimalPolicy policy) const
+Size text_button::optimal(OptimalPolicy policy) const
 {
-    return impl_->label_.optimal_size(policy);
+    return impl_->label_.optimal(policy);
 }

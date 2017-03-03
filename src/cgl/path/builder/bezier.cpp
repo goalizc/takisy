@@ -9,9 +9,9 @@ class bezier_algorithm
 
 public:
     bezier_algorithm()
-        : depth_(kDefaultDepth),
-          angle_tolerance_(0.052359877),
-          distance_tolerance_(0.25)
+        : depth_(kDefaultDepth)
+        , angle_tolerance_(0.052359877)
+        , distance_tolerance_(0.25)
     {}
 
     bezier_algorithm(const bezier_algorithm& ba)
@@ -38,24 +38,24 @@ public:
 
     inline void angle_tolerance(double angle_tolerance)
     {
-        if (angle_tolerance < 0)
-            angle_tolerance_ = -angle_tolerance;
-        else
-            angle_tolerance_ = +angle_tolerance;
+        static constexpr double kMinAT = math::deg2rad<1>() / 10;
 
-        if (angle_tolerance < math::deg2rad(0.1))
-            angle_tolerance = math::deg2rad(0.1);
+        if (angle_tolerance < 0)
+            angle_tolerance = -angle_tolerance;
+        if (angle_tolerance < kMinAT)
+            angle_tolerance = kMinAT;
+
+        angle_tolerance_ = angle_tolerance;
     }
 
     inline void distance_tolerance(double distance_tolerance)
     {
         if (distance_tolerance < 0)
-            distance_tolerance_ = -distance_tolerance;
-        else
-            distance_tolerance_ = +distance_tolerance;
-
+            distance_tolerance = -distance_tolerance;
         if (distance_tolerance < 0.01)
             distance_tolerance = 0.01;
+
+        distance_tolerance_ = distance_tolerance;
     }
 
     inline unsigned int depth(void) const
@@ -469,8 +469,8 @@ bezier_fitting_curve& bezier_fitting_curve::depth(unsigned int depth)
     return *this;
 }
 
-bezier_fitting_curve& bezier_fitting_curve::angle_tolerance(
-    double angle_tolerance)
+bezier_fitting_curve&
+    bezier_fitting_curve::angle_tolerance(double angle_tolerance)
 {
     impl_->ba_.angle_tolerance(angle_tolerance);
 

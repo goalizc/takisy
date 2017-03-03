@@ -26,7 +26,7 @@ private:
 public:
     widget* content(void) const;
     bool    checked(void) const;
-    Size    optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size    optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void content(widget* content);

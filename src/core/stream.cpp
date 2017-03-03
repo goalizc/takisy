@@ -173,13 +173,13 @@ std::shared_ptr<stream> stream::from_uri(const std::string& uri)
             return nullptr;
 
         ftp_client ftp(host.c_str(), port);
-        if (!userpassword.empty())
-        {
-            pair = stralgo::split(userpassword, ":");
-            if (pair.size() != 2
-                || ftp.login(pair[0].c_str(), pair[1].c_str()).status[0] != '2')
-                return nullptr;
-        }
+        if (userpassword.empty())
+            pair = { "anonymous", "" };
+        else
+            pair = stralgo::split(userpassword, ":", 1);
+        if (pair.size() != 2
+            || ftp.login(pair[0].c_str(), pair[1].c_str()).status[0] != '2')
+            return nullptr;
 
         std::shared_ptr<stream> stream(new buffer_stream);
         if (ftp.get(path.c_str(), *stream).status[0] != '2')

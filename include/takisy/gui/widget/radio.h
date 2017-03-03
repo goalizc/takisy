@@ -31,7 +31,7 @@ private:
 public:
     widget* content(void) const;
     bool    selected(void) const;
-    Size    optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size    optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void content(widget* content);
@@ -95,7 +95,7 @@ public:
     widget*         item(unsigned int index) const;
     widget*         selected(void) const;
     int             selected_index(void) const;
-    Size            optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size            optimal(OptimalPolicy policy=opUnset) const override;
 
     unsigned int    margin(void) const;
     unsigned int    spacing(void) const;

@@ -66,7 +66,6 @@ public:
     unsigned int upper_width(void) const;
     unsigned int upper_height(void) const;
     Size         upper_size(void) const;
-    virtual Size optimal_size(OptimalPolicy policy=opUnset) const;
 
 public:
     bool father(widget* father);
@@ -121,7 +120,6 @@ public:
     bool is_child(widget* widget) const;
     bool is_senior(widget* widget) const;
     bool is_junior(widget* widget) const;
-    virtual bool inside(int x, int y) const;
 
 public:
     bool as_window(void);
@@ -130,6 +128,10 @@ public:
     bool as_window(cross_platform_window::Handle handle);
     bool is_window(void) const;
     cross_platform_window window(void) const;
+
+public:
+    virtual Size optimal(OptimalPolicy policy=opUnset) const;
+    virtual bool inside(int x, int y) const;
 
 public:
     virtual bool onAdding(widget* widget);
@@ -176,8 +178,8 @@ public:
     virtual bool onMouseEnter(void);
     virtual bool onMouseLeave(void);
     virtual bool onMouseWheel(int delta, Point point);
-    virtual bool onClose(void);
-    virtual void onDestroy(void);
+    virtual bool onWindowClose(void);
+    virtual void onWindowDestroy(void);
 
 private:
     void* property(const std::string& name) const;

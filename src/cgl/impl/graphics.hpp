@@ -38,7 +38,7 @@ public:
         canvas_  =  std::make_shared<canvas_type>(pr.width(), pr.height());
     }
 
-    inline void paint_area(const point& offset, rect rect)
+    inline void paint_area(const point& offset, const rect& rect)
     {
         poffset_ += offset;
         prect_    = rect.normalize();
@@ -57,10 +57,10 @@ public:
 public:
     inline const canvas_type::pixel_format& pixel(int x, int y) const
     {
-        x = x < prect_.left ? prect_.left
-                            : x >= prect_.right ? prect_.right - 1 : x;
-        y = y < prect_.top  ? prect_.top
-                            : y >= prect_.bottom ? prect_.bottom - 1 : y;
+        x = x <  prect_.left   ? prect_.left
+          : x >= prect_.right  ? prect_.right  - 1 : x;
+        y = y <  prect_.top    ? prect_.top
+          : y >= prect_.bottom ? prect_.bottom - 1 : y;
 
         return canvas_->unsafe_pixel(x + poffset_.x, y + poffset_.y);
     }

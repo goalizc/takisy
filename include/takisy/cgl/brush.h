@@ -209,10 +209,10 @@ template <typename Calculate,
           typename Transform = transform::null>
 struct gradient_brush : public offset_brush
 {
-    typedef gradient<Calculate, Decorate, Transform> gradient_type;
+    typedef gradient<Calculate, Decorate, Transform> gradient_t;
 
-    gradient_type gradient;
-    interpolator  r, g, b, a;
+    gradient_t gradient;
+    interpolator r, g, b, a;
 
 public:
     gradient_brush(void)
@@ -220,15 +220,15 @@ public:
         clamp();
     }
 
-    gradient_brush(const typename gradient_type::calculate_type& calculate)
+    gradient_brush(const typename gradient_t::calculate_type& calculate)
         : gradient(calculate)
     {
         clamp();
     }
 
-    gradient_brush(const typename gradient_type::calculate_type& calculate,
-                   const typename gradient_type::decorate_type&  decorate,
-                   const typename gradient_type::transform_type& transform)
+    gradient_brush(const typename gradient_t::calculate_type& calculate,
+                   const typename gradient_t::decorate_type&  decorate,
+                   const typename gradient_t::transform_type& transform)
         : gradient(calculate, decorate, transform)
     {
         clamp();

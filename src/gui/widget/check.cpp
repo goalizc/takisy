@@ -48,9 +48,9 @@ bool check::checked(void) const
     return impl_->checked_;
 }
 
-Size check::optimal_size(OptimalPolicy policy) const
+Size check::optimal(OptimalPolicy policy) const
 {
-    Size optsize = impl_->content_->optimal_size(policy);
+    Size optsize = impl_->content_->optimal(policy);
 
     optsize.width += implement::boxsize + implement::spacing;
 
@@ -83,7 +83,7 @@ void check::onSize(void)
 
         content->x(implement::boxsize + implement::spacing);
         content->width(width() - content->x());
-        content->height(content->optimal_size(opFixedWidth).height);
+        content->height(content->optimal(opFixedWidth).height);
         content->y(int(height() - content->height()) / 2);
     }
 }

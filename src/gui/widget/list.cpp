@@ -4,7 +4,7 @@
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/list.h>
-#include "edit_box.h"
+#include "editbox.h"
 
 class list::implement
 {
@@ -634,11 +634,11 @@ void list::edit(unsigned int index, const std::wstring& text)
     {
         scrollto(index);
 
-        edit_box& eb = edit_box::
+        editbox& eb = editbox::
             pop(this, impl_->item_rect(index), impl_->items_[index].text, text);
 
-        handler::sptr handler = vertical_scroll().onScroll(
-                                horizontal_scroll().onScroll(
+        handler::sptr handler =
+            vertical_scroll().onScroll(horizontal_scroll().onScroll(
             [this, index, &eb](scroll*)
             {
                 eb.xy(impl_->item_rect(index).left_top());
@@ -646,12 +646,12 @@ void list::edit(unsigned int index, const std::wstring& text)
 
         eb.background_color(color::white());
         eb.onEditComplete(
-            [this, index](edit_box*, const std::wstring& text)
+            [this, index](editbox*, const std::wstring& text)
             {
                 item(index, text);
             });
         eb.onEditFinish(
-            [this, handler](edit_box*)
+            [this, handler](editbox*)
             {
                 vertical_scroll().onScrollRemove(handler);
                 horizontal_scroll().onScrollRemove(handler);
@@ -762,7 +762,8 @@ void list::onPaint(graphics graphics, Rect rect)
                 item.text.draw(graphics, rect, nullptr, *textbrush);
         }
 
-        y += height;
+        if ((y += height) >= rect.bottom)
+            break;
     }
 
     if (current() < impl_->items_.size())
@@ -891,7 +892,7 @@ bool list::onKeyPress(unsigned int chr)
     if (    (edit_trigger() & etAnyKeyPressed)
         || ((edit_trigger() & etEnterPressed) && chr == 13))
     {
-        chr = codec::gbk2unicode(chr);
+        chr = codec::gbk2uni(chr);
 
         if (stralgo::iswprint(chr))
             edit(current(), std::wstring(1, chr));

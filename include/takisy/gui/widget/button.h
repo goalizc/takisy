@@ -24,7 +24,7 @@ private:
 
 public:
     widget* content(void) const;
-    Size    optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size    optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void content(widget* content);
@@ -56,7 +56,7 @@ public:
 public:
     label&       text(void);
     const label& text(void) const;
-    Size         optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size         optimal(OptimalPolicy policy=opUnset) const override;
 
 private:
     class implement* impl_;

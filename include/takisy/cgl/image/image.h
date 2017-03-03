@@ -49,6 +49,7 @@ public:
 
     unsigned int count(void) const;
     unsigned int duration(void) const;
+    unsigned int seek(void) const;
     unsigned int seek(unsigned int timestamp) const;
 
           canvas_adapter& first_frame(void);
@@ -74,16 +75,15 @@ private:
 };
 
 template <typename PixelMatrix>
-canvas_adapter& image::new_frame(const PixelMatrix& pixel_matrix)
+canvas_adapter& image::new_frame(const PixelMatrix& pm)
 {
-    return new_frame(canvas_adapter::make<canvas_bgra8>(pixel_matrix));
+    return new_frame(canvas_adapter::make<canvas_bgra8>(pm));
 }
 
 template <typename PixelMatrix>
-canvas_adapter& image::new_frame(const PixelMatrix& pixel_matrix,
-                                 unsigned int interval)
+canvas_adapter& image::new_frame(const PixelMatrix& pm, unsigned int interval)
 {
-    return new_frame(canvas_adapter::make<canvas_bgra8>(pixel_matrix), interval);
+    return new_frame(canvas_adapter::make<canvas_bgra8>(pm), interval);
 }
 
 #endif //image_h_20131120

@@ -1,6 +1,6 @@
 #include <takisy/core/timer.h>
 #include <takisy/cgl/basic/canvas.h>
-#include <takisy/cgl/tr/filter/scale.h>
+#include <takisy/cgl/filter/scale.h>
 #include <takisy/gui/widget/picture.h>
 
 class picture::implement
@@ -123,7 +123,7 @@ const class image& picture::image(void) const
     return impl_->image_;
 }
 
-Size picture::optimal_size(OptimalPolicy policy) const
+Size picture::optimal(OptimalPolicy policy) const
 {
     if (impl_->frame_index_ < impl_->image_.count())
     {

@@ -79,19 +79,19 @@ private:
         vertex_fetcher vf(path);
 
         if (path.size() == 2)
-            build_c(vertices, vf[0], vf[1]);
+            buildc(vertices, vf[0], vf[1]);
         else
         {
             if (!closed_)
-                build_c(vertices, vf[0], vf[1]);
+                buildc(vertices, vf[0], vf[1]);
             else
-                build_j(vertices, vf[-1], vf[0], vf[1]);
+                buildj(vertices, vf[-1], vf[0], vf[1]);
 
             for (unsigned int ss2 = path.size() - 2, i = 0; i < ss2; ++i)
-                build_j(vertices, vf[i], vf[i + 1], vf[i + 2]);
+                buildj(vertices, vf[i], vf[i + 1], vf[i + 2]);
 
             if (closed_)
-                build_j(vertices, vf[-2], vf[-1], vf[0]);
+                buildj(vertices, vf[-2], vf[-1], vf[0]);
         }
 
         return vertices;
@@ -100,23 +100,22 @@ private:
 #define CALCULAE_OFFSET(FROM, TO)                                           \
     double dx_##FROM##TO = _##TO.x - _##FROM.x;                             \
     double dy_##FROM##TO = _##TO.y - _##FROM.y;                             \
-    double distance_##FROM##TO = math::sqrt(dx_##FROM##TO * dx_##FROM##TO + \
-                                            dy_##FROM##TO * dy_##FROM##TO); \
-    double foobar_##FROM##TO = 0.5 * width_ / distance_##FROM##TO;          \
+    double distance_##FROM##TO = math::hypot(dx_##FROM##TO, dy_##FROM##TO); \
+    double foobar_##FROM##TO   = 0.5 * width_ / distance_##FROM##TO;        \
     double offset_x_##FROM##TO = dy_##FROM##TO * foobar_##FROM##TO;         \
     double offset_y_##FROM##TO = dx_##FROM##TO * foobar_##FROM##TO;
 
-    inline void build_c(vertices* vertices,
-                        path::vertex_type _1, const path::vertex_type& _2)
+    inline void buildc(vertices* vertices,
+                       path::vertex_type _1, const path::vertex_type& _2)
     {
         if (cap_ == LineCap::lcRound)
         {
             double angle = math::atan2(_2 - _1);
 
             vertices->append(
-                circle(_1.x, _1.y,
-                    0.5 * width_).build_segment(angle - math::deg2rad(90),
-                                                angle - math::deg2rad(270)));
+                circle(_1.x, _1.y, 0.5 * width_)
+                    .build_segment(angle - math::deg2rad<90>(),
+                                   angle - math::deg2rad<270>()));
         }
         else
         {
@@ -133,10 +132,10 @@ private:
         }
     }
 
-    inline void build_j(vertices* vertices,
-                        const path::vertex_type& _1,
-                        const path::vertex_type& _2,
-                        const path::vertex_type& _3)
+    inline void buildj(vertices* vertices,
+                       const path::vertex_type& _1,
+                       const path::vertex_type& _2,
+                       const path::vertex_type& _3)
     {
         if (joint_ == LineJoint::ljBevel)
             append_bevel_vertex(vertices, _1, _2, _3);
@@ -146,18 +145,18 @@ private:
             double angle_23 = math::atan2(_3 - _2);
 
             if (angle_23 < angle_21)
-                angle_23 += math::deg2rad(360);
+                angle_23 += math::deg2rad<360>();
 
             double angle = angle_23 - angle_21;
 
-            if (angle < math::deg2rad(180))
+            if (angle < math::deg2rad<180>())
             {
                 if (joint_ == LineJoint::ljRound)
                 {
                     vertices->append(
                         circle(_2.x, _2.y, 0.5 * width_).build_segment(
-                            angle_21 - math::deg2rad(90),
-                            angle_21 - math::deg2rad(270) + angle));
+                            angle_21 - math::deg2rad<90>(),
+                            angle_21 - math::deg2rad<270>() + angle));
                 }
                 else
                 {

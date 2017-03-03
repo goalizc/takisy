@@ -3,7 +3,7 @@
 
 #include <takisy/core/stream.h>
 #include <takisy/core/stretchy_buffer.h>
-#include <takisy/cgl/image/canvas_adapter.h>
+#include <takisy/cgl/basic/canvas_adapter.h>
 
 class format
 {

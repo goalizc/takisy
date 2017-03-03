@@ -1,6 +1,6 @@
-#include <ctime>
-#include <vector>
 #include <algorithm>
+#include <chrono>
+#include <vector>
 #include <takisy/cgl/image/image.h>
 
 class image::implement
@@ -12,7 +12,6 @@ public:
 
 public:
     implement(void)
-        : load_timestamp_(0)
     {
         static bool is_default_formats_registered = false;
 
@@ -29,7 +28,7 @@ public:
 
 private:
     format::frames frames_;
-    clock_t load_timestamp_;
+    std::chrono::steady_clock::time_point loadts_;
     static std::vector<const format*> formats_;
 };
 
@@ -78,8 +77,8 @@ image& image::operator=(const image& image)
 {
     if (this != &image)
     {
-        impl_->load_timestamp_ = image.impl_->load_timestamp_;
-        impl_->frames_         = image.impl_->frames_.copy();
+        impl_->frames_ = image.impl_->frames_.copy();
+        impl_->loadts_ = image.impl_->loadts_;
     }
 
     return *this;
@@ -161,8 +160,8 @@ bool image::load_stream(const stream& istream, const format& format)
 
     if (loaded || impl_->frames_.empty())
     {
-        impl_->frames_         = frames;
-        impl_->load_timestamp_ = clock();
+        impl_->frames_ = frames;
+        impl_->loadts_ = std::chrono::steady_clock::now();
     }
 
     return loaded;
@@ -236,6 +235,15 @@ unsigned int image::duration(void) const
     return duration;
 }
 
+unsigned int image::seek(void) const
+{
+    unsigned int milliseconds =
+        std::chrono::duration_cast<std::chrono::milliseconds>
+                (std::chrono::steady_clock::now() - impl_->loadts_).count();
+
+    return seek(milliseconds);
+}
+
 unsigned int image::seek(unsigned int timestamp) const
 {
     unsigned int frame_index = 0;
@@ -261,12 +269,12 @@ const canvas_adapter& image::first_frame(void) const
 
 canvas_adapter& image::frame(void)
 {
-    return *impl_->frames_[seek(clock() - impl_->load_timestamp_)].canvas;
+    return *impl_->frames_[seek()].canvas;
 }
 
 const canvas_adapter& image::frame(void) const
 {
-    return *impl_->frames_[seek(clock() - impl_->load_timestamp_)].canvas;
+    return const_cast<const image*>(this)->frame();
 }
 
 canvas_adapter& image::frame(unsigned int frame_index)

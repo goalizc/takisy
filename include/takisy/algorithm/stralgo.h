@@ -3,11 +3,8 @@
 
 #include <algorithm>
 #include <cctype>
-#include <cstdio>
-#include <cstdlib>
 #include <cwctype>
 #include <string>
-#include <tuple>
 #include <vector>
 
 struct stralgo
@@ -133,19 +130,19 @@ struct stralgo
     __wrap__(toupper,  char, char); __wrap__(towupper,  wchar_t, wchar_t);
 #undef __wrap__
 
-    template <int base = 10, typename Integer>
-    static stralgo::string strf(Integer integer)
+    template <int base = 10, typename IntegralType>
+    static stralgo::string strf(IntegralType integer)
     {
         static_assert(2 <= base && base <= 36,
                       "`int base' should be between 2 and 36.");
-        static_assert(std::is_integral<Integer>::value,
-                      "`typename Integer' must be an integral type.");
+        static_assert(std::is_integral<IntegralType>::value,
+                      "`typename IntegralType' must be an integral type.");
 
         static constexpr const char literal[] =
                 "zyxwvutsrqponmlkjihgfedcba987654321" "0"
                 "123456789abcdefghijklmnopqrstuvwxyz";
         static constexpr const char *zero = &literal[35];
-        bool is_negative = std::is_signed<Integer>::value && integer < 0;
+        bool is_negative = std::is_signed<IntegralType>::value && integer < 0;
         stralgo::string result;
 
         do { result += zero[integer % base]; integer /= base; }
@@ -182,39 +179,43 @@ struct stralgo
         return format_ss(pattern.c_str(), strings);
     }
 
-    template <typename Integer, bool skip_space = true>
-    static Integer frts(const char* str)
+    template <typename IntegralType, int base = 10, bool skip_space = true>
+    static IntegralType frts(const char* str)
     {
-        static_assert(std::is_integral<Integer>::value,
-                      "`typename Integer' must be an integral type.");
+        static_assert(2 <= base && base <= 36,
+                      "`int base' should be between 2 and 36.");
+        static_assert(std::is_integral<IntegralType>::value,
+                      "`typename IntegralType' must be an integral type.");
 
-        static constexpr const unsigned int signed_len[64] =
-            { 0, 3, 5, 0, 10, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 39 };
-        static constexpr const unsigned int unsigned_len[64] =
-            { 0, 3, 5, 0, 10, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 39 };
-        static constexpr const unsigned int len_limit =
-            std::is_signed<Integer>::value
-                ? signed_len[sizeof(Integer)] : unsigned_len[sizeof(Integer)];
+        static constexpr const unsigned int implicit[] = {
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+            0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  0,  0,  0,  0,  0,  0,
+            0,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 0,  0,  0,  0,  0,
+            0,  10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+            25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 0,  0,  0,  0,  0, };
+        IntegralType integer = 0;
         bool positive = true;
-        Integer integer = 0;
 
         while (skip_space && isspace(*str))
             ++str;
 
-        if (std::is_signed<Integer>::value && *str == '-')
+        if (std::is_signed<IntegralType>::value && *str == '-')
             positive = false, ++str;
 
         unsigned int len = 0;
-        while (isdigit(*str) && len++ < len_limit)
-            integer = integer * 10 + *str++ - '0';
+        while (isfrts<base>(*str) && len++ < sizeof(IntegralType) * 8)
+            integer = integer * base + implicit[(int)*str++];
 
         return positive ? integer : -integer;
     }
 
-    template <typename Integer, bool skip_space = true>
-    static Integer frts(const std::string& str)
+    template <typename IntegralType, int base = 10, bool skip_space = true>
+    static IntegralType frts(const std::string& str)
     {
-        return frts<Integer>(str.c_str());
+        return frts<IntegralType, base, skip_space>(str.c_str());
     }
 
     static double atof(const char* str) { return ::atof(str); }
@@ -517,6 +518,22 @@ struct stralgo
     }
 
 private:
+    template <char begin, int count>
+    static bool between(char ch)
+    {
+        return begin <= ch && ch < (begin + count);
+    }
+
+    template <int base>
+    static bool isfrts(char ch)
+    {
+        if (base <= 10)
+            return between<'0', base>(ch);
+        else
+            return between<'0', base>(ch)
+                || between<'a', base - 10>(ch) || between<'A', base - 10>(ch);
+    }
+
     template <typename Arg>
     static void strsf(strings& strings, const Arg& arg)
     {
@@ -524,8 +541,7 @@ private:
     }
 
     template <typename Arg, typename... Others>
-    static void strsf(strings& strings,
-                    const Arg& arg, const Others&... others)
+    static void strsf(strings& strings, const Arg& arg, const Others&... others)
     {
         strings.emplace_back(strf(arg)); strsf(strings, others...);
     }

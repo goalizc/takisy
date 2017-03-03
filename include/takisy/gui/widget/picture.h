@@ -31,9 +31,7 @@ public:
     bool               dynamic(void) const;
     class image&       image(void);
     const class image& image(void) const;
-
-public:
-    Size optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size               optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void scalable(bool scalable);

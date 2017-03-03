@@ -36,9 +36,7 @@ public:
     brush_sptr          background_brush(void) const;
     bool                fixed_brush(void) const;
     unsigned int        alignment(void) const;
-
-public:
-    Size optimal_size(OptimalPolicy policy=opUnset) const override;
+    Size                optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void text(const std::string& text);

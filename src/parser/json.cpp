@@ -24,14 +24,14 @@ public:
     virtual valuesptr& get(unsigned int index)
     {
         throw std::logic_error(
-            stralgo::format("json type($0) is not array(6).", (int)type())
+            stralgo::sprintf("json type(%d) is not array(6).", type())
         );
     }
 
     virtual valuesptr& get(const std::string& key)
     {
         throw std::logic_error(
-            stralgo::format("json type($0) is not object(7).", (int)type())
+            stralgo::sprintf("json type(%d) is not object(7).", type())
         );
     }
 
@@ -230,12 +230,12 @@ public:
             if (is_first) is_first = false;
             else buffer += ", ";
             if (indent > 0)
-                (buffer += '\n').append(level * indent, ' ');
+                buffer += '\n', buffer.append(level * indent, ' ');
             item->dump(buffer, level, indent);
         }
         --level;
         if (indent > 0 && has_value)
-            (buffer += '\n').append(level * indent, ' ');
+            buffer += '\n', buffer.append(level * indent, ' ');
         buffer += ']';
     }
 };
@@ -297,14 +297,14 @@ public:
             if (is_first) is_first = false;
             else buffer += ", ";
             if (indent > 0)
-                (buffer += '\n').append(level * indent, ' ');
+                buffer += '\n', buffer.append(level * indent, ' ');
             string::dump_string(buffer, pair.first);
             buffer += ": ";
             pair.second->dump(buffer, level, indent);
         }
         --level;
         if (indent > 0 && has_value)
-            (buffer += '\n').append(level * indent, ' ');
+            buffer += '\n', buffer.append(level * indent, ' ');
         buffer += '}';
     }
 };
@@ -428,27 +428,26 @@ json::valueptr json::implement::parse(const stream& s)
             s.seek(-3, stream::stCurrent);
         if (s.read_chars(2) == "an")
             return new value::number_double(double_limits::quiet_NaN());
-        goto return_nullptr;
+        return nullptr;
 
     case 'i':
         if (s.read_chars(2) == "nf")
             return new value::number_double(double_limits::infinity());
-        goto return_nullptr;
+        return nullptr;
 
     case 't':
         if (s.read_chars(3) == "rue")
             return new value::boolean(true);
-        goto return_nullptr;
+        return nullptr;
 
     case 'f':
         if (s.read_chars(4) == "alse")
             return new value::boolean(false);
 
     case 0:
-    return_nullptr:
         return nullptr;
 
-    default :
+    default:
         s.seek(-1, stream::stCurrent);
         return parse_number(s);
 

@@ -1,5 +1,5 @@
 #include <cstring>
-#include <third_party/md5.h>
+#include <3rdparty/md5.h>
 #include <takisy/algorithm/hashalgo.h>
 
 #define strlen(data) (((data) == nullptr) ? 0 : strlen(data))

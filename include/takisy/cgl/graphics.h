@@ -5,9 +5,9 @@
 #include <takisy/cgl/basic/size.h>
 #include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/basic/color.h>
+#include <takisy/cgl/basic/canvas_adapter.h>
 #include <takisy/cgl/path/path.h>
 #include <takisy/cgl/font/font.h>
-#include <takisy/cgl/image/canvas_adapter.h>
 #include <takisy/cgl/brush.h>
 #include <takisy/cgl/pen.h>
 

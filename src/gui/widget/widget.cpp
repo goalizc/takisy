@@ -303,11 +303,6 @@ Size widget::upper_size(void) const
     return impl_->upper_;
 }
 
-Size widget::optimal_size(OptimalPolicy policy) const
-{
-    return size();
-}
-
 bool widget::father(widget* father)
 {
     if (this->father() == father)
@@ -769,11 +764,6 @@ bool widget::is_junior(widget* widget) const
     return false;
 }
 
-bool widget::inside(int x, int y) const
-{
-    return impl_->rect_.inside(x, y);
-}
-
 bool widget::as_window(void)
 {
     return as_window(cross_platform_window::wsWidgetWindow);
@@ -847,6 +837,16 @@ cross_platform_window widget::window(void) const
     return cross_platform_window(takisy::gui::handleFromLPWIDGET(this));
 }
 
+Size widget::optimal(OptimalPolicy policy) const
+{
+    return size();
+}
+
+bool widget::inside(int x, int y) const
+{
+    return impl_->rect_.inside(x, y);
+}
+
 bool widget::onAdding(widget*)                    { return true;  }
 void widget::onAdd(widget*)                       {               }
 bool widget::onRemoving(widget*)                  { return true;  }
@@ -891,8 +891,8 @@ bool widget::onMouseMove(Point)                   { return false; }
 bool widget::onMouseEnter(void)                   { return false; }
 bool widget::onMouseLeave(void)                   { return false; }
 bool widget::onMouseWheel(int, Point)             { return false; }
-bool widget::onClose(void)                        { return true;  }
-void widget::onDestroy(void)                      {               }
+bool widget::onWindowClose(void)                  { return true;  }
+void widget::onWindowDestroy(void)                {               }
 
 void* widget::property(const std::string& name) const
 {

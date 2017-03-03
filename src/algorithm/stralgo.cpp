@@ -1,18 +1,19 @@
-#include <cwchar>
 #include <cstdarg>
+#include <cstdio>
 #include <cstring>
-#include <third_party/milo.h>
+#include <cwchar>
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
+#include "grisu.h"
 
 stralgo::string stralgo::strf(float value)
 {
-    return strf_milo(static_cast<double>(value));
+    return grisu::strf(value);
 }
 
 stralgo::string stralgo::strf(double value)
 {
-    return strf_milo(value);
+    return grisu::strf(value);
 }
 
 stralgo::string stralgo::strf(long double value)
@@ -51,10 +52,10 @@ stralgo::strings stralgo::codecs(void)
 stralgo::wstring stralgo::decode(const std::string& text, const string& codec)
 {
     if (codec == "utf-8")
-        return codec::utf82unicode(text);
+        return codec::utf82uni(text);
     else
     if (codec == "gb2312" || codec == "gbk")
-        return codec::gbk2unicode(text);
+        return codec::gbk2uni(text);
     else
         return L"";
 }
@@ -62,10 +63,10 @@ stralgo::wstring stralgo::decode(const std::string& text, const string& codec)
 stralgo::string stralgo::encode(const std::wstring& text, const string& codec)
 {
     if (codec == "utf-8")
-        return codec::unicode2utf8(text);
+        return codec::uni2utf8(text);
     else
     if (codec == "gb2312" || codec == "gbk")
-        return codec::unicode2gbk(text);
+        return codec::uni2gbk(text);
     else
         return "";
 }

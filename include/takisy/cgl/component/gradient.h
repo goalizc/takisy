@@ -32,7 +32,7 @@ struct calculate
     {
         inline double operator()(double x, double y) const
         {
-            return math::sqrt(x * x + y * y);
+            return math::hypot(x, y);
         }
     };
 

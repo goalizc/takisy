@@ -51,9 +51,7 @@ class serialize::text
 public:
     text(void)
         : level_(0)
-    {
-        stream_ << std::boolalpha;
-    }
+    {}
 
 public:
     inline std::string data(void) const
@@ -78,7 +76,7 @@ public:
         ++level_;
         reflect::for_each(reflect, *this);
         --level_;
-        stream_ << "};";
+        stream_ << indent() << "}";
 
         return *this;
     }
@@ -86,16 +84,21 @@ public:
     template <template <class...> class Container, typename... T>
     inline text& serialize(const Container<T...>& container)
     {
-        stream_ << "{\n";
-        ++level_;
-        for (const auto& item : container)
+        if (container.empty())
+            stream_ << "{}";
+        else
         {
-            stream_ << indent();
-            serialize(item);
-            stream_ << ",\n";
+            stream_ << "{\n";
+            ++level_;
+            for (const auto& item : container)
+            {
+                stream_ << indent();
+                serialize(item);
+                stream_ << ",\n";
+            }
+            --level_;
+            stream_ << indent() << "}";
         }
-        --level_;
-        stream_ << indent() << "}";
 
         return *this;
     }
@@ -115,10 +118,10 @@ public:
         return stream_ << '\'' << ch << '\'', *this;
     }
 
-#define serialize(type)                 \
-    inline text& serialize(type value)  \
-    {                                   \
-        return stream_ << value, *this; \
+#define serialize(type)                                \
+    inline text& serialize(type value)                 \
+    {                                                  \
+        return stream_ << stralgo::strf(value), *this; \
     }
 
     serialize(signed char)
@@ -135,7 +138,6 @@ public:
     serialize(double)
     serialize(long double)
     serialize(bool)
-    serialize(const void*)
 #undef serialize
 
 #define serialize(type)                                    \
@@ -149,16 +151,16 @@ public:
     serialize(const stralgo::string&)
 #undef serialize
 
-#define serialize(ptr_t)                                          \
-    template <typename T>                                         \
-    inline text& serialize(ptr_t const& ptr)                      \
-    {                                                             \
-        if (ptr)                                                  \
-            stream_ << "new T(", serialize(*ptr), stream_ << ')'; \
-        else                                                      \
-            stream_ << "nullptr";                                 \
-                                                                  \
-        return *this;                                             \
+#define serialize(ptr_t)                        \
+    template <typename T>                       \
+    inline text& serialize(ptr_t const& ptr)    \
+    {                                           \
+        if (ptr)                                \
+            stream_ << "new ", serialize(*ptr); \
+        else                                    \
+            stream_ << "nullptr";               \
+                                                \
+        return *this;                           \
     }
 
     serialize(T*)
@@ -338,7 +340,7 @@ public:
         if (member.index > 0)
             buffer_ += ", ";
         if (indent_ > 0)
-            buffer_ += '\n' + indent();
+            buffer_ += '\n', buffer_.append(indent(), 0x20);
         serialize(member.name);
         buffer_ += ": ";
         serialize(member.value);
@@ -353,7 +355,7 @@ public:
         reflect::for_each(reflect, *this);
         --level_;
         if (indent_ > 0)
-            buffer_ += '\n' + indent();
+            buffer_ += '\n', buffer_.append(indent(), 0x20);
         buffer_ += '}';
 
         return *this;
@@ -373,12 +375,12 @@ public:
             else
                 buffer_ += ", ";
             if (indent_ > 0)
-                buffer_ += '\n' + indent();
+                buffer_ += '\n', buffer_.append(indent(), 0x20);
             serialize(item);
         }
         --level_;
         if (indent_ > 0 && !array.empty())
-            buffer_ += '\n' + indent();
+            buffer_ += '\n', buffer_.append(indent(), 0x20);
         buffer_ += ']';
 
         return *this;
@@ -398,14 +400,14 @@ public:
             else
                 buffer_ += ", ";
             if (indent_ > 0)
-                buffer_ += '\n' + indent();
+                buffer_ += '\n', buffer_.append(indent(), 0x20);
             serialize(stralgo::strf(pair.first));
             buffer_ += ": ";
             serialize(pair.second);
         }
         --level_;
         if (indent_ > 0 && !dict.empty())
-            buffer_ += '\n' + indent();
+            buffer_ += '\n', buffer_.append(indent(), 0x20);
         buffer_ += '}';
 
         return *this;
@@ -467,9 +469,9 @@ public:
 #undef serialize
 
 private:
-    inline std::string indent(void) const
+    inline unsigned int indent(void) const
     {
-        return std::string(level_ * indent_, 0x20);
+        return level_ * indent_;
     }
 
 private:
