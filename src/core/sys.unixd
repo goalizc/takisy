@@ -1,0 +1,2 @@
+src/core/sys.unixo src/core/sys.unixd: src/core/sys.cpp include/takisy/algorithm/stralgo.h \
+ include/takisy/core/sys.h

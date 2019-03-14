@@ -1,0 +1,2 @@
+src/algorithm/hashalgo.unixo src/algorithm/hashalgo.unixd: src/algorithm/hashalgo.cpp include/3rdparty/md5.h \
+ include/takisy/algorithm/hashalgo.h

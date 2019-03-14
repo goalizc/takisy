@@ -1,0 +1,3 @@
+src/cgl/font/tfont_simple.unixo src/cgl/font/tfont_simple.unixd: src/cgl/font/tfont_simple.cpp \
+ include/takisy/cgl/font/tfont_simple.h include/takisy/cgl/font/font.h \
+ src/cgl/font/tfont_chinese_bitmap.h

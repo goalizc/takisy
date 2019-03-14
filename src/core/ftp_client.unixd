@@ -1,0 +1,4 @@
+src/core/ftp_client.unixo src/core/ftp_client.unixd: src/core/ftp_client.cpp include/takisy/core/os.h \
+ include/takisy/algorithm/stralgo.h include/takisy/core/sys.h \
+ include/takisy/core/ftp_client.h include/takisy/core/stream.h \
+ include/takisy/core/file.h include/takisy/core/stretchy_buffer.h

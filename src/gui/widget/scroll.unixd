@@ -1,0 +1,18 @@
+src/gui/widget/scroll.unixo src/gui/widget/scroll.unixd: src/gui/widget/scroll.cpp include/takisy/core/algo.h \
+ include/takisy/core/math.h include/takisy/gui/basic/cursor.h \
+ include/takisy/gui/widget/scroll.h include/takisy/core/handler.h \
+ include/takisy/gui/widget/widget.h include/takisy/core/sys.h \
+ include/takisy/gui/window.h include/takisy/gui/basic/define.h \
+ include/takisy/cgl/basic/point.h include/takisy/cgl/basic/size.h \
+ include/takisy/cgl/basic/rect.h include/takisy/gui/basic/color_scheme.h \
+ include/takisy/cgl/basic/color.h include/takisy/cgl/graphics.h \
+ include/takisy/cgl/basic/canvas_adapter.h \
+ include/takisy/cgl/basic/canvas.h include/takisy/core/memory.h \
+ include/takisy/core/stretchy_buffer.h include/takisy/cgl/basic/gamma.h \
+ include/takisy/cgl/basic/pixel_format.h \
+ include/takisy/core/endian_type.h include/takisy/cgl/path/path.h \
+ include/takisy/cgl/font/font.h include/takisy/cgl/brush.h \
+ include/takisy/cgl/component/gradient.h \
+ include/takisy/cgl/component/transformer.h \
+ include/takisy/cgl/path/vertices.h \
+ include/takisy/cgl/component/interpolator.h include/takisy/cgl/pen.h

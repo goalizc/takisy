@@ -1,0 +1,4 @@
+src/algorithm/gzip.unixo src/algorithm/gzip.unixd: src/algorithm/gzip.cpp include/takisy/core/bit_buffer.h \
+ include/takisy/core/stretchy_buffer.h include/takisy/core/endian_type.h \
+ include/takisy/algorithm/crc.h include/takisy/algorithm/gzip.h \
+ src/algorithm/rfc1951.h

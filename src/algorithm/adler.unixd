@@ -1,0 +1,1 @@
+src/algorithm/adler.unixo src/algorithm/adler.unixd: src/algorithm/adler.cpp include/takisy/algorithm/adler.h

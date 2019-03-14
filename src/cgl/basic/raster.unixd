@@ -1,0 +1,5 @@
+src/cgl/basic/raster.unixo src/cgl/basic/raster.unixd: src/cgl/basic/raster.cpp include/takisy/core/algo.h \
+ include/takisy/core/math.h include/takisy/cgl/basic/point.h \
+ include/takisy/cgl/basic/raster.h include/takisy/core/stretchy_buffer.h \
+ include/takisy/cgl/basic/rect.h include/takisy/cgl/basic/size.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/path/vertex_fetcher.h

@@ -1,0 +1,3 @@
+src/cgl/component/interpolator.unixo src/cgl/component/interpolator.unixd: src/cgl/component/interpolator.cpp \
+ include/takisy/core/math.h include/takisy/cgl/component/interpolator.h \
+ include/takisy/cgl/basic/point.h

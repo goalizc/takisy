@@ -1,0 +1,1 @@
+src/gui/basic/cursor.unixo src/gui/basic/cursor.unixd: src/gui/basic/cursor.cpp include/takisy/gui/basic/cursor.h

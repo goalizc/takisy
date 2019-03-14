@@ -1,0 +1,5 @@
+src/cgl/path/vertices_wrapper.unixo src/cgl/path/vertices_wrapper.unixd: src/cgl/path/vertices_wrapper.cpp \
+ include/takisy/cgl/path/vertices_wrapper.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/point.h \
+ include/takisy/core/math.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h

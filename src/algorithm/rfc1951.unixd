@@ -1,0 +1,2 @@
+src/algorithm/rfc1951.unixo src/algorithm/rfc1951.unixd: src/algorithm/rfc1951.cpp src/algorithm/rfc1951.h \
+ include/takisy/core/bit_buffer.h include/takisy/core/stretchy_buffer.h

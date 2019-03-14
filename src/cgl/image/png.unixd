@@ -1,0 +1,8 @@
+src/cgl/image/png.unixo src/cgl/image/png.unixd: src/cgl/image/png.cpp include/takisy/core/endian_type.h \
+ include/takisy/core/stretchy_buffer.h include/takisy/algorithm/crc.h \
+ include/takisy/algorithm/zlib.h include/takisy/cgl/basic/pixel_format.h \
+ include/takisy/cgl/basic/color.h include/takisy/core/math.h \
+ include/takisy/cgl/image/format.h include/takisy/core/stream.h \
+ include/takisy/core/file.h include/takisy/cgl/basic/canvas_adapter.h \
+ include/takisy/cgl/basic/canvas.h include/takisy/core/memory.h \
+ include/takisy/cgl/basic/gamma.h

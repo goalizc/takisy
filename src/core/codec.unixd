@@ -1,0 +1,2 @@
+src/core/codec.unixo src/core/codec.unixd: src/core/codec.cpp include/takisy/core/codec.h \
+ src/core/codec_uni2gbk.h

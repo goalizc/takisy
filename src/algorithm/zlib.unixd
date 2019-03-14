@@ -1,0 +1,3 @@
+src/algorithm/zlib.unixo src/algorithm/zlib.unixd: src/algorithm/zlib.cpp include/takisy/core/bit_buffer.h \
+ include/takisy/core/stretchy_buffer.h include/takisy/algorithm/adler.h \
+ include/takisy/algorithm/zlib.h src/algorithm/rfc1951.h

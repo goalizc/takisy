@@ -1,0 +1,1 @@
+src/core/math.unixo src/core/math.unixd: src/core/math.cpp include/takisy/core/math.h

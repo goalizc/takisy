@@ -1,0 +1,4 @@
+src/core/stream.unixo src/core/stream.unixd: src/core/stream.cpp include/takisy/core/osdet.h \
+ include/takisy/core/ftp_client.h include/takisy/algorithm/stralgo.h \
+ include/takisy/core/sys.h include/takisy/core/stream.h \
+ include/takisy/core/file.h include/takisy/core/stretchy_buffer.h

@@ -1,0 +1,8 @@
+src/cgl/path/builder/bspline.unixo src/cgl/path/builder/bspline.unixd: src/cgl/path/builder/bspline.cpp \
+ include/takisy/core/stretchy_buffer.h \
+ include/takisy/cgl/path/vertices_wrapper.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/point.h \
+ include/takisy/core/math.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h \
+ include/takisy/cgl/path/builder/bspline.h \
+ include/takisy/cgl/path/vertices.h

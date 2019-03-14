@@ -1,0 +1,10 @@
+src/cgl/pen.unixo src/cgl/pen.unixd: src/cgl/pen.cpp include/takisy/cgl/pen.h \
+ include/takisy/cgl/basic/color.h include/takisy/core/math.h \
+ include/takisy/cgl/brush.h include/takisy/cgl/basic/point.h \
+ include/takisy/cgl/component/gradient.h include/takisy/core/algo.h \
+ include/takisy/cgl/component/transformer.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h include/takisy/cgl/path/vertices.h \
+ include/takisy/cgl/component/interpolator.h src/cgl/impl/pen.hpp \
+ include/takisy/cgl/path/builder/contour.h \
+ include/takisy/cgl/path/builder/dashed_line.h

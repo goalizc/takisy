@@ -1,0 +1,2 @@
+src/cgl/basic/color.unixo src/cgl/basic/color.unixd: src/cgl/basic/color.cpp include/takisy/cgl/basic/color.h \
+ include/takisy/core/math.h

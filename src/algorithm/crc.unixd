@@ -1,0 +1,1 @@
+src/algorithm/crc.unixo src/algorithm/crc.unixd: src/algorithm/crc.cpp include/takisy/algorithm/crc.h

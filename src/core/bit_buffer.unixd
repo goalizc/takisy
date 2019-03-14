@@ -1,0 +1,2 @@
+src/core/bit_buffer.unixo src/core/bit_buffer.unixd: src/core/bit_buffer.cpp include/takisy/core/bit_buffer.h \
+ include/takisy/core/stretchy_buffer.h

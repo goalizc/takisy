@@ -1,0 +1,6 @@
+src/cgl/component/transformer.unixo src/cgl/component/transformer.unixd: src/cgl/component/transformer.cpp \
+ include/takisy/core/math.h include/takisy/cgl/path/vertices_wrapper.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/point.h \
+ include/takisy/cgl/basic/rect.h include/takisy/cgl/basic/size.h \
+ include/takisy/cgl/component/transformer.h \
+ include/takisy/cgl/path/vertices.h

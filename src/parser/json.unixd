@@ -1,0 +1,4 @@
+src/parser/json.unixo src/parser/json.unixd: src/parser/json.cpp include/takisy/algorithm/stralgo.h \
+ include/takisy/core/sys.h include/takisy/parser/json.h \
+ include/takisy/core/stream.h include/takisy/core/file.h \
+ include/takisy/core/stretchy_buffer.h

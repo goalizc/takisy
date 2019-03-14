@@ -1,0 +1,1 @@
+src/core/memory.unixo src/core/memory.unixd: src/core/memory.cpp include/takisy/core/memory.h

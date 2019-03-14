@@ -1,0 +1,7 @@
+src/cgl/path/builder/dashed_line.unixo src/cgl/path/builder/dashed_line.unixd: src/cgl/path/builder/dashed_line.cpp \
+ include/takisy/core/stretchy_buffer.h \
+ include/takisy/cgl/path/vertices_wrapper.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/point.h \
+ include/takisy/core/math.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h include/takisy/cgl/path/vertices.h \
+ include/takisy/cgl/path/builder/dashed_line.h

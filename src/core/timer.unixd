@@ -1,0 +1,2 @@
+src/core/timer.unixo src/core/timer.unixd: src/core/timer.cpp include/takisy/core/osdet.h \
+ include/takisy/core/timer.h include/takisy/core/handler.h

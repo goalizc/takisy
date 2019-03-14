@@ -1,0 +1,5 @@
+src/cgl/path/vertices.unixo src/cgl/path/vertices.unixd: src/cgl/path/vertices.cpp \
+ include/takisy/core/stretchy_buffer.h include/takisy/cgl/path/vertices.h \
+ include/takisy/cgl/path/path.h include/takisy/cgl/basic/point.h \
+ include/takisy/core/math.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h

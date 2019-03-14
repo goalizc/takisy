@@ -1,0 +1,1 @@
+src/cgl/font/font.unixo src/cgl/font/font.unixd: src/cgl/font/font.cpp include/takisy/cgl/font/font.h

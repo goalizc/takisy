@@ -1,0 +1,4 @@
+src/parser/ini.unixo src/parser/ini.unixd: src/parser/ini.cpp include/takisy/algorithm/stralgo.h \
+ include/takisy/core/sys.h include/takisy/parser/ini.h \
+ include/takisy/core/stream.h include/takisy/core/file.h \
+ include/takisy/core/stretchy_buffer.h

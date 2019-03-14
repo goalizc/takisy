@@ -1,0 +1,3 @@
+src/algorithm/stralgo.unixo src/algorithm/stralgo.unixd: src/algorithm/stralgo.cpp include/takisy/core/codec.h \
+ include/takisy/algorithm/stralgo.h include/takisy/core/sys.h \
+ src/algorithm/grisu.h

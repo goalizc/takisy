@@ -1,0 +1,2 @@
+src/core/os.unixo src/core/os.unixd: src/core/os.cpp include/takisy/core/osdet.h \
+ include/takisy/core/os.h

@@ -1,0 +1,4 @@
+src/cgl/path/builder/ellipse.unixo src/cgl/path/builder/ellipse.unixd: src/cgl/path/builder/ellipse.cpp include/takisy/core/math.h \
+ include/takisy/cgl/path/builder/ellipse.h include/takisy/cgl/path/path.h \
+ include/takisy/cgl/basic/point.h include/takisy/cgl/basic/rect.h \
+ include/takisy/cgl/basic/size.h include/takisy/cgl/path/vertices.h
