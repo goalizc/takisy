@@ -10,7 +10,7 @@ pen::pen(double width)
 {}
 
 pen::pen(double width, const ::color& color)
-    : pen(width, make_brushsptr<color_brush>(color))
+    : pen(width, make_spbrush<color_brush>(color))
 {}
 
 pen::pen(double width, const brush_sptr& brush)
@@ -21,7 +21,7 @@ pen::pen(double width, const brush_sptr& brush)
 }
 
 pen::pen(double width, const ::color& color, initlist_type initlist)
-    : pen(width, make_brushsptr<color_brush>(color), initlist)
+    : pen(width, make_spbrush<color_brush>(color), initlist)
 {}
 
 pen::pen(double width, const brush_sptr& brush, initlist_type initlist)
@@ -115,7 +115,7 @@ void pen::width(double width)
 
 void pen::color(const ::color& color)
 {
-    impl_->brush_ = make_brushsptr<color_brush>(color);
+    impl_->brush_ = make_spbrush<color_brush>(color);
 }
 
 void pen::brush(const brush_sptr& brush)

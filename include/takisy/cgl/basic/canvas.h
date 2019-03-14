@@ -121,24 +121,24 @@ public:
     void pixel(unsigned int x, unsigned int y, const Brush& brush)
         { pixel(x, y, brush(x, y)); }
     void pixel(unsigned int x, unsigned int y, const color& color)
-        { if (is_validxy(x, y)) unsafe_pixel(x, y).blend(color); }
-    void pixel(unsigned int x, unsigned int y, const absolute_color& color)
-        { if (is_validxy(x, y)) unsafe_pixel(x, y) = color; }
+        { if (valid_xy(x, y)) unsafe_pixel(x, y).blend(color); }
+    void pixel(unsigned int x, unsigned int y, const strict_color& color)
+        { if (valid_xy(x, y)) unsafe_pixel(x, y) = color; }
     template <typename Brush>
     void pixel(unsigned int x, unsigned int y,
                const Brush& brush, color::channel_type covarage)
         { pixel(x, y, brush(x, y), covarage); }
     void pixel(unsigned int x, unsigned int y,
                const color& color, color::channel_type covarage)
-        { if (is_validxy(x, y))
+        { if (valid_xy(x, y))
             unsafe_pixel(x, y).blend(color, gamma_.gamma_value(covarage)); }
     void pixel(unsigned int x, unsigned int y,
-               const absolute_color& color, color::channel_type covarage)
-        { if (is_validxy(x, y))
+               const strict_color& color, color::channel_type covarage)
+        { if (valid_xy(x, y))
             unsafe_pixel(x, y) = color * gamma_.gamma_value(covarage); }
 
 private:
-    bool is_validxy(unsigned int x, unsigned int y) const {
+    bool valid_xy(unsigned int x, unsigned int y) const {
         return x < width_ && y < height_;
     }
 

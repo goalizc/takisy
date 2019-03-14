@@ -4,8 +4,6 @@
 #include <algorithm>
 #include <stdexcept>
 #include <takisy/core/algo.h>
-#include <takisy/core/osdet.h>
-#include <takisy/core/stretchy_buffer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/widget/widget.h>
 #include "../basic/impl/color_scheme.hpp"
@@ -13,14 +11,18 @@
 namespace takisy {
 namespace gui
 {
-    extern widget*
-        captured_widget__;
-    extern std::map<cross_platform_window::Handle, widget*>
-        windows_as__, focus__;
-    extern std::set<cross_platform_window::Handle>
-        windows__, windows_widget__;
+    struct args { widget* widget; void* userdata; };
 
-    cross_platform_window::Handle handleFromLPWIDGET(const widget* widget)
+    extern UINT
+        user_msgid__;
+    extern widget*
+        capture_widget__;
+    extern std::map<window::Handle, widget*>
+        windows_as__, focus__;
+    extern std::set<window::Handle>
+        windows_widget__;
+
+    window::Handle handleFromLPWIDGET(const widget* widget)
     {
         for (auto& pair : windows_as__)
             if (pair.second == widget)
@@ -32,7 +34,6 @@ namespace gui
 
 class widget::implement
 {
-    friend class Window;
     friend class widget;
 
     static constexpr unsigned int limit = 1 << 16;
@@ -72,7 +73,7 @@ private:
     Rect rect_;
     Size lower_, upper_;
     const unsigned int id_;
-    std::map<std::string, stretchy_buffer<unsigned char>> properties_;
+    std::map<std::string, std::string> properties_;
     class color_scheme* color_scheme_;
 };
 
@@ -133,30 +134,14 @@ std::vector<widget*> widget::children(void) const
     return impl_->children_;
 }
 
-class color_scheme widget::color_scheme(void)
+bool widget::exists_property(const std::string& name) const
 {
-    class color_scheme* color_scheme = nullptr;
-    const widget* widget = this;
+    return impl_->properties_.find(name) != impl_->properties_.end();
+}
 
-    while (widget)
-    {
-        if (widget->impl_->color_scheme_)
-        {
-            color_scheme = widget->impl_->color_scheme_;
-            break;
-        }
-        else
-            widget = widget->father();
-    }
-
-    if (!color_scheme)
-        color_scheme = &color_scheme::default_color_scheme();
-
-    class color_scheme
-        retcs(*color_scheme);
-        retcs.impl_->host(this);
-
-    return retcs;
+std::string widget::property(const std::string& name) const
+{
+    return exists_property(name) ? impl_->properties_[name] : "";
 }
 
 int widget::x(void) const
@@ -217,7 +202,7 @@ bool widget::visible(void) const
 bool widget::focused(void) const
 {
     using takisy::gui::handleFromLPWIDGET;
-    cross_platform_window::Handle handle = handleFromLPWIDGET(forefather());
+    Window::Handle handle = handleFromLPWIDGET(forefather());
 
     return handle ? takisy::gui::focus__[handle] == this : false;
 }
@@ -361,25 +346,9 @@ bool widget::remove(widget* widget)
     return true;
 }
 
-class color_scheme& widget::color_scheme(const class color_scheme* colorscheme)
+void widget::property(const std::string& name, const std::string& value)
 {
-    if (!impl_->color_scheme_)
-    {
-        if (!colorscheme)
-            impl_->color_scheme_ = new class color_scheme(color_scheme());
-        else
-            impl_->color_scheme_ = new class color_scheme(*colorscheme);
-
-        repaint();
-    }
-    else
-    if (colorscheme)
-    {
-        *impl_->color_scheme_ = *colorscheme;
-        repaint();
-    }
-
-    return *impl_->color_scheme_;
+    impl_->properties_[name] = value;
 }
 
 void widget::x(int x)
@@ -408,7 +377,7 @@ void widget::xy(Point _xy)
         return;
 
     using takisy::gui::handleFromLPWIDGET;
-    cross_platform_window::Handle handle = handleFromLPWIDGET(this);
+    Window::Handle handle = handleFromLPWIDGET(this);
 
     if (!handle)
     {
@@ -418,7 +387,7 @@ void widget::xy(Point _xy)
     }
     else
     {
-        cross_platform_window window(handle);
+        Window window(handle);
 
         impl_->rect_ = impl_->rect_.move(_xy);
         window.xy(_xy - window.client_offset());
@@ -578,7 +547,7 @@ void widget::hide(void)
 void widget::focus(bool focused)
 {
     using takisy::gui::handleFromLPWIDGET;
-    cross_platform_window::Handle handle = handleFromLPWIDGET(forefather());
+    Window::Handle handle = handleFromLPWIDGET(forefather());
     if (!handle)
         return;
 
@@ -595,10 +564,24 @@ void widget::focus(bool focused)
     }
     else if (takisy::gui::focus__[handle] == this)
     {
-        takisy::gui::focus__[handle] = father();
+        takisy::gui::focus__[handle] = nullptr;
         onFocus(false);
-        if (takisy::gui::focus__[handle])
-            takisy::gui::focus__[handle]->onFocus(true);
+    }
+}
+
+void widget::capture(bool capture)
+{
+    Window window = forefather()->window();
+
+    if (capture) {
+        if (window.handle()) {
+            takisy::gui::capture_widget__ = this;
+            window.capture(true);
+        }
+    } else if (takisy::gui::capture_widget__ == this) {
+        takisy::gui::capture_widget__ = nullptr;
+        if (window.handle())
+            window.capture(false);
     }
 }
 
@@ -684,6 +667,56 @@ void widget::absolute_size(const Size& size)
     upper_size(size);
 }
 
+class color_scheme widget::color_scheme(void)
+{
+    class color_scheme* color_scheme = impl_->color_scheme_;
+    const widget* widget = father();
+
+    while (!color_scheme && widget)
+    {
+        color_scheme = widget->impl_->color_scheme_;
+        widget = widget->father();
+    }
+
+    class color_scheme retcs =
+        color_scheme ? *color_scheme : color_scheme::default_color_scheme();
+    retcs.impl_->host(this);
+
+    return retcs;
+}
+
+class color_scheme* widget::p_color_scheme(void)
+{
+    return impl_->color_scheme_;
+}
+
+const class color_scheme* widget::p_color_scheme(void) const
+{
+    return impl_->color_scheme_;
+}
+
+class color_scheme& widget::color_scheme(const class color_scheme* colorscheme)
+{
+    if (!impl_->color_scheme_)
+    {
+        if (colorscheme)
+            impl_->color_scheme_ = new class color_scheme(*colorscheme);
+        else
+            impl_->color_scheme_ = new class color_scheme(color_scheme());
+
+        impl_->color_scheme_->impl_->host(this);
+        repaint();
+    }
+    else if (colorscheme)
+    {
+       *impl_->color_scheme_ = *colorscheme;
+        impl_->color_scheme_->impl_->host(this);
+        repaint();
+    }
+
+    return *impl_->color_scheme_;
+}
+
 void widget::repaint(void)
 {
     repaint(client_rect());
@@ -723,29 +756,31 @@ void widget::repaint(const Rect& rect)
     widget->window().repaint(paint_rect);
 }
 
-void widget::capture(bool capture)
+long widget::emitmsg(int msgid, void* userdata)
 {
-    if (capture)
-    {
-        takisy::gui::captured_widget__ = this;
-        forefather()->window().capture(capture);
-    }
-    else
-    if (takisy::gui::captured_widget__ == this)
-        takisy::gui::captured_widget__ = nullptr;
+    Window::Handle handle = window().handle();
+    if (handle)
+        return SendMessage(handle, takisy::gui::user_msgid__, msgid,
+                           (LPARAM)new takisy::gui::args { this, userdata });
+
+    return 0;
 }
 
-bool widget::exists_property(const std::string& name) const
+void widget::async_emitmsg(int msgid, void* userdata)
 {
-    return impl_->properties_.find(name) != impl_->properties_.end();
+    Window::Handle handle = window().handle();
+    if (handle)
+        PostMessage(handle, takisy::gui::user_msgid__, msgid,
+                    (LPARAM)new takisy::gui::args { this, userdata });
 }
 
-bool widget::is_child(widget* widget) const
+bool widget::is_child(const widget* widget) const
 {
-    return impl_->find_child(widget) != impl_->children_.end();
+    return impl_->find_child(const_cast<class widget*>(widget))
+        != impl_->children_.end();
 }
 
-bool widget::is_senior(widget* widget) const
+bool widget::is_senior(const widget* widget) const
 {
     class widget* w = father();
 
@@ -755,76 +790,87 @@ bool widget::is_senior(widget* widget) const
     return w;
 }
 
-bool widget::is_junior(widget* widget) const
+bool widget::is_junior(const widget* widget) const
 {
-    for (const class widget* child : impl_->children_)
-        if (child == widget || child->is_junior(widget))
-            return true;
-
-    return false;
+    return widget && widget->is_senior(this);
 }
 
 bool widget::as_window(void)
 {
-    return as_window(cross_platform_window::wsWidgetWindow);
+    return as_window(Window::wsWidgetWindow);
 }
 
 bool widget::as_window(unsigned long wndstyle)
 {
     if (father())
         return false;
-
     if (is_window())
         return true;
 
-    cross_platform_window::Handle handle =
-            cross_platform_window::create(wndstyle);
+    auto handle = Window::create(wndstyle);
     if (!handle)
         return false;
     else
-    {
-        takisy::gui::windows__.insert(handle);
         takisy::gui::windows_widget__.insert(handle);
-    }
 
     return as_window(handle);
 }
 
-bool widget::as_window(const cross_platform_window& window)
+bool widget::as_window(Window window)
 {
-    return as_window(window.handle());
+    return as_window(window, true);
 }
 
-bool widget::as_window(cross_platform_window::Handle handle)
+bool widget::as_window(Window window, bool reset)
 {
+    using namespace takisy::gui;
+
     if (father())
         return false;
 
-    using namespace takisy::gui;
+    Window::Handle
+        as_handle = handleFromLPWIDGET(this), handle = window.handle();
 
-    cross_platform_window::Handle as_handle = handleFromLPWIDGET(this);
     if (as_handle)
     {
         windows_as__.erase(as_handle);
+
         if (windows_widget__.find(as_handle) != windows_widget__.end())
-            cross_platform_window(as_handle).close();
+            Window(as_handle).close();
         else
-            cross_platform_window(as_handle).repaint();
+            Window(as_handle).repaint();
     }
 
     if (handle)
     {
-        cross_platform_window window(handle);
+        if (reset)
+        {
+            window.xy(xy() - window.client_offset());
+            window.client_size(size());
+            window.visible(visible());
+        }
+        else
+        {
+            xy(window.xy() + window.client_offset());
+            size(window.client_size());
+            visible(window.visible());
+        }
 
-        window.xy(xy() - window.client_offset());
-        window.client_size(size());
-        window.visible(visible());
         window.repaint();
-
         windows_as__[handle] = this;
     }
 
     return true;
+}
+
+bool widget::as_window(Window::Handle handle)
+{
+    return as_window(Window(handle));
+}
+
+bool widget::as_window(Window::Handle handle, bool reset)
+{
+    return as_window(Window(handle), reset);
 }
 
 bool widget::is_window(void) const
@@ -832,9 +878,9 @@ bool widget::is_window(void) const
     return !!takisy::gui::handleFromLPWIDGET(this);
 }
 
-cross_platform_window widget::window(void) const
+widget::Window widget::window(void) const
 {
-    return cross_platform_window(takisy::gui::handleFromLPWIDGET(this));
+    return Window(takisy::gui::handleFromLPWIDGET(this));
 }
 
 Size widget::optimal(OptimalPolicy policy) const
@@ -886,63 +932,9 @@ bool widget::onKeyDown(sys::VirtualKey)           { return false; }
 bool widget::onKeyPress(unsigned int)             { return false; }
 bool widget::onKeyUp(sys::VirtualKey)             { return false; }
 bool widget::onMouseDown(sys::Button, int, Point) { return false; }
-bool widget::onMouseUp(sys::Button, Point)        { return false; }
+bool widget::onMouseUp(sys::Button, int, Point)   { return false; }
 bool widget::onMouseMove(Point)                   { return false; }
 bool widget::onMouseEnter(void)                   { return false; }
 bool widget::onMouseLeave(void)                   { return false; }
 bool widget::onMouseWheel(int, Point)             { return false; }
-bool widget::onWindowClose(void)                  { return true;  }
-void widget::onWindowDestroy(void)                {               }
-
-void* widget::property(const std::string& name) const
-{
-    return exists_property(name) ? impl_->properties_[name].data() : nullptr;
-}
-
-void widget::property(const std::string& name,
-                      const void* value, unsigned int length)
-{
-    impl_->properties_[name].resize(length);
-    memcpy(impl_->properties_[name].data(), value, length);
-}
-
-template <>
-char* widget::property<char*>(const std::string& name) const
-{
-    void*  value = property(name);
-    return value ? reinterpret_cast<char*>(value) : nullptr;
-}
-
-template <>
-const char* widget::property<const char*>(const std::string& name) const
-{
-    return property<char*>(name);
-}
-
-template <>
-std::string widget::property<std::string>(const std::string& name) const
-{
-    return property<char*>(name);
-}
-
-template <>
-void widget::property<char*>(const std::string& name, char* const& value)
-{
-    property(name, value, strlen(value) + 1);
-}
-
-template <>
-void widget::property<const char*>
-        (const std::string& name, const char* const& value)
-{
-    property(name, value, strlen(value) + 1);
-}
-
-template <>
-void widget::property<std::string>
-        (const std::string& name, const std::string& value)
-{
-    property(name, value.data(), value.size());
-}
-
-#undef doIfAsWindow
+long widget::onMessage(int, void*)                { return 0;     }

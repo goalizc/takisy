@@ -4,7 +4,6 @@
 #include <set>
 #include <vector>
 #include <string>
-#include <initializer_list>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/scroll.h>
 
@@ -19,8 +18,7 @@ public:
     DECLARE_HANDLER(onItemTextChanged, unsigned int /* index */);
     DECLARE_HANDLER(onItemClicked,
                     unsigned int /* index  */,
-                    sys::Button  /* button */,
-                    unsigned int /* times  */);
+                    sys::Button  /* button */);
     DECLARE_HANDLER(onItemDoubleClicked,
                     unsigned int /* index  */,
                     sys::Button  /* button */);
@@ -36,26 +34,24 @@ public:
     list(const std::vector<std::string>& items);
     list(const std::vector<std::string>& items, const std::string& codec);
     list(const std::vector<std::wstring>& items);
-    list(std::initializer_list<std::string> list);
-    list(std::initializer_list<std::string> list, const std::string& codec);
-    list(std::initializer_list<std::wstring> list);
    ~list(void);
 
 public:
-    unsigned int              count(void) const;
+    unsigned int  count(void) const;
     std::vector<std::wstring> items(void) const;
-    std::wstring              item(unsigned int index) const;
-    unsigned int              current(void) const;
-    unsigned int              edit_trigger(void) const;
-    bool                      editable(unsigned int index) const;
-    SelectionMode             selection_mode(void) const;
-    bool                      selected(unsigned int index) const;
-    std::set<unsigned int>    selected(void) const;
-    const class font*         font(unsigned int index) const;
-    brush_sptr                text_brush(unsigned int index) const;
-    brush_sptr                background_brush(unsigned int index) const;
-    brush_sptr                selection_brush(unsigned int index) const;
-    unsigned int              alignment(unsigned int index) const;
+    std::wstring  item(unsigned int index) const;
+    unsigned int  current(void) const;
+    unsigned int  edit_trigger(void) const;
+    bool          editable(unsigned int index) const;
+    SelectionMode selection_mode(void) const;
+    bool          selected(unsigned int index) const;
+    std::set<unsigned int> selected(void) const;
+    const class font* font(unsigned int index) const;
+    brush_sptr    text_brush(unsigned int index) const;
+    brush_sptr    background_brush(unsigned int index) const;
+    brush_sptr    selection_brush(unsigned int index) const;
+    unsigned int  alignment(unsigned int index) const;
+    Size          optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void item(unsigned int index, const std::string& text);
@@ -120,7 +116,7 @@ public:
     bool onKeyPress(unsigned int chr) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
 
 private:
     class implement* impl_;

@@ -144,7 +144,7 @@ bool image::load_stream(const stream& istream)
 
     for (const format* format : implement::formats_)
     {
-        stptr->seek(0, stream::stBegin);
+        stptr->seek(0, stream::beg);
 
         if (load_stream(*stptr, *format))
             return true;

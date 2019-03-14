@@ -77,23 +77,4 @@ public:
     vertical_layout(void);
 };
 
-class grid_layout final : public layout
-{
-    class implement;
-
-public:
-    grid_layout(unsigned int column, unsigned int row);
-
-public:
-    widget* item(unsigned int col, unsigned int row) const;
-    widget* item(unsigned int col, unsigned int row, widget* item);
-
-public:
-    bool onAdding(widget* widget) override;
-    bool onRemoving(widget* widget) override;
-
-private:
-    class implement* impl_;
-};
-
 #endif // layout_h_20151126

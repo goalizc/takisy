@@ -13,16 +13,6 @@ std::string stream::read_all(void) const
     return buffer;
 }
 
-std::string stream::read_line(void) const
-{
-    stralgo::string line = read_until(0x0a);
-
-    if (line.endswith({0x0d}))
-        line.resize(line.size() - 1);
-
-    return line;
-}
-
 std::string stream::read_chars(unsigned long nchars) const
 {
     stretchy_buffer<char> buffer(nchars);
@@ -30,6 +20,16 @@ std::string stream::read_chars(unsigned long nchars) const
     buffer.resize(read(buffer.data(), buffer.size()));
 
     return buffer;
+}
+
+std::string stream::read_line(void) const
+{
+    std::string line = read_until('\n');
+
+    if (!line.empty() && line.back() == '\r')
+         line.pop_back();
+
+    return line;
 }
 
 std::string stream::read_until(char terminator) const
@@ -40,30 +40,12 @@ std::string stream::read_until(char terminator) const
     while (read(ch) == sizeof(ch) && ch != terminator)
         buffer += ch;
 
-    return buffer;
-}
-
-std::string stream::read_until(const std::string& terminator) const
-{
-    stralgo::string buffer;
-    char ch;
-
-    while (read(ch) == sizeof(ch))
-    {
-        buffer += ch;
-        if (buffer.endswith(terminator))
-        {
-            buffer.resize(buffer.size() - terminator.size());
-            break;
-        }
-    }
-
-    return buffer;
+    return std::move(buffer);
 }
 
 unsigned long stream::obtain(const std::string& uri)
 {
-    std::shared_ptr<stream> stream = from_uri(uri);
+    sptr stream = from_uri(uri);
 
     if (!stream)
         return 0;
@@ -85,7 +67,7 @@ unsigned long stream::obtain(const stream& src)
     return length;
 }
 
-std::shared_ptr<stream> stream::from_uri(const std::string& uri)
+stream::sptr stream::from_uri(const std::string& uri)
 {
     stralgo::strings pair = stralgo::split(uri, "://", 1);
     if (pair.size() == 1)
@@ -94,14 +76,13 @@ std::shared_ptr<stream> stream::from_uri(const std::string& uri)
         pair[0] = "file"; pair[1] = uri;
     }
 
-    std::string protocol = stralgo::lower(pair[0]);
+    std::string protocol = pair[0].lower();
     if (protocol == "buffer")
-        return std::shared_ptr<stream>
-            (new buffer_stream(pair[1].c_str(), pair[1].size()));
+        return sptr(new buffer_stream(pair[1].c_str(), pair[1].size()));
     else if (protocol == "file" || protocol == "pipe")
     {
+        sptr stream = nullptr;
         pair = stralgo::split(pair[1], "@", 1);
-        std::shared_ptr<stream> stream = nullptr;
 
         if (protocol == "file")
         {
@@ -130,7 +111,7 @@ std::shared_ptr<stream> stream::from_uri(const std::string& uri)
         unsigned short port = stralgo::atoi(pair[1]);
 
         if (protocol == "tcp")
-            return std::shared_ptr<stream>(new tcp_stream(ip.c_str(), port));
+            return sptr(new tcp_stream(ip.c_str(), port));
         else
         {
             udp_stream* udp_stream = new class udp_stream;
@@ -141,11 +122,11 @@ std::shared_ptr<stream> stream::from_uri(const std::string& uri)
 
             udp_stream->endpoint(endpoint);
 
-            return std::shared_ptr<stream>(udp_stream);
+            return sptr(udp_stream);
         }
     }
     else if (protocol == "http")
-        return std::shared_ptr<stream>(new http_stream(uri.c_str()));
+        return sptr(new http_stream(uri.c_str()));
     else if (protocol == "ftp")
     {
         pair = stralgo::split(pair[1], "/", 1);
@@ -181,7 +162,7 @@ std::shared_ptr<stream> stream::from_uri(const std::string& uri)
             || ftp.login(pair[0].c_str(), pair[1].c_str()).status[0] != '2')
             return nullptr;
 
-        std::shared_ptr<stream> stream(new buffer_stream);
+        sptr stream(new buffer_stream);
         if (ftp.get(path.c_str(), *stream).status[0] != '2')
             return nullptr;
 
@@ -250,17 +231,17 @@ bool seek_stream::writable(void) const
     return false;
 }
 
-bool seek_stream::seek(long offset, SeekType seek_type) const
+bool seek_stream::seek(long offset, seekdir seekdir) const
 {
-    switch (seek_type)
+    switch (seekdir)
     {
-    case stBegin:
-    case stCurrent:
+    case beg:
+    case cur:
         {
             long oldtell = impl_->history_.tell();
-            impl_->history_.seek(offset, seek_type);
+            impl_->history_.seek(offset, seekdir);
             long newtell = impl_->history_.tell();
-            long dsttell = offset + (seek_type == stCurrent ? oldtell : 0);
+            long dsttell = offset + (seekdir == cur ? oldtell : 0);
 
             if (newtell < dsttell)
             {
@@ -269,9 +250,9 @@ bool seek_stream::seek(long offset, SeekType seek_type) const
             }
         }
         return true;
-    case stEnd:
+    case end:
         impl_->history_.obtain(impl_->stream_);
-        impl_->history_.seek(offset, seek_type);
+        impl_->history_.seek(offset, seekdir);
         return true;
     default:
         return false;
@@ -292,7 +273,7 @@ unsigned long seek_stream::read(void* buffer, unsigned long size) const
         if (rl > 0)
         {
             impl_->history_.write(buffer_uc + hl, rl);
-            impl_->history_.seek(0, stEnd);
+            impl_->history_.seek(0, end);
         }
 
         return hl + rl;
@@ -396,15 +377,15 @@ bool buffer_stream::writable(void) const
     return true;
 }
 
-bool buffer_stream::seek(long offset, SeekType seek_type) const
+bool buffer_stream::seek(long offset, seekdir seekdir) const
 {
     long tell = -1;
 
-    switch (seek_type)
+    switch (seekdir)
     {
-    case stBegin:   tell = offset; break;
-    case stCurrent: tell = impl_->tell_ + offset; break;
-    case stEnd:     tell = impl_->buffer_.size() + offset; break;
+    case beg: tell = offset; break;
+    case cur: tell = impl_->tell_ + offset; break;
+    case end: tell = impl_->buffer_.size() + offset; break;
     }
 
     if (tell < 0)
@@ -512,14 +493,14 @@ bool file_stream::writable(void) const
     return impl_->file_;
 }
 
-bool file_stream::seek(long offset, SeekType seek_type) const
+bool file_stream::seek(long offset, seekdir seekdir) const
 {
-    switch (seek_type)
+    switch (seekdir)
     {
-    case stBegin:   return fseek(impl_->file_, offset, SEEK_SET) == 0;
-    case stCurrent: return fseek(impl_->file_, offset, SEEK_CUR) == 0;
-    case stEnd:     return fseek(impl_->file_, offset, SEEK_END) == 0;
-    default:        return false;
+    case beg: return fseek(impl_->file_, offset, SEEK_SET) == 0;
+    case cur: return fseek(impl_->file_, offset, SEEK_CUR) == 0;
+    case end: return fseek(impl_->file_, offset, SEEK_END) == 0;
+    default:  return false;
     }
 }
 
@@ -614,7 +595,7 @@ bool pipe_stream::writable(void) const
     return impl_->pipe_;
 }
 
-bool pipe_stream::seek(long, SeekType) const
+bool pipe_stream::seek(long, seekdir) const
 {
     return false;
 }
@@ -754,7 +735,7 @@ bool tcp_stream::writable(void) const
     return impl_->fd_ != -1;
 }
 
-bool tcp_stream::seek(long offset, SeekType seek_type) const
+bool tcp_stream::seek(long offset, seekdir) const
 {
     return false;
 }
@@ -915,7 +896,7 @@ bool udp_stream::writable(void) const
     return impl_->fd_ != -1;
 }
 
-bool udp_stream::seek(long, SeekType) const
+bool udp_stream::seek(long, seekdir) const
 {
     return false;
 }
@@ -965,7 +946,7 @@ public:
     implement(std::string url,
               stralgo::string method, dict headers,
               const std::string& data)
-        : tcp_stream_(nullptr), content_length_(-1), tell_(0)
+        : tcp_(nullptr), left_(-1), tell_(0)
     {
         // 去除 http:// 前缀
         std::string prefix = "http://";
@@ -1016,8 +997,8 @@ public:
 
     ~implement(void)
     {
-        if (tcp_stream_)
-            delete tcp_stream_;
+        if (tcp_)
+            delete tcp_;
     }
 
 private:
@@ -1025,33 +1006,33 @@ private:
                  const std::string& request)
     {
         // 清除
-        if (tcp_stream_)
-            delete tcp_stream_;
+        if (tcp_)
+            delete tcp_;
         headers_.clear();
-        content_length_ = -1;
+        left_ = -1;
         tell_ = 0;
 
         // 建立到服务器的连接
-        tcp_stream_ = new tcp_stream(host.c_str(), port);
-        if (!tcp_stream_
-            || !tcp_stream_->readable() || !tcp_stream_->writable())
+        tcp_ = new tcp_stream(host.c_str(), port);
+        if (!tcp_
+            || !tcp_->readable() || !tcp_->writable())
             return false;
         else
             host_ = host, port_ = port;
 
         // 发送请求消息到服务器
         unsigned long length = request.size();
-        if (tcp_stream_->write(request.c_str(), length) != length)
+        if (tcp_->write(request.c_str(), length) != length)
         {
-            delete tcp_stream_;
-            tcp_stream_ = nullptr;
+            delete tcp_;
+            tcp_ = nullptr;
             return false;
         }
         else
             request_ = request;
 
         // 读取HTTP响应消息并解析响应状态码
-        status_ = stralgo::split(tcp_stream_->read_line(), " ", 2);
+        status_ = stralgo::split(tcp_->read_line(), " ", 2);
         if (status_.size() == 0)
             status_.push_back("HTTP/1.0");
         if (status_.size() == 1)
@@ -1062,18 +1043,21 @@ private:
         // 解析响应消息头
         while (true)
         {
-            std::string line = tcp_stream_->read_line();
+            std::string line = tcp_->read_line();
             if (line.empty())
                 break;
 
             stralgo::strings pair = stralgo::split(line, ":", 1);
             if (pair.size() == 2)
-                headers_[stralgo::lower(pair[0])] = pair[1];
+                headers_[stralgo::lower(pair[0].trim())] = pair[1].trim();
         }
 
-        // 获取http正文长度
+        // 获取content-length或者transfer-encoding
         if (headers_.find("content-length") != headers_.end())
-            content_length_ = stralgo::atoll(headers_["content-length"]);
+            left_ = stralgo::atol(headers_["content-length"]);
+        else if (headers_.find("transfer-encoding") != headers_.end()
+                 && stralgo::lower(headers_["transfer-encoding"]) == "chunked")
+            left_ = stralgo::frts<long, 16>(tcp_->read_line());
 
         return true;
     }
@@ -1101,10 +1085,10 @@ private:
     std::string      host_;
     unsigned short   port_;
     std::string      request_;
-    tcp_stream*      tcp_stream_;
+    tcp_stream*      tcp_;
     stralgo::strings status_;
     dict             headers_;
-    long             content_length_, tell_;
+    long             left_, tell_;
 };
 
 http_stream::http_stream(const char* url)
@@ -1155,19 +1139,19 @@ int http_stream::status_code(void) const
     return stralgo::atoi(impl_->status_[1]);
 }
 
-const char* http_stream::status_description(void) const
+std::string http_stream::status_description(void) const
 {
-    return impl_->status_[2].c_str();
+    return impl_->status_[2];
 }
 
-const char* http_stream::header(const char* key) const
+std::string http_stream::header(const char* key) const
 {
     std::string lower_key = stralgo::lower(key);
 
     if (impl_->headers_.find(lower_key) == impl_->headers_.end())
-        return nullptr;
+        return "";
 
-    return impl_->headers_[lower_key].c_str();
+    return impl_->headers_[lower_key];
 }
 
 long http_stream::tell(void) const
@@ -1182,12 +1166,12 @@ bool http_stream::seekable(void) const
 
 bool http_stream::readable(void) const
 {
-    if (impl_->content_length_ != -1)
-        return impl_->tcp_stream_
-            && impl_->tcp_stream_->readable()
-            && impl_->tell_ < impl_->content_length_;
+    if (impl_->left_ != -1)
+        return impl_->tcp_
+            && impl_->tcp_->readable()
+            && impl_->left_;
     else
-        return impl_->tcp_stream_ && impl_->tcp_stream_->readable();
+        return impl_->tcp_ && impl_->tcp_->readable();
 }
 
 bool http_stream::writable(void) const
@@ -1195,7 +1179,7 @@ bool http_stream::writable(void) const
     return false;
 }
 
-bool http_stream::seek(long offset, SeekType seek_type) const
+bool http_stream::seek(long offset, seekdir) const
 {
     return false;
 }
@@ -1205,23 +1189,29 @@ unsigned long http_stream::read(void* buffer, unsigned long size) const
     if (!readable())
         return 0;
 
-    if (impl_->content_length_ != -1)
+    unsigned long readed = 0;
+    unsigned char* ucbuffer = reinterpret_cast<unsigned char*>(buffer);
+
+    while (impl_->left_ && size)
     {
-        unsigned long long left_length = impl_->content_length_ - impl_->tell_;
+        if (impl_->left_ > 0 && impl_->left_ < (long)size)
+            size = impl_->left_;
 
-        if (left_length < size)
-            size = left_length;
-    }
+        unsigned long length = impl_->tcp_->read(buffer, size);
+        if (length == 0)
+            break;
 
-    unsigned long length = 0;
-
-    if (size > 0)
-    {
-        length = impl_->tcp_stream_->read(buffer, size);
+        ucbuffer += length;
+        size -= length;
+        readed += length;
         impl_->tell_ += length;
+
+        if (impl_->left_ > 0 && (impl_->left_ -= length) == 0)
+            if (stralgo::lower(header("transfer-encoding")) == "chunked")
+                impl_->left_ = stralgo::frts<int, 16>(impl_->tcp_->read_line());
     }
 
-    return length;
+    return readed;
 }
 
 unsigned long http_stream::write(const void* buffer, unsigned long size)
@@ -1252,10 +1242,30 @@ http_stream::dict http_stream::decode_query(const std::string& query)
 
     for (const stralgo::strings::value_type& value : strings)
     {
-        stralgo::strings pair = stralgo::split(value, "=");
+        stralgo::strings pair = stralgo::split(value, "=", 1);
         if (pair.size() == 2)
             result[pair[0]] = pair[1];
     }
 
-    return result;
+    return std::move(result);
+}
+
+stream::sptr operator""_us(const char* uri, size_t)
+{
+    return stream::from_uri(uri);
+}
+
+buffer_stream operator""_bs(const char* buffer, size_t size)
+{
+    return buffer_stream(buffer, size);
+}
+
+file_stream operator""_fs(const char* filepath, size_t)
+{
+    return file_stream(filepath);
+}
+
+http_stream operator""_hs(const char* url, size_t)
+{
+    return http_stream(url);
 }

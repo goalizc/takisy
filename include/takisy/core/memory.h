@@ -68,11 +68,10 @@ public:
         {
             if (count == 0)
                 return address;
-            else
-                address[0] = t;
 
             unsigned int i = 1;
 
+            address[0] = t;
             while ((i << 1) < count)
                 memcpy(address + i, address, i * sizeof(T)), i <<= 1;
             memcpy(address + i, address, (count - i) * sizeof(T));

@@ -21,6 +21,8 @@ static std::vector<codemap> g_gbk2uni_map = g_uni2gbk_map;
 unsigned int codec::gbk2uni(unsigned int gbk)
 {
     static const bool sorted = [](){
+        for (codemap& codemap : g_gbk2uni_map)
+            std::swap(codemap.code, codemap.map_code);
         std::sort(g_gbk2uni_map.begin(), g_gbk2uni_map.end());
         return true;
     }();

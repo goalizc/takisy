@@ -130,7 +130,7 @@ void slider::end(void)
     value(max());
 }
 
-bool slider::onMouseUp(sys::Button button, Point point)
+bool slider::onMouseUp(sys::Button button, int times, Point point)
 {
     impl_->dragging_ = false;
     capture(false);

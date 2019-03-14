@@ -10,7 +10,6 @@ class image
 
 public:
     image(void);
-    explicit
     image(const char* uri);
     image(const char* uri, const format& format);
     image(const stream& stream);

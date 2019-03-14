@@ -6,17 +6,17 @@
 #include <takisy/algorithm/stralgo.h>
 #include "grisu.h"
 
-stralgo::string stralgo::strf(float value)
+std::string stralgo::strf(float value)
 {
     return grisu::strf(value);
 }
 
-stralgo::string stralgo::strf(double value)
+std::string stralgo::strf(double value)
 {
     return grisu::strf(value);
 }
 
-stralgo::string stralgo::strf(long double value)
+std::string stralgo::strf(long double value)
 {
     return sprintf("%.30Lg", value);
 }
@@ -46,39 +46,41 @@ stralgo::string stralgo::sprintf(const std::string& pattern, ...)
 
 stralgo::strings stralgo::codecs(void)
 {
-    return { "gb2312", "gbk", "utf-8" };
+    return { "gbk", "utf8" };
 }
 
-stralgo::wstring stralgo::decode(const std::string& text, const string& codec)
+stralgo::wstring
+stralgo::decode(const std::string& text, const std::string& codec)
 {
-    if (codec == "utf-8")
-        return codec::utf82uni(text);
-    else
-    if (codec == "gb2312" || codec == "gbk")
+    if (codec == "gbk")
         return codec::gbk2uni(text);
+    else
+    if (codec == "utf8")
+        return codec::utf82uni(text);
     else
         return L"";
 }
 
-stralgo::string stralgo::encode(const std::wstring& text, const string& codec)
+stralgo::string
+stralgo::encode(const std::wstring& text, const std::string& codec)
 {
-    if (codec == "utf-8")
-        return codec::uni2utf8(text);
-    else
-    if (codec == "gb2312" || codec == "gbk")
+    if (codec == "gbk")
         return codec::uni2gbk(text);
+    else
+    if (codec == "utf8")
+        return codec::uni2utf8(text);
     else
         return "";
 }
 
 stralgo::string
-    stralgo::convert(const std::string& text,
-                     const string& text_codec, const string& convert_codec)
+stralgo::convert(const std::string& text,
+                 const std::string& text_codec, const std::string& conv_codec)
 {
-    return encode(decode(text, text_codec), convert_codec);
+    return encode(decode(text, text_codec), conv_codec);
 }
 
-stralgo::string stralgo::format_ss(const char* ptr, const strings& strings)
+stralgo::string stralgo::format_ss(const char* ptr, const strings& strs)
 {
     stralgo::string string;
 
@@ -90,47 +92,21 @@ stralgo::string stralgo::format_ss(const char* ptr, const strings& strings)
                 const char* endptr = ptr + 1;
                 unsigned int i = 0;
                 do { i = i * 10 + *endptr - '0'; } while (isdigit(*++endptr));
-                if (i < strings.size()) {
-                    string += strings[i];
-                    if (*(ptr = endptr) == ';')
+                if (i < strs.size()) {
+                    string += strs[i];
+                    if (ptr = endptr, *ptr == ';')
                         ++ptr;
                 } else
                     do { string += *ptr++; } while (ptr != endptr);
-            } else if (ptr[1] != ';')
-                string += *ptr++;
-            else
-                string += *ptr++, ++ptr;
+            } else if (string += *ptr++, *ptr == ';')
+                ++ptr;
         }
     }
 
-    return string;
+    return std::move(string);
 }
 
-template <>
-bool stralgo::string::as<bool>(void) const
+stralgo::string operator""_ts(const char* cstr, size_t len)
 {
-    return lower() == "true" || as<int>();
-}
-
-template <>
-float stralgo::string::as<float>(void) const
-{
-    return atof(base_type::c_str());
-}
-
-template <>
-double stralgo::string::as<double>(void) const
-{
-    return atof(base_type::c_str());
-}
-
-template <>
-long double stralgo::string::as<long double>(void) const
-{
-    long double value;
-
-    if (sscanf(base_type::c_str(), "%Lg", &value) == 1)
-        return value;
-
-    return 0;
+    return stralgo::string(cstr, len);
 }

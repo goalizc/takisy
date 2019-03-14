@@ -45,7 +45,7 @@ public:
 
 public:
     bool onSetCursor(Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
     bool onMouseWheel(int delta, Point point) override;
@@ -85,18 +85,37 @@ public:
    ~scroll_area(void);
 
 public:
-          class vertical_scroll&   vertical_scroll(void);
-    const class vertical_scroll&   vertical_scroll(void) const;
-          class horizontal_scroll& horizontal_scroll(void);
+    class vertical_scroll& vertical_scroll(void);
+    const class vertical_scroll& vertical_scroll(void) const;
+    class horizontal_scroll& horizontal_scroll(void);
     const class horizontal_scroll& horizontal_scroll(void) const;
 
 public:
     void onSize(void) override;
     bool onSetCursor(Point point) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
     bool onMouseWheel(int delta, Point point) override;
+
+private:
+    class implement* impl_;
+};
+
+class scroll_view : public scroll_area
+{
+    class implement;
+
+public:
+    scroll_view(class widget* widget);
+   ~scroll_view(void);
+
+public:
+    class widget* widget(void) const;
+
+public:
+    bool onChildMoving(class widget* child, Point& point) override;
+    void onChildSize(class widget* child) override;
 
 private:
     class implement* impl_;

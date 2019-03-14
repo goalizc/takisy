@@ -580,6 +580,7 @@ void graphics::draw_image(int x, int y,
                           int cx, int cy,
                           unsigned int width, unsigned int height)
 {
+    typedef implement::canvas_type::pixel_format pixel_format;
     const rect& r = impl_->prect_;
 
     if (cx + (int)width < 0 || cy + (int)height < 0
@@ -601,10 +602,16 @@ void graphics::draw_image(int x, int y,
     x += impl_->poffset_.x;
     y += impl_->poffset_.y;
 
-    for (unsigned int i = 0; i < height; ++i)
-    for (unsigned int j = 0; j < width;  ++j)
-        impl_->canvas_->unsafe_pixel(x + j, y + i)
-                              .blend(canvas.pixel(cx + j, cy + i));
+    if (canvas.strict() && canvas.pixel_flag() == pixel_format::flag())
+        for (unsigned int i = 0; i < height; ++i)
+            memcpy(impl_->canvas_->row(y + i) + x,
+                   canvas.row_buffer(cy + i) + cx * pixel_format::pixel_bytes(),
+                   width * pixel_format::pixel_bytes());
+    else
+        for (unsigned int i = 0; i < height; ++i)
+        for (unsigned int j = 0; j < width;  ++j)
+            impl_->canvas_->unsafe_pixel(x + j, y + i)
+                           .blend(canvas.pixel(cx + j, cy + i));
 }
 
 void graphics::draw_image(int x, int y, const canvas_adapter& canvas,

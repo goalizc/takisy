@@ -13,7 +13,7 @@ public:
     unsigned int advance;
     int pitch;
     unsigned char pixel_mode;
-    unsigned char* buffer;
+    unsigned char *buffer;
 
 public:
     static Gray get_gray(unsigned char pixel_mode);

@@ -4,13 +4,14 @@
 #include <string>
 #include <vector>
 #include <takisy/core/sys.h>
-#include <takisy/gui/cross_platform_window.h>
+#include <takisy/gui/window.h>
 #include <takisy/gui/basic/color_scheme.h>
 #include <takisy/cgl/graphics.h>
 
 class widget
 {
     class implement;
+    typedef ::window Window;
 
 public:
     enum OptimalPolicy
@@ -34,9 +35,8 @@ public:
     widget*              forefather(void);
     const widget*        forefather(void) const;
     std::vector<widget*> children(void) const;
-    template <typename ReturnType>
-    ReturnType           property(const std::string& name) const;
-    class color_scheme   color_scheme(void);
+    bool                 exists_property(const std::string& name) const;
+    std::string          property(const std::string& name) const;
 
     int          x(void) const;
     int          y(void) const;
@@ -72,9 +72,7 @@ public:
     bool add(widget* widget);
     bool add(widget* widget, unsigned int index);
     bool remove(widget* widget);
-    template <typename ValueType>
-    void property(const std::string& name, const ValueType& value);
-    class color_scheme& color_scheme(const class color_scheme* color_scheme);
+    void property(const std::string& name, const std::string& value);
 
     void x(int x);
     void y(int y);
@@ -93,6 +91,7 @@ public:
     void show(void);
     void hide(void);
     void focus(bool focused);
+    void capture(bool capture);
 
 public:
     void lower_width(unsigned int lower_width);
@@ -109,25 +108,35 @@ public:
     void absolute_size(const Size& size);
 
 public:
+    class color_scheme color_scheme(void);
+    class color_scheme* p_color_scheme(void);
+    const class color_scheme* p_color_scheme(void) const;
+    class color_scheme& color_scheme(const class color_scheme* color_scheme);
+
+public:
     void repaint(void);
     void repaint(int x, int y, unsigned int width, unsigned int height);
     void repaint(const Point& xy, const Size& size);
     void repaint(const Rect& rect);
-    void capture(bool capture);
+    long emitmsg(int msgid, void* userdata);
+    void async_emitmsg(int msgid, void* userdata);
 
 public:
-    bool exists_property(const std::string& name) const;
-    bool is_child(widget* widget) const;
-    bool is_senior(widget* widget) const;
-    bool is_junior(widget* widget) const;
+    bool is_child(const widget* widget) const;
+    bool is_senior(const widget* widget) const;
+    bool is_junior(const widget* widget) const;
 
 public:
     bool as_window(void);
     bool as_window(unsigned long wndstyle);
-    bool as_window(const cross_platform_window& window);
-    bool as_window(cross_platform_window::Handle handle);
+    bool as_window(Window window);
+    bool as_window(Window window, bool reset);
+    bool as_window(Window::Handle handle);
+    bool as_window(Window::Handle handle, bool reset);
     bool is_window(void) const;
-    cross_platform_window window(void) const;
+
+public:
+    Window window(void) const;
 
 public:
     virtual Size optimal(OptimalPolicy policy=opUnset) const;
@@ -173,50 +182,15 @@ public:
     virtual bool onKeyPress(unsigned int chr);
     virtual bool onKeyUp(sys::VirtualKey vkey);
     virtual bool onMouseDown(sys::Button button, int times, Point point);
-    virtual bool onMouseUp(sys::Button button, Point point);
+    virtual bool onMouseUp(sys::Button button, int times, Point point);
     virtual bool onMouseMove(Point point);
     virtual bool onMouseEnter(void);
     virtual bool onMouseLeave(void);
     virtual bool onMouseWheel(int delta, Point point);
-    virtual bool onWindowClose(void);
-    virtual void onWindowDestroy(void);
-
-private:
-    void* property(const std::string& name) const;
-    void  property(const std::string& name,
-                   const void* value, unsigned int length);
+    virtual long onMessage(int msgid, void* userdata);
 
 public:
     class implement* impl_;
 };
-
-template <typename ReturnType>
-ReturnType widget::property(const std::string& name) const
-{
-    void*  value = property(name);
-    return value ? *reinterpret_cast<ReturnType*>(value) : ReturnType();
-}
-
-template <>
-char* widget::property<char*>(const std::string& name) const;
-template <>
-const char* widget::property<const char*>(const std::string& name) const;
-template <>
-std::string widget::property<std::string>(const std::string& name) const;
-
-template <typename ValueType>
-inline void widget::property(const std::string& name, const ValueType& value)
-{
-    property(name, &value, sizeof(value));
-}
-
-template <>
-void widget::property<char*>(const std::string& name, char* const& value);
-template <>
-void widget::property<const char*>(
-        const std::string& name, const char* const& value);
-template <>
-void widget::property<std::string>(
-        const std::string& name, const std::string& value);
 
 #endif // widget_h_20150715

@@ -201,7 +201,7 @@ bool scroll::onSetCursor(Point)
     return false;
 }
 
-bool scroll::onMouseUp(sys::Button button, Point point)
+bool scroll::onMouseUp(sys::Button button, int times, Point point)
 {
     if (!scrollable())
         return false;
@@ -465,7 +465,7 @@ bool scroll_area::onMouseDown(sys::Button button, int times, Point point)
     return true;
 }
 
-bool scroll_area::onMouseUp(sys::Button button, Point point)
+bool scroll_area::onMouseUp(sys::Button button, int times, Point point)
 {
     if (impl_->dragging_.underway)
     {
@@ -516,4 +516,78 @@ bool scroll_area::onMouseWheel(int delta, Point point)
     }
 
     return false;
+}
+
+class scroll_view::implement
+{
+    friend class scroll_view;
+
+public:
+    implement(class widget* widget)
+        : moving_(false), widget_(widget)
+    {}
+
+private:
+    bool moving_;
+    class widget* widget_;
+};
+
+scroll_view::scroll_view(class widget* widget)
+    : impl_(new implement(widget))
+{
+    vertical_scroll().min(0);
+    vertical_scroll().step(32);
+    vertical_scroll().show();
+    vertical_scroll().onScroll(
+        [this](const scroll* self)
+        {
+            impl_->moving_ = true;
+            impl_->widget_->y(-self->value());
+            impl_->moving_ = false;
+        });
+
+    horizontal_scroll().min(0);
+    horizontal_scroll().step(32);
+    horizontal_scroll().show();
+    horizontal_scroll().onScroll(
+        [this](const scroll* self)
+        {
+            impl_->moving_ = true;
+            impl_->widget_->x(-self->value());
+            impl_->moving_ = false;
+        });
+
+    add(widget);
+    add(&vertical_scroll());
+    add(&horizontal_scroll());
+    onChildSize(widget);
+}
+
+scroll_view::~scroll_view(void)
+{
+    delete impl_;
+}
+
+class widget* scroll_view::widget(void) const
+{
+    return impl_->widget_;
+}
+
+bool scroll_view::onChildMoving(class widget* child, Point& point)
+{
+    if (child == impl_->widget_)
+        return impl_->moving_;
+
+    return true;
+}
+
+void scroll_view::onChildSize(class widget* child)
+{
+    if (child == impl_->widget_)
+    {
+        vertical_scroll()
+            .max(impl_->widget_->height() + horizontal_scroll().height());
+        horizontal_scroll()
+            .max(impl_->widget_->width() + vertical_scroll().width());
+    }
 }

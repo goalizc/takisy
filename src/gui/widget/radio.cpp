@@ -11,27 +11,27 @@ class radio::implement
     friend class text_radio_group;
 
 public:
-    implement(widget* content, bool selected)
-        : selected_(selected), content_(content)
+    implement(class widget* widget, bool selected)
+        : selected_(selected), widget_(widget)
     {}
 
 private:
     bool selected_;
-    widget* content_;
+    class widget* widget_;
 };
 
 radio::radio(void)
     : radio(nullptr)
 {}
 
-radio::radio(widget* content)
-    : radio(content, false)
+radio::radio(class widget* widget)
+    : radio(widget, false)
 {}
 
-radio::radio(widget* content, bool selected)
-    : impl_(new implement(content, selected))
+radio::radio(class widget* widget, bool selected)
+    : impl_(new implement(widget, selected))
 {
-    add(content);
+    add(widget);
 }
 
 radio::~radio(void)
@@ -39,9 +39,9 @@ radio::~radio(void)
     delete impl_;
 }
 
-widget* radio::content(void) const
+class widget* radio::widget(void) const
 {
-    return impl_->content_;
+    return impl_->widget_;
 }
 
 bool radio::selected(void) const
@@ -51,17 +51,17 @@ bool radio::selected(void) const
 
 Size radio::optimal(OptimalPolicy policy) const
 {
-    Size optsize = impl_->content_->optimal(policy);
+    Size optsize = impl_->widget_->optimal(policy);
 
     optsize.width += boxsize + spacing;
 
     return optsize;
 }
 
-void radio::content(widget* content)
+void radio::widget(class widget* widget)
 {
-    remove(impl_->content_);
-    add((impl_->content_ = content));
+    remove(impl_->widget_);
+    add((impl_->widget_ = widget));
 
     onSize();
 }
@@ -72,7 +72,7 @@ void radio::select(void)
     {
         impl_->selected_ = true;
 
-        for (widget* brother : father()->children())
+        for (class widget* brother : father()->children())
         {
             radio* radio = dynamic_cast<class radio*>(brother);
 
@@ -91,14 +91,14 @@ void radio::select(void)
 
 void radio::onSize(void)
 {
-    if (impl_->content_)
+    if (impl_->widget_)
     {
-        widget*& content = impl_->content_;
+        class widget*& widget = impl_->widget_;
 
-        content->x(boxsize + spacing);
-        content->width(width() - content->x());
-        content->height(content->optimal(opFixedWidth).height);
-        content->y(int(height() - content->height()) / 2);
+        widget->x(boxsize + spacing);
+        widget->width(width() - widget->x());
+        widget->height(widget->optimal(opFixedWidth).height);
+        widget->y(int(height() - widget->height()) / 2);
     }
 }
 
@@ -163,7 +163,7 @@ text_radio::text_radio(const wstring& text)
 text_radio::text_radio(const wstring& text, bool selected)
     : radio(nullptr, selected), impl_(new implement(text))
 {
-    content(&impl_->label_);
+    widget(&impl_->label_);
 }
 
 text_radio::~text_radio(void)
@@ -207,10 +207,6 @@ radio_group::radio_group(widget** items, unsigned int count)
 
 radio_group::radio_group(const vector<widget*>& items)
     : impl_(new implement(items))
-{}
-
-radio_group::radio_group(initializer_list<widget*> initlist)
-    : radio_group(vector<widget*>(initlist.begin(), initlist.end()))
 {}
 
 radio_group::~radio_group(void)
@@ -456,45 +452,6 @@ text_radio_group::text_radio_group(void)
     : text_radio_group(vector<wstring>())
 {}
 
-text_radio_group::text_radio_group(const char** items, unsigned int count)
-    : text_radio_group(items, count, sys::default_codec())
-{}
-
-text_radio_group::text_radio_group(const char** items, unsigned int count,
-                         const char* codec)
-    : text_radio_group(vector<const char*>(items, items + count), codec)
-{}
-
-text_radio_group::text_radio_group(const wchar_t** items, unsigned int count)
-    : text_radio_group(vector<const wchar_t*>(items, items + count))
-{}
-
-text_radio_group::text_radio_group(const string* items, unsigned int count)
-    : text_radio_group(items, count, sys::default_codec())
-{}
-
-text_radio_group::text_radio_group(const string* items, unsigned int count,
-                         const string& codec)
-    : text_radio_group(vector<string>(items, items + count), codec)
-{}
-
-text_radio_group::text_radio_group(const wstring* items, unsigned int count)
-    : text_radio_group(vector<wstring>(items, items + count))
-{}
-
-text_radio_group::text_radio_group(const vector<const char*>& items)
-    : text_radio_group(items, sys::default_codec())
-{}
-
-text_radio_group::text_radio_group(const vector<const char*>& items,
-                                   const char* codec)
-    : text_radio_group(vector<string>(items.begin(), items.end()), codec)
-{}
-
-text_radio_group::text_radio_group(const vector<const wchar_t*>& items)
-    : text_radio_group(vector<wstring>(items.begin(), items.end()))
-{}
-
 text_radio_group::text_radio_group(const vector<string>& items)
     : text_radio_group(items, sys::default_codec())
 {}
@@ -517,32 +474,6 @@ text_radio_group::text_radio_group(const vector<wstring>& items)
     for (const wstring& item : items)
         append(item);
 }
-
-text_radio_group::text_radio_group(initializer_list<const char*> list)
-    : text_radio_group(list, sys::default_codec())
-{}
-
-text_radio_group::text_radio_group(initializer_list<const char*> list,
-                                   const char* codec)
-    : text_radio_group(vector<string>(list.begin(), list.end()), codec)
-{}
-
-text_radio_group::text_radio_group(initializer_list<const wchar_t*> list)
-    : text_radio_group(vector<wstring>(list.begin(), list.end()))
-{}
-
-text_radio_group::text_radio_group(initializer_list<string> list)
-    : text_radio_group(list, sys::default_codec())
-{}
-
-text_radio_group::text_radio_group(initializer_list<string> list,
-                                   const string& codec)
-    : text_radio_group(vector<string>(list), codec)
-{}
-
-text_radio_group::text_radio_group(initializer_list<wstring> list)
-    : text_radio_group(vector<wstring>(list))
-{}
 
 text_radio_group::~text_radio_group(void)
 {}

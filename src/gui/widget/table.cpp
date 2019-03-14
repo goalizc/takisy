@@ -3,6 +3,7 @@
 #include <takisy/core/math.h>
 #include <takisy/core/codec.h>
 #include <takisy/algorithm/stralgo.h>
+#include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/table.h>
 #include "editbox.h"
 
@@ -49,11 +50,12 @@ class table::implement
 
     struct row_header : public item
     {
+        bool scalable;
         unsigned int height;
 
     public:
         row_header(void)
-            : height(16)
+            : scalable(true), height(18)
         {}
     };
 
@@ -61,11 +63,12 @@ class table::implement
     {
         brush brush;
         bool visible;
+        bool scalable;
         unsigned int width;
 
     public:
         row_headers(void)
-            : visible(false), width(32)
+            : visible(false), scalable(true), width(32)
         {
             brush.background.reset(new color_brush(color::light_gray()));
         }
@@ -73,11 +76,12 @@ class table::implement
 
     struct column_header : public item
     {
+        bool scalable;
         unsigned int width;
 
     public:
         column_header(void)
-            : width(80)
+            : scalable(true), width(80)
         {}
     };
 
@@ -85,11 +89,12 @@ class table::implement
     {
         brush brush;
         bool visible;
+        bool scalable;
         unsigned int height;
 
     public:
         column_headers(void)
-            : visible(true), height(16)
+            : visible(true), scalable(true), height(18)
         {
             brush.background.reset(new color_brush(color::light_gray()));
         }
@@ -128,15 +133,90 @@ public:
         , selmode_(smSingleSelection), selbehavior_(sbSelectItems)
         , edit_trigger_(etNoEditTrigger)
         , selbegin_({0, 0}), current_({0, 0}), enter_({-1, -1})
+        , dragging_({.underway = false})
     {}
 
 public:
-    bool exists(const index& index) const
+    int glrow_hittest(Point point)
     {
-        return static_cast<unsigned int>(index.row) < rows_.size()
-            && static_cast<unsigned int>(index.col) < columns_.size();
+        point.x += self.horizontal_scroll().valued();
+        point.y += self.vertical_scroll().valued();
+
+        if (!row_headers_.visible
+            || !row_headers_.scalable
+            || point.x > (int)row_headers_.width)
+            return -2;
+
+        int offset = 0;
+
+        if (column_headers_.visible)
+        {
+            if (glhittest(point.y, column_headers_.height,
+                          rows_.empty() ? 0 : rows_.front().gridline.width()))
+                return -1;
+            offset += column_headers_.height;
+        }
+
+        for (unsigned int i = 0; i < rows_.size(); ++i)
+        {
+            offset += rows_[i].gridline.width() + rows_[i].header.height;
+            if (rows_[i].header.scalable &&
+                glhittest(point.y, offset,
+                          i + 1 >= rows_.size() ? 0
+                                 : rows_[i + 1].gridline.width()))
+                return i;
+        }
+
+        return -2;
     }
 
+    int glcol_hittest(Point point)
+    {
+        point.x += self.horizontal_scroll().valued();
+        point.y += self.vertical_scroll().valued();
+
+        if (!column_headers_.visible
+            || !column_headers_.scalable
+            || point.y > (int)column_headers_.height)
+            return -2;
+
+        int offset = 0;
+
+        if (row_headers_.visible)
+        {
+            if (glhittest(point.x, row_headers_.width,
+                          columns_.empty() ? 0
+                                           : columns_.front().gridline.width()))
+                return -1;
+            offset += row_headers_.width;
+        }
+
+        for (unsigned int i = 0; i < columns_.size(); ++i)
+        {
+            offset += columns_[i].gridline.width() + columns_[i].header.width;
+            if (columns_[i].header.scalable &&
+                glhittest(point.x, offset,
+                          i + 1 >= columns_.size() ? 0
+                                 : columns_[i + 1].gridline.width()))
+                return i;
+        }
+
+        return -2;
+    }
+
+    Size optimal_world(text& text)
+    {
+        if (text.word_wrap())
+        {
+            class text cptext = text;
+            cptext.word_wrap(false);
+            return cptext.world();
+        }
+
+        return text.world();
+    }
+
+public:
     unsigned int vaccumulate(unsigned int row) const
     {
         unsigned int border_width = border_.width();
@@ -192,7 +272,7 @@ public:
             const row_type& row = rows_[index.row];
 
             rect.top    = vaccumulate(index.row) + row.gridline.width();
-            rect.bottom = rect.top  + row.header.height;
+            rect.bottom = rect.top + row.header.height;
         }
 
         if (index.col == -2)
@@ -238,6 +318,36 @@ public:
         }
 
         return item_rect(min).unit(item_rect(max));
+    }
+
+    void repaint_selections(const std::vector<index>& indexes)
+    {
+        std::vector<index> real_indexes;
+
+        switch (selbehavior_)
+        {
+        case sbSelectItems:
+            real_indexes = indexes;
+            break;
+        case sbSelectRows:
+            {
+                std::set<index> rowset;
+                for (const struct index& index : indexes)
+                    rowset.insert({ index.row, -2 });
+                real_indexes.assign(rowset.begin(), rowset.end());
+            }
+            break;
+        case sbSelectColumns:
+            {
+                std::set<index> columnset;
+                for (const struct index& index : indexes)
+                    columnset.insert({ -2, index.col });
+                real_indexes.assign(columnset.begin(), columnset.end());
+            }
+            break;
+        }
+
+        self.repaint(items_rect(real_indexes));
     }
 
 public:
@@ -436,6 +546,11 @@ public:
     }
 
 private:
+    bool glhittest(int w, int offset, int glwidth)
+    {
+        return offset <= w && w <= offset + glwidth + 1;
+    }
+
     void text_rect(class text& text, const Rect& rect)
     {
         int a = text.height(), b = rect.height();
@@ -464,6 +579,13 @@ private:
     unsigned int             edit_trigger_;
     index                    selbegin_, current_, enter_;
     std::set<index>          selecteds_;
+    struct {
+        bool underway;
+        struct {
+            Point point;
+            int glrow, glcol, size;
+        } milestone;
+    } dragging_;
 };
 
 bool table::index::operator==(const index& other) const
@@ -686,6 +808,17 @@ bool table::selected(const index& index) const
     }
 }
 
+std::set<table::index> table::selected(void) const
+{
+    return impl_->selecteds_;
+}
+
+bool table::exists(const index& index) const
+{
+    return static_cast<unsigned int>(index.row) < impl_->rows_.size()
+        && static_cast<unsigned int>(index.col) < impl_->columns_.size();
+}
+
 const struct table::item table::item(const index& index) const
 {
     table& self = const_cast<table&>(*this);
@@ -853,6 +986,16 @@ void table::insert_row(unsigned int row, const std::wstring& header)
     impl_->rows_[row].header.text.content(header);
     impl_->rows_[row].items.resize(columns());
 
+    std::vector<index> newselecteds;
+    for (const index& index : impl_->selecteds_)
+        if (index.row < (int)row)
+            newselecteds.push_back(index);
+        else
+            newselecteds.push_back({ index.row + 1, index.col });
+    impl_->selecteds_.clear();
+    for (const index& index : newselecteds)
+        impl_->selecteds_.insert(index);
+
     impl_->update();
 }
 
@@ -861,6 +1004,17 @@ void table::remove_row(unsigned int row)
     if (row < rows())
     {
         impl_->rows_.erase(impl_->rows_.begin() + row);
+
+        std::vector<index> newselecteds;
+        for (const index& index : impl_->selecteds_)
+            if (index.row < (int)row)
+                newselecteds.push_back(index);
+            else if (index.row > (int)row)
+                newselecteds.push_back({ index.row - 1, index.col });
+        impl_->selecteds_.clear();
+        for (const index& index : newselecteds)
+            impl_->selecteds_.insert(index);
+
         impl_->update();
     }
 }
@@ -912,6 +1066,16 @@ void table::insert_column(unsigned int col, const std::wstring& header)
     for (implement::row_type& row : impl_->rows_)
         row.items.emplace(row.items.begin() + col);
 
+    std::vector<index> newselecteds;
+    for (const index& index : impl_->selecteds_)
+        if (index.col < (int)col)
+            newselecteds.push_back(index);
+        else
+            newselecteds.push_back({ index.row, index.col + 1 });
+    impl_->selecteds_.clear();
+    for (const index& index : newselecteds)
+        impl_->selecteds_.insert(index);
+
     impl_->update();
 }
 
@@ -923,6 +1087,16 @@ void table::remove_column(unsigned int col)
 
         for (implement::row_type& row : impl_->rows_)
             row.items.erase(row.items.begin() + col);
+
+        std::vector<index> newselecteds;
+        for (const index& index : impl_->selecteds_)
+            if (index.col < (int)col)
+                newselecteds.push_back(index);
+            else if (index.col > (int)col)
+                newselecteds.push_back({ index.row, index.col - 1 });
+        impl_->selecteds_.clear();
+        for (const index& index : newselecteds)
+            impl_->selecteds_.insert(index);
 
         impl_->update();
     }
@@ -974,7 +1148,7 @@ void table::clear_column(unsigned int col)
 
 void table::current(const index& index)
 {
-    if (impl_->exists(index) && index != impl_->current_)
+    if (exists(index) && index != impl_->current_)
     {
         struct index oldcurrent = impl_->current_;
 
@@ -1061,7 +1235,7 @@ void table::selected(const std::set<index>& indexes, bool selected)
                        impl_->selecteds_.begin(), impl_->selecteds_.end(),
                        inserter(result, result.begin()));
 
-        for (index& index : result)
+        for (const index& index : result)
         {
             impl_->selecteds_.insert(index);
             onItemSelectedHandle(index);
@@ -1074,7 +1248,40 @@ void table::selected(const std::set<index>& indexes, bool selected)
                          impl_->selecteds_.begin(), impl_->selecteds_.end(),
                          inserter(result, result.begin()));
 
-        for (index& index : result)
+        switch (impl_->selbehavior_)
+        {
+        default:
+        case sbSelectItems:
+            break;
+        case sbSelectRows:
+            {
+                std::set<int> rows;
+                result.assign(indexes.begin(), indexes.end());
+                for (const index& index : result)
+                    rows.insert(index.row);
+                result.clear();
+                for (int row : rows)
+                for (const index& index : impl_->selecteds_)
+                    if (row == index.row)
+                        result.push_back(index);
+            }
+            break;
+        case sbSelectColumns:
+            {
+                std::set<int> cols;
+                result.assign(indexes.begin(), indexes.end());
+                for (const index& index : result)
+                    cols.insert(index.col);
+                result.clear();
+                for (int col : cols)
+                for (const index& index : impl_->selecteds_)
+                    if (col == index.col)
+                        result.push_back(index);
+            }
+            break;
+        }
+
+        for (const index& index : result)
         {
             impl_->selecteds_.erase(index);
             onItemDisselectedHandle(index);
@@ -1086,7 +1293,7 @@ void table::selected(const std::set<index>& indexes, bool selected)
     {
         onSelectionChangedHandle(result, selected);
 
-        repaint(impl_->items_rect(result));
+        impl_->repaint_selections(result);
     }
 
 }
@@ -1123,14 +1330,12 @@ void table::disselect(const std::set<index>& indexes)
 
 void table::clear_selection(void)
 {
-    std::vector<index> sels(impl_->selecteds_.begin(), impl_->selecteds_.end());
-    impl_->selecteds_.clear();
-    repaint(impl_->items_rect(sels));
+    disselect(impl_->selecteds_);
 }
 
 void table::text_color(color color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void table::text_brush(const brush_sptr& brush)
@@ -1154,7 +1359,7 @@ void table::text_brush(const brush_sptr& brush)
 
 void table::background_color(color color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void table::background_brush(const brush_sptr& brush)
@@ -1178,7 +1383,7 @@ void table::background_brush(const brush_sptr& brush)
 
 void table::selection_color(color color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void table::selection_brush(const brush_sptr& brush)
@@ -1343,6 +1548,27 @@ void table::repaint_item(const index& index)
     repaint(impl_->item_rect(index));
 }
 
+void table::sort(int col)
+{
+    sort(col, sort_handler());
+}
+
+void table::sort(int i, const sort_handler& h)
+{
+    if (i == -1)
+        std::sort(impl_->rows_.begin(), impl_->rows_.end(),
+            [&](const implement::row_type& a, const implement::row_type& b) {
+                return h(a.header.text.content(), b.header.text.content());
+            });
+    else
+        std::sort(impl_->rows_.begin(), impl_->rows_.end(),
+            [&](const implement::row_type& a, const implement::row_type& b) {
+                return h(a.items[i].text.content(), b.items[i].text.content());
+            });
+
+    repaint();
+}
+
 void table::onSize(void)
 {
     scroll_area::onSize();
@@ -1352,8 +1578,8 @@ void table::onPaint(graphics graphics, Rect rect)
 {
     class color_scheme cs = color_scheme();
     color selcolor = focused() ? cs.selection() : cs.inactive_selection();
-    brush_sptr txtbrush = make_brushsptr<color_brush>(cs.text());
-    brush_sptr selbrush = make_brushsptr<color_brush>(selcolor);
+    brush_sptr txtbrush = make_spbrush<color_brush>(cs.text());
+    brush_sptr selbrush = make_spbrush<color_brush>(selcolor);
     int x = impl_->border_.width() - horizontal_scroll().valued();
     int y = impl_->border_.width() - vertical_scroll().valued();
 
@@ -1394,7 +1620,29 @@ void table::onPaint(graphics graphics, Rect rect)
 bool table::onFocus(bool focus)
 {
     std::vector<index> sels(impl_->selecteds_.begin(), impl_->selecteds_.end());
-    repaint(impl_->items_rect(sels));
+    impl_->repaint_selections(sels);
+    return true;
+}
+
+bool table::onSetCursor(Point point)
+{
+    int glrow = -2, glcol = -2;
+    if (impl_->dragging_.underway) {
+        glrow = impl_->dragging_.milestone.glrow;
+        glcol = impl_->dragging_.milestone.glcol;
+    } else {
+        glcol = impl_->glcol_hittest(point);
+        if (glcol == -2)
+            glrow = impl_->glrow_hittest(point);
+    }
+
+    if (glcol > -2)
+        cursor::set(cursor::ctSizeWE);
+    else if (glrow > -2)
+        cursor::set(cursor::ctSizeNS);
+    else
+        cursor::set(cursor::ctArrow);
+
     return true;
 }
 
@@ -1417,7 +1665,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
             else
                 ++index.col;
 
-            if (!impl_->exists(index))
+            if (!exists(index))
                 break;
             else
                 current(index);
@@ -1436,8 +1684,8 @@ bool table::onKeyDown(sys::VirtualKey vkey)
                 break;
             case smExtendedSelection:
                 {
-                    bool ctrl  = sys::key_pressed(sys::vkControl);
-                    bool shift = sys::key_pressed(sys::vkShift);
+                    bool ctrl  = window::key_pressed(sys::vkControl);
+                    bool shift = window::key_pressed(sys::vkShift);
 
                     if (!ctrl)
                         clear_selection();
@@ -1453,7 +1701,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
                 break;
             case smContiguousSelection:
                 clear_selection();
-                if (sys::key_pressed(sys::vkShift))
+                if (window::key_pressed(sys::vkShift))
                     select(impl_->selbegin_, index);
                 else
                 {
@@ -1472,7 +1720,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
         else
         if (impl_->selmode_ == smExtendedSelection)
         {
-            if (!sys::key_pressed(sys::vkControl))
+            if (!window::key_pressed(sys::vkControl))
             {
                 clear_selection();
                 select(current());
@@ -1482,17 +1730,44 @@ bool table::onKeyDown(sys::VirtualKey vkey)
         }
         break;
     case sys::vkKeyA:
-        if (sys::key_pressed(sys::vkControl)
+        if (window::key_pressed(sys::vkControl)
             && (impl_->selmode_ == smMultiSelection
              || impl_->selmode_ == smExtendedSelection
              || impl_->selmode_ == smContiguousSelection))
             select({0, 0}, {(int)rows(), (int)columns()});
         break;
+    case sys::vkKeyI:
+        if (window::key_pressed(sys::vkControl)
+            && (impl_->selmode_ == smMultiSelection
+             || impl_->selmode_ == smExtendedSelection
+             || impl_->selmode_ == smContiguousSelection))
+        {
+            switch (impl_->selbehavior_)
+            {
+            default:
+            case sbSelectItems:
+                {
+                    std::set<index> oldsel = impl_->selecteds_;
+                    selected({0, 0}, {(int)rows(), (int)columns()}, true);
+                    selected(oldsel, false);
+                }
+                break;
+            case sbSelectRows:
+                for (int limit = rows(), i = 0; i < limit; ++i)
+                    selected(index {i, 0}, !selected(index {i, 0}));
+                break;
+            case sbSelectColumns:
+                for (int limit = columns(), i = 0; i < limit; ++i)
+                    selected(index {0, i}, !selected(index {0, i}));
+                break;
+            }
+        }
+        break;
     case sys::vkHome:
-        scrollto_row(0);
+        vertical_scroll().home();
         break;
     case sys::vkEnd:
-        scrollto_row(rows());
+        vertical_scroll().end();
         break;
     case sys::vkPrior:
         vertical_scroll().page_up();
@@ -1509,7 +1784,7 @@ bool table::onKeyDown(sys::VirtualKey vkey)
 
 bool table::onKeyPress(unsigned int chr)
 {
-    if (!item(current()).editable())
+    if (!exists(current()) || !item(current()).editable())
         return true;
 
     if (    (edit_trigger() & etAnyKeyPressed)
@@ -1528,22 +1803,73 @@ bool table::onKeyPress(unsigned int chr)
 
 bool table::onMouseDown(sys::Button button, int times, Point point)
 {
+    if (button == sys::btnLeft) {
+        int glcol = impl_->glcol_hittest(point);
+        if (glcol > -2) {
+            impl_->dragging_.underway = true;
+            if (glcol >= 0 && times == 2)
+                column(glcol).width(column(glcol).optimal_width());
+            else {
+                capture(true);
+                impl_->dragging_.milestone.point = point;
+                impl_->dragging_.milestone.glrow = -2;
+                impl_->dragging_.milestone.glcol = glcol;
+                impl_->dragging_.milestone.size  = glcol == -1
+                     ? impl_->row_headers_.width
+                     : impl_->columns_[glcol].header.width;
+            }
+            return true;
+        } else {
+            int glrow = impl_->glrow_hittest(point);
+            if (glrow > -2) {
+                impl_->dragging_.underway = true;
+                if (glrow >= 0 && times == 2)
+                    row(glrow).height(row(glrow).optimal_height());
+                else {
+                    capture(true);
+                    impl_->dragging_.milestone.point = point;
+                    impl_->dragging_.milestone.glrow = glrow;
+                    impl_->dragging_.milestone.glcol = -2;
+                    impl_->dragging_.milestone.size  = glrow == -1
+                         ? impl_->column_headers_.height
+                         : impl_->rows_[glrow].header.height;
+                }
+                return true;
+            }
+        }
+    }
+
     index index = hittest(point);
-    if (!impl_->exists(index))
-        return true;
-    else
+    if (!exists(index))
     {
-        onItemClickedHandle(index, button, times);
-        if (times == 2)
+        if (times == 2 && (index.row == -1 || index.col == -1))
+        {
+            if (0 <= index.row && index.row < (int)impl_->rows_.size())
+                onRowHeaderDoubleClickedHandle(index.row, button);
+            else if (0 <= index.col && index.col < (int)impl_->columns_.size())
+                onColumnHeaderDoubleClickedHandle(index.col, button);
+        }
+
+        return true;
+    }
+    else if (times == 2)
+    {
+        if (button == sys::btnLeft
+            && item(index).editable()
+            && edit_trigger() & etDoubleClicked)
+            item(index).edit();
+        else
             onItemDoubleClickedHandle(index, button);
+
+        return true;
     }
 
     if (button != sys::btnLeft)
         return true;
     else
-    if ((  ((edit_trigger() & etDoubleClicked)   && times == 2)
-        || ((edit_trigger() & etSelectedClicked) && index == current()))
-        && item(index).editable())
+    if (index == current()
+        && item(index).editable()
+        && edit_trigger() & etSelectedClicked)
     {
         item(index).edit();
         return true;
@@ -1566,8 +1892,8 @@ bool table::onMouseDown(sys::Button button, int times, Point point)
         break;
     case smExtendedSelection:
         {
-            bool ctrl  = sys::key_pressed(sys::vkControl);
-            bool shift = sys::key_pressed(sys::vkShift);
+            bool ctrl  = window::key_pressed(sys::vkControl);
+            bool shift = window::key_pressed(sys::vkShift);
 
             if (!ctrl)
                 clear_selection();
@@ -1585,7 +1911,7 @@ bool table::onMouseDown(sys::Button button, int times, Point point)
         break;
     case smContiguousSelection:
         clear_selection();
-        if (sys::key_pressed(sys::vkShift))
+        if (window::key_pressed(sys::vkShift))
             select(impl_->selbegin_, index);
         else
         {
@@ -1601,22 +1927,65 @@ bool table::onMouseDown(sys::Button button, int times, Point point)
     return true;
 }
 
-bool table::onMouseUp(sys::Button button, Point point)
+bool table::onMouseUp(sys::Button button, int times, Point point)
 {
     capture(false);
+
+    if (impl_->dragging_.underway)
+        impl_->dragging_.underway = false;
+    else
+    {
+        index index = hittest(point);
+
+        if (exists(index))
+            onItemClickedHandle(index, button);
+        else if (index.row == -1 || index.col == -1)
+        {
+            if (0 <= index.row && index.row < (int)impl_->rows_.size())
+                onRowHeaderClickedHandle(index.row, button);
+            else if (0 <= index.col && index.col < (int)impl_->columns_.size())
+                onColumnHeaderClickedHandle(index.col, button);
+        }
+    }
 
     return true;
 }
 
 bool table::onMouseMove(Point point)
 {
+    if (impl_->dragging_.underway) {
+        int glcol = impl_->dragging_.milestone.glcol;
+        if (glcol == -1) {
+            int newsize = impl_->dragging_.milestone.size
+                        + point.x - impl_->dragging_.milestone.point.x;
+            row_headers().width(newsize < 5 ? 5 : newsize);
+        } else if (glcol > -1) {
+            int newsize = impl_->dragging_.milestone.size
+                        + point.x - impl_->dragging_.milestone.point.x;
+            column(glcol).width(newsize < 5 ? 5 : newsize);
+        }
+
+        int glrow = impl_->dragging_.milestone.glrow;
+        if (glrow == -1) {
+            int newsize = impl_->dragging_.milestone.size
+                        + point.y - impl_->dragging_.milestone.point.y;
+            column_headers().height(newsize < 5 ? 5 : newsize);
+        } else if (glrow > -1) {
+            int newsize = impl_->dragging_.milestone.size
+                        + point.y - impl_->dragging_.milestone.point.y;
+            row(glrow).height(newsize < 5 ? 5 : newsize);
+        }
+
+        return true;
+    }
+
     index index = hittest(point), oldcurrent = current();
-    if (!impl_->exists(index))
+    if (!exists(index))
         return true;
 
     if (impl_->enter_ != index)
     {
-        if (impl_->exists(impl_->enter_))
+        if (exists(impl_->enter_))
         {
             onItemMouseLeaveHandle(impl_->enter_);
             if (impl_->enter_.row != index.row)
@@ -1632,7 +2001,7 @@ bool table::onMouseMove(Point point)
         impl_->enter_ = index;
     }
 
-    if (!sys::key_pressed(sys::vkLButton) || (index == oldcurrent))
+    if (!window::key_pressed(sys::vkLButton) || (index == oldcurrent))
         return true;
     else
         current(index);
@@ -1767,8 +2136,9 @@ void table::item::text(const std::wstring& text)
 {
     if (impl->item.text.content() != text)
     {
+        std::wstring previous = impl->item.text.content();
         impl->item.text.content(text);
-        impl->host.onItemTextChangedHandle(impl->index);
+        impl->host.onItemTextChangedHandle(impl->index, text, previous);
         impl->repaint();
     }
 }
@@ -1859,7 +2229,7 @@ void table::item::font(fontptr font)
 
 void table::item::text_color(color color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void table::item::text_brush(const brush_sptr& brush)
@@ -1876,7 +2246,7 @@ void table::item::text_brush(const brush_sptr& brush)
 
 void table::item::background_color(color color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void table::item::background_brush(const brush_sptr& brush)
@@ -1893,7 +2263,7 @@ void table::item::background_brush(const brush_sptr& brush)
 
 void table::item::selection_color(color color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void table::item::selection_brush(const brush_sptr& brush)
@@ -1930,10 +2300,10 @@ void table::item::edit(const std::string& text, const std::string& codec)
 
 void table::item::edit(const std::wstring& text)
 {
-    impl->host.scrollto(impl->index);
-
     std::shared_ptr<item> self(new item(*this));
     editbox& eb = editbox::pop(&impl->host, rect(), impl->item.text, text);
+
+    impl->host.scrollto(impl->index);
 
     handler::sptr handler =
         impl->host.vertical_scroll().onScroll(
@@ -1945,9 +2315,10 @@ void table::item::edit(const std::wstring& text)
 
     eb.background_color(color::white());
     eb.onEditComplete(
-        [self](editbox*, const std::wstring& txt)
+        [self](editbox*, std::wstring text)
         {
-            self->text(txt);
+            self->impl->host.onItemEditCompleteHandle(self->impl->index, text);
+            self->text(text);
         });
     eb.onEditFinish(
         [self, handler](editbox*)
@@ -1985,7 +2356,7 @@ void table::gridline::width(unsigned int width)
 
 void table::gridline::color(const struct color& color)
 {
-    brush(make_brushsptr<color_brush>(color));
+    brush(make_spbrush<color_brush>(color));
 }
 
 void table::gridline::brush(const brush_sptr& brush)
@@ -1999,11 +2370,6 @@ void table::gridline::dash_array(const std::vector<double>& _dash_array)
     dash_array(_dash_array.data(), _dash_array.size());
 }
 
-void table::gridline::dash_array(std::initializer_list<double> initlist)
-{
-    dash_array(std::vector<double>(initlist.begin(), initlist.end()));
-}
-
 void table::gridline::dash_array(const double* dash_array, unsigned int count)
 {
     impl->gridline.pen.dash_array(dash_array, count);
@@ -2013,6 +2379,11 @@ void table::gridline::dash_array(const double* dash_array, unsigned int count)
 bool table::row_headers::visible(void) const
 {
     return impl->headers.visible;
+}
+
+bool table::row_headers::scalable(void) const
+{
+    return impl->headers.scalable;
 }
 
 unsigned int table::row_headers::width(void) const
@@ -2039,6 +2410,11 @@ void table::row_headers::visible(bool visible)
     }
 }
 
+void table::row_headers::scalable(bool scalable)
+{
+    impl->headers.scalable = scalable;
+}
+
 void table::row_headers::width(unsigned int width)
 {
     if (impl->headers.width != width)
@@ -2048,9 +2424,19 @@ void table::row_headers::width(unsigned int width)
     }
 }
 
+bool table::row_header::scalable(void) const
+{
+    return impl->header.scalable;
+}
+
 unsigned int table::row_header::height(void) const
 {
     return impl->header.height;
+}
+
+void table::row_header::scalable(bool scalable)
+{
+    impl->header.scalable = scalable;
 }
 
 void table::row_header::height(unsigned int height)
@@ -2067,6 +2453,22 @@ unsigned int table::row::height(void) const
     return impl->row.header.height;
 }
 
+unsigned int table::row::optimal_height(void) const
+{
+    unsigned int optheight = impl->host.
+        impl_->optimal_world(impl->row.header.text).height;
+
+    for (unsigned int i = 0; i < impl->row.items.size(); ++i)
+    {
+        unsigned int item_optheight = impl->host.
+            impl_->optimal_world(impl->row.items[i].text).height;
+        if (optheight < item_optheight)
+            optheight = item_optheight;
+    }
+
+    return optheight + 4;
+}
+
 const table::gridline table::row::gridline(void) const
 {
     return const_cast<row*>(this)->gridline();
@@ -2075,6 +2477,16 @@ const table::gridline table::row::gridline(void) const
 const table::row_header table::row::header(void) const
 {
     return const_cast<row*>(this)->header();
+}
+
+class table::item table::row::item(int col)
+{
+    return impl->host.item({impl->index, col});
+}
+
+const class table::item table::row::item(int col) const
+{
+    return impl->host.item({impl->index, col});
 }
 
 void table::row::height(unsigned int height)
@@ -2088,7 +2500,7 @@ void table::row::height(unsigned int height)
 
 void table::row::text_color(color color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void table::row::text_brush(const brush_sptr& brush)
@@ -2104,7 +2516,7 @@ void table::row::text_brush(const brush_sptr& brush)
 
 void table::row::background_color(color color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void table::row::background_brush(const brush_sptr& brush)
@@ -2120,7 +2532,7 @@ void table::row::background_brush(const brush_sptr& brush)
 
 void table::row::selection_color(color color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void table::row::selection_brush(const brush_sptr& brush)
@@ -2158,6 +2570,11 @@ bool table::column_headers::visible(void) const
     return impl->headers.visible;
 }
 
+bool table::column_headers::scalable(void) const
+{
+    return impl->headers.scalable;
+}
+
 unsigned int table::column_headers::height(void) const
 {
     return impl->headers.height;
@@ -2182,6 +2599,11 @@ void table::column_headers::visible(bool visible)
     }
 }
 
+void table::column_headers::scalable(bool scalable)
+{
+    impl->headers.scalable = scalable;
+}
+
 void table::column_headers::height(unsigned int height)
 {
     if (impl->headers.height != height)
@@ -2191,9 +2613,19 @@ void table::column_headers::height(unsigned int height)
     }
 }
 
+bool table::column_header::scalable(void) const
+{
+    return impl->header.scalable;
+}
+
 unsigned int table::column_header::width(void) const
 {
     return impl->header.width;
+}
+
+void table::column_header::scalable(bool scalable)
+{
+    impl->header.scalable = scalable;
 }
 
 void table::column_header::width(unsigned int width)
@@ -2210,6 +2642,22 @@ unsigned int table::column::width(void) const
     return impl->column.header.width;
 }
 
+unsigned int table::column::optimal_width(void) const
+{
+    unsigned int optwidth = impl->host.
+        impl_->optimal_world(impl->column.header.text).width;
+
+    for (unsigned int i = 0; i < impl->host.impl_->rows_.size(); ++i)
+    {
+        text& t = impl->host.impl_->rows_[i].items[impl->index].text;
+        unsigned int item_optwidth = impl->host.impl_->optimal_world(t).width;
+        if (optwidth < item_optwidth)
+            optwidth = item_optwidth;
+    }
+
+    return optwidth + 10;
+}
+
 const table::gridline table::column::gridline(void) const
 {
     return const_cast<column*>(this)->gridline();
@@ -2218,6 +2666,16 @@ const table::gridline table::column::gridline(void) const
 const table::column_header table::column::header(void) const
 {
     return const_cast<column*>(this)->header();
+}
+
+class table::item table::column::item(int row)
+{
+    return impl->host.item({row, impl->index});
+}
+
+const class table::item table::column::item(int row) const
+{
+    return impl->host.item({row, impl->index});
 }
 
 void table::column::width(unsigned int width)
@@ -2231,7 +2689,7 @@ void table::column::width(unsigned int width)
 
 void table::column::text_color(color color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void table::column::text_brush(const brush_sptr& brush)
@@ -2248,7 +2706,7 @@ void table::column::text_brush(const brush_sptr& brush)
 
 void table::column::background_color(color color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void table::column::background_brush(const brush_sptr& brush)
@@ -2265,7 +2723,7 @@ void table::column::background_brush(const brush_sptr& brush)
 
 void table::column::selection_color(color color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void table::column::selection_brush(const brush_sptr& brush)

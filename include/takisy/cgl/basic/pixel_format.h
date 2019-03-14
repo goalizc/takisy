@@ -26,8 +26,9 @@ template <typename T = unsigned char,
           ChannelType _4th_channel = none>
 class pixel_format
 {
-    static constexpr unsigned int kChannels
-            = !!_1st_channel + !!_2nd_channel + !!_3rd_channel + !!_4th_channel;
+    static constexpr unsigned int kChannels =
+        !!static_cast<int>(_1st_channel) + !!static_cast<int>(_2nd_channel)
+      + !!static_cast<int>(_3rd_channel) + !!static_cast<int>(_4th_channel);
 
 public:
     typedef T value_type;
@@ -52,7 +53,9 @@ public:
             for ( ; i < channels(); ++i) data_[i] = 0;
         }
         else
+        {
             for ( ; i < channels(); ++i) data_[i] = lst.begin()[i];
+        }
     }
 
     ~pixel_format(void) = default;
@@ -93,8 +96,13 @@ public:
     template <unsigned int index>
     static inline constexpr ChannelType channel_type(void)
     {
-        return index == 0 ? _1st_channel : index == 1 ? _2nd_channel :
-               index == 2 ? _3rd_channel : index == 3 ? _4th_channel : none;
+        static_assert(index < channels(),
+                      "`index' must be less than channels().");
+
+        constexpr ChannelType lut[] =
+            {_1st_channel, _2nd_channel, _3rd_channel, _4th_channel};
+
+        return lut[index];
     }
 
     static inline constexpr unsigned int channel_bytes(void)

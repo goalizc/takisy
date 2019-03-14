@@ -15,7 +15,6 @@ public:
 
 public:
     button(void);
-    button(widget* content);
    ~button(void);
 
 private:
@@ -23,18 +22,10 @@ private:
     using widget::remove;
 
 public:
-    widget* content(void) const;
-    Size    optimal(OptimalPolicy policy=opUnset) const override;
-
-public:
-    void content(widget* content);
-
-public:
-    void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
     void onEndPaint(graphics graphics, Rect rect) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseEnter(void) override;
     bool onMouseLeave(void) override;
 
@@ -42,24 +33,48 @@ private:
     class implement* impl_;
 };
 
-class text_button : public button
+class widget_button : public button
 {
     class implement;
 
+public:
+    widget_button(void);
+    widget_button(class widget* widget);
+   ~widget_button(void);
+
+public:
+    class widget* widget(void);
+    const class widget* widget(void) const;
+    Size optimal(OptimalPolicy policy=opUnset) const override;
+
+public:
+    void widget(class widget* widget);
+
+public:
+    void onSize(void) override;
+
+private:
+    class implement* impl_;
+};
+
+class text_button : public widget_button
+{
 public:
     text_button(void);
     text_button(const std::string& caption);
     text_button(const std::string& caption, const std::string& codec);
     text_button(const std::wstring& caption);
-   ~text_button(void);
-
-public:
-    label&       text(void);
-    const label& text(void) const;
-    Size         optimal(OptimalPolicy policy=opUnset) const override;
 
 private:
-    class implement* impl_;
+    using widget_button::widget;
+
+public:
+    label& text(void);
+    const label& text(void) const;
+    Size optimal(OptimalPolicy policy=opUnset) const override;
+
+private:
+    label label_;
 };
 
 #endif // button_h_20151231

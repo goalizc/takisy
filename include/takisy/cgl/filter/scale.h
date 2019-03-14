@@ -83,23 +83,20 @@ public:
                 filter(src, canvas_temporary);
                 dst.swap(canvas_temporary);
             }
-        } else if (same_size)
+        } else if (same_size) {
             dst = src;
-        else {
-            typedef bilinear_interpolator<Canvas> bilinear_interpolator;
-            typedef typename Canvas::pixel_format pixel_format;
-            typedef unsigned int uint32;
-            static constexpr uint32 shift = bilinear_interpolator::shift();
-            table_type xtable = table<shift>(src.width(),  width);
+        } else {
+            const unsigned int shift = bilinear_interpolator<Canvas>::shift();
+            table_type xtable = table<shift>(src.width(), width);
             table_type ytable = table<shift>(src.height(), height);
-            bilinear_interpolator bi(src);
+            bilinear_interpolator<Canvas> bi(src);
 
             dst.resize(width, height);
 
-            for (uint32 y = 0; y < height; ++y) {
-                pixel_format* dst_row = dst.row(y);
+            for (unsigned int y = 0; y < height; ++y) {
+                typename Canvas::pixel_format* dst_row = dst.row(y);
 
-                for (uint32 x = 0; x < width; ++x)
+                for (unsigned int x = 0; x < width; ++x)
                     dst_row[x] = bi.pixel(xtable[x], ytable[y]);
             }
         }

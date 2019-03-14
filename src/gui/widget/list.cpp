@@ -172,18 +172,6 @@ list::list(const std::vector<std::wstring>& items)
     impl_->update();
 }
 
-list::list(std::initializer_list<std::string> _list)
-    : list(_list, sys::default_codec())
-{}
-
-list::list(std::initializer_list<std::string> _list, const std::string& codec)
-    : list(std::vector<std::string>(_list.begin(), _list.end()), codec)
-{}
-
-list::list(std::initializer_list<std::wstring> _list)
-    : list(std::vector<std::wstring>(_list.begin(), _list.end()))
-{}
-
 list::~list(void)
 {
     delete impl_;
@@ -277,6 +265,16 @@ unsigned int list::alignment(unsigned int index) const
         return impl_->items_[index].text.alignment();
 
     return 0;
+}
+
+Size list::optimal(OptimalPolicy policy) const
+{
+    if (policy == opFixedWidth)
+        return Size(width(), vertical_scroll().max());
+    else if (policy == opFixedHeight)
+        return Size(horizontal_scroll().max(), height());
+    else
+        return Size(horizontal_scroll().max(), vertical_scroll().max());
 }
 
 void list::item(unsigned int index, const std::string& text)
@@ -489,12 +487,12 @@ void list::font(unsigned int index, const class font* font)
 
 void list::text_color(const color& color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void list::text_color(unsigned int index, const color& color)
 {
-    text_brush(index, make_brushsptr<color_brush>(color));
+    text_brush(index, make_spbrush<color_brush>(color));
 }
 
 void list::text_brush(const brush_sptr& brush)
@@ -525,12 +523,12 @@ void list::text_brush(unsigned int index, const brush_sptr& brush)
 
 void list::background_color(const color& color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void list::background_color(unsigned int index, const color& color)
 {
-    background_brush(index, make_brushsptr<color_brush>(color));
+    background_brush(index, make_spbrush<color_brush>(color));
 }
 
 void list::background_brush(const brush_sptr& brush)
@@ -561,12 +559,12 @@ void list::background_brush(unsigned int index, const brush_sptr& brush)
 
 void list::selection_color(const color& color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void list::selection_color(unsigned int index, const color& color)
 {
-    selection_brush(index, make_brushsptr<color_brush>(color));
+    selection_brush(index, make_spbrush<color_brush>(color));
 }
 
 void list::selection_brush(const brush_sptr& brush)
@@ -723,7 +721,7 @@ void list::onPaint(graphics graphics, Rect rect)
 {
     class color_scheme cs = color_scheme();
     color selcolor = focused() ? cs.selection() : cs.inactive_selection();
-    brush_sptr textbrush = make_brushsptr<color_brush>(cs.text());
+    brush_sptr textbrush = make_spbrush<color_brush>(cs.text());
     int y = -vertical_scroll().valued();
 
     for (int i = 0; i < (int)impl_->items_.size() && y < rect.bottom; ++i)
@@ -747,9 +745,9 @@ void list::onPaint(graphics graphics, Rect rect)
                 else if (impl_->brush_.selection)
                     graphics.fill_rectangle(itrct, *impl_->brush_.selection);
                 else
-                    for (int i = 0; i < height; i += 1)
+                    for (double i = 0.5; i < height; i += 1)
                         graphics.draw_line(0, y + i, width(), y + i,
-                                           selcolor * (i * 64 / height + 128));
+                                           selcolor * (i * 128 / height + 64));
                 graphics.draw_rectangle(itrct.inflate(-0.5), selcolor * 100);
             }
 
@@ -813,8 +811,8 @@ bool list::onKeyDown(sys::VirtualKey vkey)
                 break;
             case smExtendedSelection:
                 {
-                    bool ctrl  = sys::key_pressed(sys::vkControl);
-                    bool shift = sys::key_pressed(sys::vkShift);
+                    bool ctrl  = window::key_pressed(sys::vkControl);
+                    bool shift = window::key_pressed(sys::vkShift);
 
                     if (!ctrl)
                         clear_selection();
@@ -830,7 +828,7 @@ bool list::onKeyDown(sys::VirtualKey vkey)
                 break;
             case smContiguousSelection:
                 clear_selection();
-                if (sys::key_pressed(sys::vkShift))
+                if (window::key_pressed(sys::vkShift))
                     select(impl_->selbegin_, index);
                 else
                 {
@@ -849,7 +847,7 @@ bool list::onKeyDown(sys::VirtualKey vkey)
         else
         if (impl_->selmode_ == smExtendedSelection)
         {
-            if (!sys::key_pressed(sys::vkControl))
+            if (!window::key_pressed(sys::vkControl))
             {
                 clear_selection();
                 select(current());
@@ -859,17 +857,25 @@ bool list::onKeyDown(sys::VirtualKey vkey)
         }
         break;
     case sys::vkKeyA:
-        if (sys::key_pressed(sys::vkControl)
+        if (window::key_pressed(sys::vkControl)
             && (impl_->selmode_ == smMultiSelection
              || impl_->selmode_ == smExtendedSelection
              || impl_->selmode_ == smContiguousSelection))
             select(0, impl_->items_.size());
         break;
+    case sys::vkKeyI:
+        if (window::key_pressed(sys::vkControl)
+            && (impl_->selmode_ == smMultiSelection
+             || impl_->selmode_ == smExtendedSelection
+             || impl_->selmode_ == smContiguousSelection))
+            for (unsigned int i = 0; i < impl_->items_.size(); ++i)
+                selected(i, !selected(i));
+        break;
     case sys::vkHome:
-        scrollto(0);
+        vertical_scroll().home();
         break;
     case sys::vkEnd:
-        scrollto(impl_->items_.size());
+        vertical_scroll().end();
         break;
     case sys::vkPrior:
         vertical_scroll().page_up();
@@ -908,19 +914,24 @@ bool list::onMouseDown(sys::Button button, int times, Point point)
     int index = hittest(point);
     if (index < 0)
         return true;
-    else
+    else if (times == 2)
     {
-        onItemClickedHandle(index, button, times);
-        if (times == 2)
+        if (button == sys::btnLeft
+            && editable(index)
+            && edit_trigger() & etDoubleClicked)
+            edit(index);
+        else
             onItemDoubleClickedHandle(index, button);
+
+        return true;
     }
 
     if (button != sys::btnLeft)
         return true;
     else
-    if ((  ((edit_trigger() & etDoubleClicked)   && times == 2)
-        || ((edit_trigger() & etSelectedClicked) && index == (int)current()))
-        && editable(index))
+    if (index == (int)current()
+        && editable(index)
+        && edit_trigger() & etSelectedClicked)
     {
         edit(index);
         return true;
@@ -943,8 +954,8 @@ bool list::onMouseDown(sys::Button button, int times, Point point)
         break;
     case smExtendedSelection:
         {
-            bool ctrl  = sys::key_pressed(sys::vkControl);
-            bool shift = sys::key_pressed(sys::vkShift);
+            bool ctrl  = window::key_pressed(sys::vkControl);
+            bool shift = window::key_pressed(sys::vkShift);
 
             if (!ctrl)
                 clear_selection();
@@ -962,7 +973,7 @@ bool list::onMouseDown(sys::Button button, int times, Point point)
         break;
     case smContiguousSelection:
         clear_selection();
-        if (sys::key_pressed(sys::vkShift))
+        if (window::key_pressed(sys::vkShift))
             select(impl_->selbegin_, index);
         else
         {
@@ -980,7 +991,7 @@ bool list::onMouseDown(sys::Button button, int times, Point point)
 
 bool list::onMouseMove(Point point)
 {
-    if (!sys::key_pressed(sys::vkLButton))
+    if (!window::key_pressed(sys::vkLButton))
         return true;
     int index = hittest(point), oldcurrent = current();
     if (index < 0 || index == oldcurrent)
@@ -1013,9 +1024,13 @@ bool list::onMouseMove(Point point)
     return true;
 }
 
-bool list::onMouseUp(sys::Button button, Point point)
+bool list::onMouseUp(sys::Button button, int times, Point point)
 {
     capture(false);
+
+    int index = hittest(point);
+    if (index >= 0)
+        onItemClickedHandle(index, button);
 
     return true;
 }

@@ -28,32 +28,32 @@ public:
    ~text_edit(void);
 
 public:
-    const std::wstring& text(void) const;
-    std::wstring        selected_text(void) const;
-    unsigned int        caret(void) const;
-    Margin              margin(void) const;
-    int                 margin_left(void) const;
-    int                 margin_top(void) const;
-    int                 margin_right(void) const;
-    int                 margin_bottom(void) const;
-    unsigned int        indent(void) const;
-    unsigned int        alignment(void) const;
-    bool                readonly(void) const;
-    bool                multiline(void) const;
-    bool                word_wrap(void) const;
-    unsigned int        line_spacing(void) const;
-    unsigned int        word_spacing(void) const;
-    const class font*   font(void) const;
-    bool                border_visible(void) const;
-    bool                fixed_brush(void) const;
-    brush_sptr          text_brush(void) const;
-    brush_sptr          background_brush(void) const;
-    brush_sptr          selection_brush(void) const;
-    Point               offset(void) const;
-    int                 offset_x(void) const;
-    int                 offset_y(void) const;
-    unsigned int        max_length(void) const;
-    unsigned int        blink_interval(void) const;
+    std::wstring      text(void) const;
+    std::wstring      selected_text(void) const;
+    unsigned int      caret(void) const;
+    Margin            margin(void) const;
+    int               margin_left(void) const;
+    int               margin_top(void) const;
+    int               margin_right(void) const;
+    int               margin_bottom(void) const;
+    unsigned int      indent(void) const;
+    unsigned int      alignment(void) const;
+    bool              readonly(void) const;
+    bool              multiline(void) const;
+    bool              word_wrap(void) const;
+    unsigned int      line_spacing(void) const;
+    unsigned int      word_spacing(void) const;
+    const class font* font(void) const;
+    bool              border_visible(void) const;
+    bool              fixed_brush(void) const;
+    brush_sptr        text_brush(void) const;
+    brush_sptr        background_brush(void) const;
+    brush_sptr        selection_brush(void) const;
+    Point             offset(void) const;
+    int               offset_x(void) const;
+    int               offset_y(void) const;
+    unsigned int      max_length(void) const;
+    unsigned int      blink_interval(void) const;
 
 public:
     void text(const std::string& text);
@@ -95,6 +95,11 @@ public:
     unsigned int hittest(Point point) const;
 
 public:
+    void cut(void);
+    void copy(void);
+    bool paste(void);
+
+public:
     void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
     bool onFocus(bool focus) override;
@@ -102,7 +107,7 @@ public:
     bool onKeyDown(sys::VirtualKey vkey) override;
     bool onKeyPress(unsigned int chr) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
 
 protected:

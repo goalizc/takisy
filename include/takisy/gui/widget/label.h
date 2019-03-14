@@ -21,22 +21,22 @@ public:
    ~label(void);
 
 public:
-    const std::wstring& text(void) const;
-    Margin              margin(void) const;
-    int                 margin_left(void) const;
-    int                 margin_top(void) const;
-    int                 margin_right(void) const;
-    int                 margin_bottom(void) const;
-    unsigned int        indent(void) const;
-    bool                word_wrap(void) const;
-    unsigned int        line_spacing(void) const;
-    unsigned int        word_spacing(void) const;
-    const class font*   font(void) const;
-    brush_sptr          text_brush(void) const;
-    brush_sptr          background_brush(void) const;
-    bool                fixed_brush(void) const;
-    unsigned int        alignment(void) const;
-    Size                optimal(OptimalPolicy policy=opUnset) const override;
+    std::wstring      text(void) const;
+    Margin            margin(void) const;
+    int               margin_left(void) const;
+    int               margin_top(void) const;
+    int               margin_right(void) const;
+    int               margin_bottom(void) const;
+    unsigned int      indent(void) const;
+    bool              word_wrap(void) const;
+    unsigned int      line_spacing(void) const;
+    unsigned int      word_spacing(void) const;
+    const class font* font(void) const;
+    brush_sptr        text_brush(void) const;
+    brush_sptr        background_brush(void) const;
+    bool              fixed_brush(void) const;
+    unsigned int      alignment(void) const;
+    Size              optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
     void text(const std::string& text);

@@ -18,17 +18,8 @@
 
 class deserialize
 {
-    template <typename Container>
-    struct clearer
-    {
-        static inline void clear(Container& container)
-        {
-            container.clear();
-        }
-    };
-
-    template <typename Container>
-    struct pusher;
+    template <typename Array>
+    struct push;
 
 public:
     class bin;
@@ -38,72 +29,35 @@ public:
     class xml;
 };
 
-template <typename T, unsigned int N>
-struct deserialize::clearer<std::array<T, N>>
+template <template <class...> class Array, typename... T>
+struct deserialize::push<Array<T...>>
 {
-    static inline void clear(std::array<T, N>& array)
-    {}
-};
+    typedef Array<T...> ArrayType;
+    typedef typename ArrayType::value_type ValueType;
 
-template <template <class...> class Container, typename... T>
-struct deserialize::pusher<Container<T...>>
-{
-    typedef Container<T...> container_type;
-    typedef typename container_type::value_type value_type;
-
-    inline void push(container_type& container, value_type&& value)
+    static void apply(ArrayType& array, ValueType&& value)
     {
-        container.push_back(std::move(value));
+        array.push_back(std::move(value));
     }
 };
 
-template <typename T, unsigned int N>
-struct deserialize::pusher<std::array<T, N>>
-{
-    typedef std::array<T, N> container_type;
-    typedef typename container_type::value_type value_type;
-
-    unsigned int index = 0;
-
-    inline void push(container_type& container, value_type&& value)
-    {
-        container[index++] = value;
-    }
-};
-
-template <typename... T>
-struct deserialize::pusher<std::forward_list<T...>>
-{
-    typedef std::forward_list<T...> container_type;
-    typedef typename container_type::value_type value_type;
-
-    inline void push(container_type& container, value_type&& value)
-    {
-        container.insert_after(container.end(), value);
-    }
-};
-
-#define insert_pusher(type)                                             \
-    template <typename... T>                                            \
-    struct deserialize::pusher<type<T...>>                              \
-    {                                                                   \
-        typedef type<T...> container_type;                              \
-        typedef typename container_type::value_type value_type;         \
-                                                                        \
-        inline void push(container_type& container, value_type&& value) \
-        {                                                               \
-            container.insert(std::move(value));                         \
-        }                                                               \
+#define insert_pusher(SET)                                     \
+    template <typename... T>                                   \
+    struct deserialize::push<SET<T...>>                        \
+    {                                                          \
+        typedef SET<T...> ArrayType;                           \
+        typedef typename ArrayType::value_type ValueType;      \
+                                                               \
+        static void apply(ArrayType& array, ValueType&& value) \
+        {                                                      \
+            array.insert(std::move(value));                    \
+        }                                                      \
     };
 
-    insert_pusher(std::map)
-    insert_pusher(std::multimap)
-    insert_pusher(std::multiset)
     insert_pusher(std::set)
-    insert_pusher(std::unordered_map)
-    insert_pusher(std::unordered_multimap)
-    insert_pusher(std::unordered_multiset)
+    insert_pusher(std::multiset)
     insert_pusher(std::unordered_set)
+    insert_pusher(std::unordered_multiset)
 #undef insert_pusher
 
 class deserialize::bin
@@ -112,12 +66,12 @@ class deserialize::bin
     class dispatch;
 
 public:
-    bin(const std::string& buffer)
-        : tell_(0), buffer_(buffer)
-    {}
-
     bin(std::string&& buffer)
         : tell_(0), buffer_(std::move(buffer))
+    {}
+
+    bin(const std::string& buffer)
+        : tell_(0), buffer_(buffer)
     {}
 
 public:
@@ -154,11 +108,11 @@ public:
     }
 
 private:
-    const char* pop(unsigned int size)
+    const char* pop(unsigned int n)
     {
         const char* ptr = buffer_.data() + tell_;
 
-        tell_ += size;
+        tell_ += n;
 
         return ptr;
     }
@@ -177,33 +131,45 @@ struct deserialize::bin::dispatch<Reflect, true>
     }
 };
 
-template <template <class...> class Container, typename... T>
-struct deserialize::bin::dispatch<Container<T...>, false>
+template <template <class...> class Array, typename... T>
+struct deserialize::bin::dispatch<Array<T...>, false>
 {
-    typedef Container<T...> container_type;
-    typedef typename container_type::value_type value_type;
+    typedef Array<T...> ArrayType;
+    typedef typename ArrayType::value_type ValueType;
 
-    static inline void deserialize(bin* bin, container_type& container)
+    static inline void deserialize(bin* bin, ArrayType& array)
     {
-        clearer<container_type>::clear(container);
-        pusher<container_type> pusher;
-        for (unsigned int i = bin->deserialize<unsigned int>(); i > 0; --i)
-            pusher.push(container, bin->deserialize<value_type>());
+        array.clear();
+        for (auto i = bin->deserialize<unsigned int>(); i > 0; --i)
+            push<ArrayType>::apply(array, bin->deserialize<ValueType>());
     }
 };
 
-template <typename T1, typename T2>
-struct deserialize::bin::dispatch<std::pair<T1, T2>, false>
+template <typename T, std::size_t N>
+struct deserialize::bin::dispatch<std::array<T, N>, false>
 {
-    typedef std::pair<T1, T2> pair_type;
-    typedef typename std::remove_const<T1>::type T3;
-
-    static inline void deserialize(bin* bin, pair_type& pair)
+    static inline void deserialize(bin* bin, std::array<T, N>& array)
     {
-        bin->deserialize(const_cast<T3&>(pair.first));
-        bin->deserialize(pair.second);
+        for (unsigned int i = 0; i < N; ++i)
+            array[i] = bin->deserialize<T>();
     }
 };
+
+#define deserialize(MAP)                                                \
+    template <typename T1, typename T2>                                 \
+    struct deserialize::bin::dispatch<MAP<T1, T2>, false>               \
+    {                                                                   \
+        static inline void deserialize(bin* bin, MAP<T1, T2>& map)      \
+        {                                                               \
+            map.clear();                                                \
+            for (auto i = bin->deserialize<unsigned int>(); i > 0; --i) \
+                map[bin->deserialize<T1>()] = bin->deserialize<T2>();   \
+        }                                                               \
+    };
+
+    deserialize(std::map)
+    deserialize(std::unordered_map)
+#undef deserialize
 
 template <>
 struct deserialize::bin::dispatch<bool>
@@ -219,14 +185,12 @@ struct deserialize::bin::dispatch<std::string>
 {
     static inline void deserialize(bin* bin, std::string& str)
     {
-        unsigned int size = bin->deserialize<unsigned int>();
-
-        if (size)
+        if (unsigned int n = bin->deserialize<unsigned int>())
         {
-            if (bin->left() < size)
+            if (bin->left() < n)
                 bin->tell_ = -1;
             else
-                str.assign(bin->pop(size), size);
+                str.assign(bin->pop(n), n);
         }
     }
 };
@@ -246,7 +210,7 @@ struct deserialize::bin::dispatch<stralgo::string>
     {                                                               \
         static inline void deserialize(bin* bin, T& number)         \
         {                                                           \
-            endian_type<T, etBigEndian> value(0);                   \
+            endian_type<T, etLittleEndian> value(0);                \
                                                                     \
             if (bin->eob())                                         \
                 ;                                                   \
@@ -370,8 +334,6 @@ class deserialize::json
     template <typename T, bool reflexible = reflect::info<T>::reflexible>
     class dispatch;
 
-    typedef ::json json_parser;
-
 public:
     template <typename... Args>
     json(Args&&... args)
@@ -389,7 +351,7 @@ public:
     template <typename T>
     inline T deserialize(void)
     {
-        T value;
+        T value {};
         deserialize(value);
         return std::move(value);
     }
@@ -397,78 +359,110 @@ public:
     template <typename T>
     inline void deserialize(T& value)
     {
-        if (json_.type() != json_parser::vtUndefined)
+        if (json_.type() != ::json::vtUndefined)
             dispatch<T>::deserialize(this, value);
     }
 
 private:
-    json_parser json_;
+    ::json json_;
 };
 
 template <typename Reflect>
 struct deserialize::json::dispatch<Reflect, true>
 {
-    static inline void deserialize(json* json, Reflect& reflect)
+    static inline void deserialize(json* obj, Reflect& reflect)
     {
-        reflect::for_each(reflect, *json);
+        reflect::for_each(reflect, *obj);
     }
 };
 
-template <template <class...> class Container, typename... T>
-struct deserialize::json::dispatch<Container<T...>, false>
+template <template <class...> class Array, typename... T>
+struct deserialize::json::dispatch<Array<T...>, false>
 {
-    typedef Container<T...> container_type;
-    typedef typename container_type::value_type value_type;
+    typedef Array<T...> ArrayType;
+    typedef typename ArrayType::value_type ValueType;
 
-    static inline void deserialize(json* json, container_type& container)
+    static inline void deserialize(json* obj, ArrayType& array)
     {
-        clearer<container_type>::clear(container);
-        pusher<container_type> pusher;
-        for (unsigned int size = json->json_.size(), i = 0; i < size; ++i)
-            pusher.push(container,
-                deserialize::json(json->json_[i]).deserialize<value_type>());
+        array.clear();
+        for (unsigned int n = obj->json_.size(), i = 0; i < n; ++i)
+            push<ArrayType>::apply(
+                array,
+                json(obj->json_[i]).deserialize<ValueType>()
+            );
     }
 };
 
-template <typename T1, typename T2>
-struct deserialize::json::dispatch<std::pair<T1, T2>, false>
+template <typename T, std::size_t N>
+struct deserialize::json::dispatch<std::array<T, N>, false>
 {
-    typedef std::pair<T1, T2> pair_type;
-    typedef typename std::remove_const<T1>::type T3;
-
-    static inline void deserialize(json* json, pair_type& pair)
+    static inline void deserialize(json* obj, std::array<T, N>& array)
     {
-        const_cast<T3&>(pair.first) = json->json_["key"].as_string();
-        deserialize::json(json->json_["value"]).deserialize(pair.second);
+        for (unsigned int n = obj->json_.size(), i = 0; i < n; ++i)
+            array[i] = json(obj->json_[i]).deserialize<T>();
     }
 };
+
+#define deserialize(MAP)                                                   \
+    template <typename T1, typename T2>                                    \
+    struct deserialize::json::dispatch<MAP<T1, T2>, false>                 \
+    {                                                                      \
+        typedef MAP<T1, T2> MapType;                                       \
+        typedef typename MapType::value_type::second_type ValueType;       \
+                                                                           \
+        static inline void deserialize(json* obj, MapType& map)            \
+        {                                                                  \
+            map.clear();                                                   \
+            for (const std::string& key : obj->json_.keys())               \
+                map[key] = json(obj->json_[key]).deserialize<ValueType>(); \
+        }                                                                  \
+    };
+
+    deserialize(std::map)
+    deserialize(std::unordered_map)
+#undef deserialize
 
 template <>
 struct deserialize::json::dispatch<bool>
 {
-    static inline void deserialize(json* json, bool& boolean)
+    static inline void deserialize(json* obj, bool& boolean)
     {
-        boolean = json->json_.as_bool();
+        boolean = obj->json_.as_bool();
     }
 };
 
 template <>
 struct deserialize::json::dispatch<char>
 {
-    static inline void deserialize(json* json, char& character)
+    static inline void deserialize(json* obj, char& character)
     {
-        character = json->json_.as_string()[0];
+        character = obj->json_.as_string()[0];
     }
 };
 
-#define deserialize(T)                                        \
-    template <>                                               \
-    struct deserialize::json::dispatch<T>                     \
-    {                                                         \
-        static inline void deserialize(json* json, T& number) \
-        {                                                     \
-            number = json->json_.as_double();                 \
-        }                                                     \
+#define deserialize(T)                                       \
+    template <>                                              \
+    struct deserialize::json::dispatch<T>                    \
+    {                                                        \
+        static inline void deserialize(json* obj, T& number) \
+        {                                                    \
+            number = obj->json_.as_double();                 \
+        }                                                    \
+    };
+
+    deserialize(float)
+    deserialize(double)
+    deserialize(long double)
+#undef deserialize
+
+#define deserialize(T)                                       \
+    template <>                                              \
+    struct deserialize::json::dispatch<T>                    \
+    {                                                        \
+        static inline void deserialize(json* obj, T& number) \
+        {                                                    \
+            number = obj->json_.as_integer();                \
+        }                                                    \
     };
 
     deserialize(signed char)
@@ -481,39 +475,36 @@ struct deserialize::json::dispatch<char>
     deserialize(unsigned long)
     deserialize(long long)
     deserialize(unsigned long long)
-    deserialize(float)
-    deserialize(double)
-    deserialize(long double)
 #undef deserialize
 
-#define deserialize(str_t)                                     \
-    template <>                                                \
-    struct deserialize::json::dispatch<str_t>                  \
-    {                                                          \
-        static inline void deserialize(json* json, str_t& str) \
-        {                                                      \
-            str = json->json_.as_string();                     \
-        }                                                      \
+#define deserialize(str_t)                                    \
+    template <>                                               \
+    struct deserialize::json::dispatch<str_t>                 \
+    {                                                         \
+        static inline void deserialize(json* obj, str_t& str) \
+        {                                                     \
+            str = obj->json_.as_string();                     \
+        }                                                     \
     };
 
     deserialize(std::string)
     deserialize(stralgo::string)
 #undef deserialize
 
-#define deserialize(ptr_t)                                     \
-    template <typename T>                                      \
-    struct deserialize::json::dispatch<ptr_t, false>           \
-    {                                                          \
-        static inline void deserialize(json* json, ptr_t& ptr) \
-        {                                                      \
-            if (json->json_.type() == json_parser::vtNull)     \
-                ptr = nullptr;                                 \
-            else                                               \
-            {                                                  \
-                ptr_t newptr(new T);                           \
-                json->deserialize(*(ptr = newptr));            \
-            }                                                  \
-        }                                                      \
+#define deserialize(ptr_t)                                    \
+    template <typename T>                                     \
+    struct deserialize::json::dispatch<ptr_t, false>          \
+    {                                                         \
+        static inline void deserialize(json* obj, ptr_t& ptr) \
+        {                                                     \
+            if (obj->json_.type() == ::json::vtNull)          \
+                ptr = nullptr;                                \
+            else                                              \
+            {                                                 \
+                ptr_t newptr(new T);                          \
+                obj->deserialize(*(ptr = newptr));            \
+            }                                                 \
+        }                                                     \
     };
 
     deserialize(T*)

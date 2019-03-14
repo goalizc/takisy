@@ -1,9 +1,9 @@
 list            done
 tree
 table           done
-group box
+group
 tab
-combo
+combo           done
 spin
 line
-menu
+menu            done

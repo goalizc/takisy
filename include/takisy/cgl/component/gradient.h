@@ -14,7 +14,7 @@ struct calculate
 {
     struct x
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return x;
         }
@@ -22,7 +22,7 @@ struct calculate
 
     struct y
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return y;
         }
@@ -30,7 +30,7 @@ struct calculate
 
     struct circle
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return math::hypot(x, y);
         }
@@ -38,7 +38,7 @@ struct calculate
 
     struct minxy
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return algo::min(math::abs(x), math::abs(y));
         }
@@ -46,7 +46,7 @@ struct calculate
 
     struct maxxy
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return algo::max(math::abs(x), math::abs(y));
         }
@@ -54,7 +54,7 @@ struct calculate
 
     struct diamond
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return math::abs(x) + math::abs(y);
         }
@@ -62,7 +62,7 @@ struct calculate
 
     struct sqrtxy
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             return math::sqrt(math::abs(x) * math::abs(y));
         }
@@ -70,7 +70,7 @@ struct calculate
 
     struct conic
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             static constexpr double pix2 = math::pi * 2;
 
@@ -84,7 +84,7 @@ struct calculate
 
     struct conic0to1
     {
-        inline double operator()(double x, double y) const
+        double operator()(double x, double y) const
         {
             static constexpr double rpix2 = 1 / (math::pi * 2);
 
@@ -105,7 +105,7 @@ struct decorate
 {
     struct null
     {
-        inline double operator()(double gradient) const
+        double operator()(double gradient) const
         {
             return gradient;
         }
@@ -114,16 +114,16 @@ struct decorate
     class wave
     {
     public:
-        inline wave(void)
+        wave(void)
             : wave(1)
         {}
 
-        inline wave(double n)
+        wave(double n)
             : n_(n), nx2_(n_ * 2)
         {}
 
     public:
-        inline double operator()(double gradient) const
+        double operator()(double gradient) const
         {
             gradient = math::fmod(math::abs(gradient), nx2_);
             if (gradient > n_)
@@ -145,24 +145,13 @@ struct transform
 {
     struct null
     {
-        inline void operator()(double& x, double& y) const {}
+        void operator()(double& x, double& y) const {}
     };
 
-    struct affine : private transformer
+    struct affine : public transformer
     {
     public:
-        inline void set(pointf center, double radius, double angle)
-        {
-            reset().offset(-center).scale(1 / radius).rotate(-angle);
-        }
-
-        inline void set(double cx, double cy, double radius, double angle)
-        {
-            reset().offset(-cx, -cy).scale(1 / radius).rotate(-angle);
-        }
-
-    public:
-        inline void operator()(double& x, double& y) const
+        void operator()(double& x, double& y) const
         {
             std::move(point_type<double&>(x, y)) = transform(x, y);
         }
@@ -173,37 +162,46 @@ struct transform
  * Gradient framework
  */
 
-template <typename Calculate,
-          typename Decorate  = decorate::null,
-          typename Transform = transform::null>
+template <typename C,
+          typename T = transform::null,
+          typename D = decorate::null>
 struct gradient
 {
-    typedef Calculate calculate_type;
-    typedef Decorate  decorate_type;
-    typedef Transform transform_type;
+    typedef T transform_type;
+    typedef C calculate_type;
+    typedef D decorate_type;
 
     calculate_type calculate;
-    decorate_type  decorate;
     transform_type transform;
+    decorate_type  decorate;
 
 public:
-    inline gradient(void)
+    gradient(void)
     {}
 
-    inline gradient(const calculate_type& calculate)
+    gradient(const calculate_type& calculate)
         : calculate(calculate)
     {}
 
-    inline gradient(const calculate_type& calculate,
-                    const decorate_type&  decorate,
-                    const transform_type& transform)
-        : calculate(calculate), decorate(decorate), transform(transform)
+    gradient(const calculate_type& calculate, const transform_type& transform)
+        : calculate(calculate), transform(transform)
+    {}
+
+    gradient(const calculate_type& calculate, const decorate_type& decorate)
+        : calculate(calculate), decorate(decorate)
+    {}
+
+    gradient(const calculate_type& calculate, const transform_type& transform,
+             const decorate_type& decorate)
+        : calculate(calculate), transform(transform), decorate(decorate)
     {}
 
 public:
-    inline double value(double x, double y) const
+    double value(double x, double y) const
     {
-        return transform(x, y), decorate(calculate(x, y));
+        transform(x, y);
+
+        return decorate(calculate(x, y));
     }
 };
 

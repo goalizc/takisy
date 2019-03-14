@@ -4,7 +4,7 @@
 inc_dir         = include
 src_dir         = src
 lib_dir         = lib
-bin_dir         = lib
+bin_dir         =
 
 ########################################################################
 # 输出
@@ -21,9 +21,9 @@ dependency      =
 ########################################################################
 # 外部库定义
 ########################################################################
-ext_inc_dir     = /usr/local/include/freetype2
-ext_lib_dir     = /z/mingw/msys/1.0/local/lib
-ext_lib         = freetype ws2_32 gdi32 imm32
+ext_inc_dir     = z:/mingw/msys/1.0/local/include/freetype2
+ext_lib_dir     = z:/mingw/msys/1.0/local/lib
+ext_lib         =
 
 ########################################################################
 # 编译相关
@@ -36,8 +36,23 @@ rm              = rm -rf
 mkdir           = mkdir -p
 
 ccflags         =
-cxxflags        = -O3 --std=gnu++11 -fopenmp -Wall -Werror -Wno-array-bounds
+cxxflags        = -O2 --std=gnu++14 -Wall -Werror \
+				  -Wno-array-bounds -Wno-unused-result \
+				  -Wno-misleading-indentation
 ldflags         =
+
+########################################################################
+# 平台
+########################################################################
+ifeq ($(OS),Windows_NT)
+  platform=Windows
+else
+  ifeq ($(shell uname),Darwin)
+    platform=MacOS
+  else
+    platform=Unix
+  endif
+endif
 
 ########################################################################
 # 头文件包含与链接库
@@ -51,6 +66,11 @@ ext_lib        := $(addprefix -l,$(ext_lib))
 # 相关文件
 ########################################################################
 srcs = $(shell find $(src_dir) -type f -name "*.cpp" -print)
+ifneq ($(platform),Windows)
+	temp  = $(shell find $(src_dir)/gui -type f -name "*.cpp" -print)
+	srcs := $(filter-out $(temp), $(srcs))
+endif
+
 objs = $(srcs:%.cpp=%.o)
 dpds = $(srcs:%.cpp=%.d)
 

@@ -64,7 +64,7 @@ label::~label(void)
     delete impl_;
 }
 
-const std::wstring& label::text(void) const
+std::wstring label::text(void) const
 {
     return impl_->text_.content();
 }
@@ -239,7 +239,7 @@ void label::font(const class font* font)
 
 void label::text_color(const color& text_color)
 {
-    text_brush(make_brushsptr<color_brush>(text_color));
+    text_brush(make_spbrush<color_brush>(text_color));
 }
 
 void label::text_brush(const brush_sptr& text_brush)
@@ -253,7 +253,7 @@ void label::text_brush(const brush_sptr& text_brush)
 
 void label::background_color(const color& background_color)
 {
-    background_brush(make_brushsptr<color_brush>(background_color));
+    background_brush(make_spbrush<color_brush>(background_color));
 }
 
 void label::background_brush(const brush_sptr& background_brush)

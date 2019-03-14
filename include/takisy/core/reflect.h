@@ -4,87 +4,71 @@
 #include <tuple>
 #include <type_traits>
 #include <takisy/preprocessor/arithmetic/dec.hpp>
-#include <takisy/preprocessor/control/if.hpp>
 #include <takisy/preprocessor/seq/enum.hpp>
 #include <takisy/preprocessor/seq/for_each.hpp>
 #include <takisy/preprocessor/seq/transform.hpp>
 #include <takisy/preprocessor/seq/variadic_seq_to_seq.hpp>
-#include <takisy/preprocessor/tuple/elem.hpp>
+#include <takisy/preprocessor/stringize.hpp>
 #include <takisy/preprocessor/tuple/enum.hpp>
 #include <takisy/preprocessor/tuple/pop_back.hpp>
-#include <takisy/preprocessor/tuple/pop_front.hpp>
 #include <takisy/preprocessor/tuple/push_front.hpp>
 #include <takisy/preprocessor/tuple/size.hpp>
-#include <takisy/preprocessor/tuple/to_seq.hpp>
+#include <takisy/preprocessor/variadic/size.hpp>
 #include <takisy/preprocessor/variadic/to_seq.hpp>
 
-#define reflect(refname, body, code...)                                        \
-    struct refname {                                                           \
-        PP_SEQ_FOR_EACH(reflect_op_member, , body) code                        \
-    };                                                                         \
-    template <>                                                                \
-    struct reflect::Info<refname> {                                            \
-        static constexpr bool reflexible = true;                               \
-        static constexpr unsigned size = PP_SEQ_SIZE(body);                    \
-        static constexpr const char* name = #refname;                          \
-        static constexpr const char* member_types[] = { reflect_types(body) }; \
-        static constexpr const char* member_names[] = { reflect_names(body) }; \
-        template <unsigned I>                                                  \
-        struct member {                                                        \
-            static constexpr unsigned index = I;                               \
-            static constexpr const char* type = member_types[index];           \
-            static constexpr const char* name = member_names[index];           \
-        };                                                                     \
-    };                                                                         \
-    template <unsigned I, typename R>                                          \
-    struct reflect::Member<I, R, refname> : public Info<refname>::member<I> {  \
-        typedef R holder_type;                                                 \
-        holder_type& holder;                                                   \
-        typedef decltype(ref<I>(reflect_call(holder, body))) value_type;       \
-        value_type& value;                                                     \
-    public:                                                                    \
-        inline Member(holder_type& holder)                                     \
-            : holder(holder), value(ref<I>(reflect_call(holder, body)))        \
-        {}                                                                     \
+#define REFLECT_DEFINE_STRUCT(NAME, BODY, CODE...) \
+    struct NAME {                                  \
+        PP_SEQ_FOR_EACH(REFLECT_MEMBER_OP, , BODY) \
+        CODE                                       \
+    };                                             \
+    REFLECT_ADAPT_STRUCT(                          \
+        NAME,                                      \
+        REFLECT_BODY_TO_MEMBERS(BODY)              \
+    )
+
+#define REFLECT_ADAPT_STRUCT(NAME, MEMBERS...)                              \
+    template <>                                                             \
+    struct reflect::Info<NAME> {                                            \
+        static constexpr bool reflexible = true;                            \
+        static constexpr unsigned size = PP_VARIADIC_SIZE(MEMBERS);         \
+        static constexpr const char* name = #NAME;                          \
+        static constexpr const char* members[] = { REFLECT_STRS(MEMBERS) }; \
+        template <unsigned I>                                               \
+        struct member {                                                     \
+            static constexpr unsigned index = I;                            \
+            static constexpr const char* name = members[I];                 \
+        };                                                                  \
+    };                                                                      \
+    template <unsigned I, typename R>                                       \
+    struct reflect::Member<I, R, NAME> : public Info<NAME>::member<I> {     \
+        R& holder;                                                          \
+        typedef decltype(ref<I>(REFLECT_CALL(holder, MEMBERS))) value_type; \
+        value_type& value;                                                  \
+    public:                                                                 \
+        inline Member(R& holder)                                            \
+            : holder(holder), value(ref<I>(REFLECT_CALL(holder, MEMBERS)))  \
+        {}                                                                  \
     };
 
-#define reflect_members(args...)            \
-    PP_SEQ_TRANSFORM(reflect_op_members2, , \
-        PP_VARIADIC_SEQ_TO_SEQ(             \
-            PP_SEQ_FOR_EACH(reflect_op_members1, , PP_VARIADIC_TO_SEQ(args))))
-#define reflect_op_members1(r, data, elem) elem
-#define reflect_op_members2(r, data, elem)  \
-    PP_TUPLE_PUSH_FRONT(                    \
-        PP_TUPLE_POP_BACK(elem),            \
-            PP_TUPLE_ELEM(PP_DEC(PP_TUPLE_SIZE(elem)), elem))
+#define REFLECT_BODY(body) \
+    PP_SEQ_TRANSFORM(REFLECT_BODY_OP, , PP_VARIADIC_SEQ_TO_SEQ(body))
+#define REFLECT_BODY_OP(r, data, tuple) \
+    PP_TUPLE_PUSH_FRONT(PP_TUPLE_POP_BACK(tuple), \
+                        PP_TUPLE_ELEM(PP_DEC(PP_TUPLE_SIZE(tuple)), tuple))
 
-#define reflect_op_member(r, ignore, elem) reflect_expand_member elem
-#define reflect_expand_member(name, type...) type name;
-
-#define reflect_types(body) \
-        reflect_transform(reflect_op_types1, reflect_op_types2, , body)
-#define reflect_op_types1(r, data, elem) PP_TUPLE_POP_FRONT(elem)
-#define reflect_op_types2(r, data, elem) reflect_expand_types(elem)
-#define reflect_expand_types(type) \
-        reflect_str(PP_SEQ_ENUM(PP_TUPLE_TO_SEQ(type))),
-
-#define reflect_names(body) \
-        reflect_transform(reflect_op_names1, reflect_op_names2, , body)
-#define reflect_op_names1(r, data, elem) PP_TUPLE_ELEM(0, elem)
-#define reflect_op_names2(r, data, elem) reflect_str(elem),
-
-#define reflect_call(object, body) \
-        reflect_transform(reflect_op_call1, reflect_op_call2, object, body)
-#define reflect_op_call1(r, object, elem) (object.PP_TUPLE_ELEM(0, elem))
-#define reflect_op_call2(r, object, elem) reflect_expand elem,
-
-#define reflect_transform(op1, op2, extra, body) \
-    PP_TUPLE_ENUM(PP_TUPLE_POP_BACK(             \
-        (PP_SEQ_FOR_EACH(op2, , PP_SEQ_TRANSFORM(op1, extra, body)))))
-
-#define reflect_str(args...) reflect_stri(args)
-#define reflect_stri(args...) #args
-#define reflect_expand(args...) args
+#define REFLECT_MEMBER_OP(r, data, elem) REFLECT_MEMBER_EXPAND elem
+#define REFLECT_MEMBER_EXPAND(name, type...) type name;
+#define REFLECT_BODY_TO_MEMBERS(body) \
+    REFLECT_ENUM_TRANSFROM(REFLECT_BODY_TO_MEMBERS_OP, , body)
+#define REFLECT_BODY_TO_MEMBERS_OP(r, data, elem) PP_TUPLE_ELEM(0, elem)
+#define REFLECT_STRS(args...) \
+    REFLECT_ENUM_TRANSFROM(REFLECT_STRS_OP, , PP_VARIADIC_TO_SEQ(args))
+#define REFLECT_STRS_OP(r, data, elem) PP_STRINGIZE(elem)
+#define REFLECT_CALL(object, members...) \
+    REFLECT_ENUM_TRANSFROM(REFLECT_CALL_OP, object, PP_VARIADIC_TO_SEQ(members))
+#define REFLECT_CALL_OP(r, object, member) object.member
+#define REFLECT_ENUM_TRANSFROM(op, data, seq) \
+    PP_SEQ_ENUM(PP_SEQ_TRANSFORM(op, data, seq))
 
 struct reflect {
     /* ===============================================================
@@ -132,7 +116,7 @@ public:
      * Ird's reference of args
      * ============================================================ */
     template <unsigned I, typename... T>
-    static typename std::tuple_element<I, std::tuple<T&...>>::type
+    static inline typename std::tuple_element<I, std::tuple<T&...>>::type
             ref(T&... args) {
         return std::get<I>(std::tuple<T&...>(args...));
     }

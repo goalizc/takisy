@@ -52,7 +52,7 @@ public:
     template <typename T>
     static inline T abs(const T& n)
     {
-        return ::abs(n);
+        return n >= 0 ? n : -n;
     }
 
     static inline double ceil(double n)

@@ -22,8 +22,29 @@ public:
 public:
     unsigned int get_alignment(widget* widget) const
     {
-        if (widget->exists_property("alignment"))
-            return widget->property<unsigned int>("alignment");
+        if (!widget->exists_property("alignment"))
+            return alignment_;
+
+        std::string property = widget->property("alignment");
+
+        if (property == "left")
+            return aLeft;
+        else if (property == "right")
+            return aRight;
+        else if (property == "top")
+            return aTop;
+        else if (property == "bottom")
+            return aBottom;
+        else if (property == "left-top")
+            return aLeftTop;
+        else if (property == "left-bottom")
+            return aLeftBottom;
+        else if (property == "right-top")
+            return aRightTop;
+        else if (property == "right-bottom")
+            return aRightBottom;
+        else if (property == "center")
+            return aCenter;
 
         return alignment_;
     }
@@ -410,200 +431,4 @@ vertical_layout::vertical_layout(void)
     : spacer_layout()
 {
     layout::impl_ = new implement(*this);
-}
-
-class grid_layout::implement : public layout::implement
-{
-    friend class grid_layout;
-
-public:
-    implement(grid_layout& self, unsigned int column, unsigned int row)
-        : layout::implement(self)
-        , column_(column), row_(row), items_(column_ * row_)
-    {}
-
-public:
-    widget* item(unsigned int col, unsigned int row) const
-    {
-        if (col < column_ && row < row_)
-            return items_[row * column_ + col];
-
-        return nullptr;
-    }
-
-    widget* item(unsigned int col, unsigned int row, widget* newer)
-    {
-        if (col < column_ && row < row_)
-        {
-            widget* older = item(col, row);
-
-            self.layout::remove(older);
-            self.layout::add(newer);
-
-            items_[row * column_ + col] = newer;
-
-            return older;
-        }
-
-        return nullptr;
-    }
-
-public:
-    void readapt(void) override;
-
-private:
-    unsigned int column_, row_;
-    std::vector<widget*> items_;
-};
-
-void grid_layout::implement::readapt(void)
-{
-    if (items_.empty())
-        return;
-
-    if (true)
-    {
-        int available = self.width() - margin_.left - margin_.right
-                        - spacing_ * (column_ - 1);
-        int remind  = column_;
-        int average = available / remind;
-        int offset  = margin_.left;
-
-        for (unsigned int i = 0; i < column_; ++i)
-        {
-            unsigned int colwidth = 0;
-            unsigned int width = average < 0 ? 0 : average;
-
-            for (unsigned int j = 0; j < row_; ++j)
-            {
-                widget* w = item(i, j);
-                if (!w)
-                    continue;
-
-                w->width(width);
-
-                if (colwidth < w->width())
-                    colwidth = w->width();
-            }
-
-            for (unsigned int j = 0; j < row_; ++j)
-            {
-                widget* w = item(i, j);
-                if (!w)
-                    continue;
-
-                switch (get_alignment(w) & aHorizontal)
-                {
-                default:
-                case aLeft:
-                    w->x(offset);
-                    break;
-                case aCenter:
-                    w->x(offset + (colwidth - w->width()) / 2);
-                    break;
-                case aRight:
-                    w->x(offset + colwidth - w->width());
-                    break;
-                }
-            }
-
-            if (--remind != 0)
-            {
-                available -= colwidth;
-                average    = available / remind;
-            }
-
-            offset += colwidth + spacing_;
-        }
-    }
-
-    if (true)
-    {
-        int available = self.height() - margin_.top - margin_.bottom
-                        - spacing_ * (row_ - 1);
-        int remind  = row_;
-        int average = available / remind;
-        int offset  = margin_.top;
-
-        for (unsigned int i = 0; i < row_; ++i)
-        {
-            unsigned int rowheight = 0;
-            unsigned int height = average < 0 ? 0 : average;
-
-            for (unsigned int j = 0; j < column_; ++j)
-            {
-                widget* w = item(j, i);
-                if (!w)
-                    continue;
-
-                w->height(height);
-
-                if (rowheight < w->height())
-                    rowheight = w->height();
-            }
-
-            for (unsigned int j = 0; j < column_; ++j)
-            {
-                widget* w = item(j, i);
-                if (!w)
-                    continue;
-
-                switch (get_alignment(w) & aVertical)
-                {
-                default:
-                case aTop:
-                    w->y(offset);
-                    break;
-                case aCenter:
-                    w->y(offset + (rowheight - w->height()) / 2);
-                    break;
-                case aBottom:
-                    w->y(offset + rowheight - w->height());
-                    break;
-                }
-            }
-
-            if (--remind != 0)
-            {
-                available -= rowheight;
-                average    = available / remind;
-            }
-
-            offset += rowheight + spacing_;
-        }
-    }
-}
-
-grid_layout::grid_layout(unsigned int column, unsigned int row)
-    : layout(), impl_(new implement(*this, column, row))
-{
-    layout::impl_ = impl_;
-}
-
-widget* grid_layout::item(unsigned int col, unsigned int row) const
-{
-    return impl_->item(col, row);
-}
-
-widget* grid_layout::item(unsigned int col, unsigned int row, widget* item)
-{
-    return impl_->item(col, row, item);
-}
-
-bool grid_layout::onAdding(widget* widget)
-{
-    for (class widget*& item : impl_->items_)
-        if (!item)
-            return item = widget, true;
-
-    return false;
-}
-
-bool grid_layout::onRemoving(widget* widget)
-{
-    for (class widget*& item : impl_->items_)
-        if (item == widget)
-            item = nullptr;
-
-    return true;
 }

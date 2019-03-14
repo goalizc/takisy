@@ -24,68 +24,62 @@ typedef std::shared_ptr<class brush> brush_sptr;
 
 /// make object
 
-template <typename Brush, typename... ConstructorArgs>
-inline Brush make_brush(ConstructorArgs&&... args)
+template <typename Brush, typename... Args>
+inline Brush make_brush(Args&&... args)
 {
-    return Brush(std::forward<ConstructorArgs>(args)...);
+    return Brush(std::forward<Args>(args)...);
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline TemplateBrush<TemplateArgs...> make_brush(void)
+template <template <class...> class Brush, typename... Args>
+inline Brush<Args...> make_brush(void)
 {
-    return TemplateBrush<TemplateArgs...>();
+    return Brush<Args...>();
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline TemplateBrush<TemplateArgs...> make_brush(TemplateArgs&&... args)
+template <template <class...> class Brush, typename... Args>
+inline Brush<Args...> make_brush(Args&&... args)
 {
-    typedef TemplateBrush<TemplateArgs...> brush_type;
-
-    return brush_type(std::forward<TemplateArgs>(args)...);
+    return Brush<Args...>(std::forward<Args>(args)...);
 }
 
 /// make brush pointer
 
-template <typename Brush, typename... ConstructorArgs>
-inline Brush* make_brushptr(ConstructorArgs&&... args)
+template <typename Brush, typename... Args>
+inline Brush* make_pbrush(Args&&... args)
 {
-    return new Brush(std::forward<ConstructorArgs>(args)...);
+    return new Brush(std::forward<Args>(args)...);
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline TemplateBrush<TemplateArgs...>* make_brushptr(void)
+template <template <class...> class Brush, typename... Args>
+inline Brush<Args...>* make_pbrush(void)
 {
-    return new TemplateBrush<TemplateArgs...>();
+    return new Brush<Args...>();
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline TemplateBrush<TemplateArgs...>* make_brushptr(TemplateArgs&&... args)
+template <template <class...> class Brush, typename... Args>
+inline Brush<Args...>* make_pbrush(Args&&... args)
 {
-    typedef TemplateBrush<TemplateArgs...> brush_type;
-
-    return new brush_type(std::forward<TemplateArgs>(args)...);
+    return new Brush<Args...>(std::forward<Args>(args)...);
 }
 
 /// make brush shared pointer
 
-template <typename Brush, typename... ConstructorArgs>
-inline brush_sptr make_brushsptr(ConstructorArgs&&... args)
+template <typename Brush, typename... Args>
+inline brush_sptr make_spbrush(Args&&... args)
 {
-    return brush_sptr(new Brush(std::forward<ConstructorArgs>(args)...));
+    return brush_sptr(new Brush(std::forward<Args>(args)...));
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline brush_sptr make_brushsptr(void)
+template <template <class...> class Brush, typename... Args>
+inline brush_sptr make_spbrush(void)
 {
-    return brush_sptr(new TemplateBrush<TemplateArgs...>());
+    return brush_sptr(new Brush<Args...>());
 }
 
-template <template <class...> class TemplateBrush, typename... TemplateArgs>
-inline brush_sptr make_brushsptr(TemplateArgs&&... args)
+template <template <class...> class Brush, typename... Args>
+inline brush_sptr make_spbrush(Args&&... args)
 {
-    typedef TemplateBrush<TemplateArgs...> brush_type;
-
-    return brush_sptr(new brush_type(std::forward<TemplateArgs>(args)...));
+    return brush_sptr(new Brush<Args...>(std::forward<Args>(args)...));
 }
 
 /* ===============================================================
@@ -99,19 +93,20 @@ struct offset_brush : public brush
     point offset;
 
 public:
-    static inline void set(brush& brush, const point& offset)
+    static void set(brush& brush, const point& offset)
     {
         set(&brush, offset);
     }
 
-    static inline void set(brush* brushptr, const point& offset)
+    static void set(brush* brushptr, const point& offset)
     {
         offset_brush* obptr = dynamic_cast<offset_brush*>(brushptr);
+
         if (obptr)
             obptr->offset = offset;
     }
 
-    static inline void set(const brush_sptr& brushsptr, const point& offset)
+    static void set(const brush_sptr& brushsptr, const point& offset)
     {
         set(brushsptr.get(), offset);
     }
@@ -126,12 +121,12 @@ public:
 class color_brush : public brush
 {
 public:
-    inline color_brush(const color& color)
-        : color_(color)
+    color_brush(const color& c)
+        : color_(c)
     {}
 
 public:
-    inline color operator()(int, int) const override
+    color operator()(int, int) const override
     {
         return color_;
     }
@@ -150,14 +145,14 @@ template <typename Lambda>
 class lambda_brush : public offset_brush
 {
 public:
-    inline lambda_brush(Lambda lambda)
+    lambda_brush(Lambda lambda)
         : lambda_(lambda)
     {}
 
 public:
-    inline color operator()(int x, int y) const override
+    color operator()(int x, int y) const override
     {
-        return lambda_(offset.x + x, offset.y + y);
+        return lambda_(x + offset.x, y + offset.y);
     }
 
 private:
@@ -179,15 +174,15 @@ public:
     {}
 
 public:
-    inline color operator()(int x, int y) const override
+    color operator()(int x, int y) const override
     {
         int width = pixel_matrix_.width();
-        x = (offset.x + x) % width;
+        x = (x + offset.x) % width;
         if (x < 0)
             x += width;
 
         int height = pixel_matrix_.height();
-        y = (offset.y + y) % height;
+        y = (y + offset.y) % height;
         if (y < 0)
             y += height;
 
@@ -204,15 +199,15 @@ private:
  *
  * ============================================================ */
 
-template <typename Calculate,
-          typename Decorate  = decorate::null,
-          typename Transform = transform::null>
+template <typename C,
+          typename T = transform::null,
+          typename D = decorate::null>
 struct gradient_brush : public offset_brush
 {
-    typedef gradient<Calculate, Decorate, Transform> gradient_t;
-
-    gradient_t gradient;
-    interpolator r, g, b, a;
+    gradient<C, T, D>
+        G;
+    interpolator
+        r, g, b, a;
 
 public:
     gradient_brush(void)
@@ -220,16 +215,9 @@ public:
         clamp();
     }
 
-    gradient_brush(const typename gradient_t::calculate_type& calculate)
-        : gradient(calculate)
-    {
-        clamp();
-    }
-
-    gradient_brush(const typename gradient_t::calculate_type& calculate,
-                   const typename gradient_t::decorate_type&  decorate,
-                   const typename gradient_t::transform_type& transform)
-        : gradient(calculate, decorate, transform)
+    template <typename... Args>
+    gradient_brush(Args&&... args)
+        : G(args...)
     {
         clamp();
     }
@@ -243,28 +231,29 @@ public:
         a.clear();
     }
 
+    void add_knot(double x, const color& c)
+    {
+        r.add_knot(x, c.r);
+        g.add_knot(x, c.g);
+        b.add_knot(x, c.b);
+        a.add_knot(x, c.a);
+    }
+
+public:
+    color operator()(int x, int y) const override
+    {
+        double ix = G.value(x + offset.x, y + offset.y);
+
+        return color(r[ix], g[ix], b[ix], a[ix]);
+    }
+
+private:
     void clamp(void)
     {
         r.clamp(0, 255);
         g.clamp(0, 255);
         b.clamp(0, 255);
         a.clamp(0, 255);
-    }
-
-    void add_knot(double gradient, const color& color)
-    {
-        r.add_knot(gradient, color.r);
-        g.add_knot(gradient, color.g);
-        b.add_knot(gradient, color.b);
-        a.add_knot(gradient, color.a);
-    }
-
-public:
-    color operator()(int x, int y) const override
-    {
-        double gvalue = gradient.value(offset.x + x, offset.y + y);
-
-        return color(r[gvalue], g[gvalue], b[gvalue], a[gvalue]);
     }
 };
 

@@ -16,19 +16,14 @@ public:
     };
 
 public:
-    static buffer_type
-        compress(const buffer_type& buffer);
-    static buffer_type
-        compress(const void* buffer, unsigned int length);
-    static buffer_type
-        compress(const buffer_type& buffer, CompressLevel level);
-    static buffer_type
-        compress(const void* buffer, unsigned int length, CompressLevel level);
+    static buffer_type compress(const buffer_type& buffer);
+    static buffer_type compress(const void* buffer, unsigned int length);
+    static buffer_type compress(const buffer_type& buffer, CompressLevel level);
+    static buffer_type compress(const void* buffer, unsigned int length,
+                                CompressLevel level);
 
-    static buffer_type
-        decompress(const buffer_type& buffer);
-    static buffer_type
-        decompress(const void* buffer, unsigned int length);
+    static buffer_type decompress(const buffer_type& buffer);
+    static buffer_type decompress(const void* buffer, unsigned int length);
 };
 
 #endif // zlib_h_20140325

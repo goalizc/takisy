@@ -8,29 +8,31 @@ class check::implement
 
     static constexpr int boxsize = 12;
     static constexpr int spacing =  5;
+    static constexpr int widgetx = boxsize + spacing;
 
 public:
-    implement(widget* content, bool checked)
-        : checked_(checked), content_(content)
+    implement(class widget* widget, bool checked)
+        : checked_(checked), widget_(widget)
     {}
 
 private:
     bool checked_;
-    widget* content_;
+    class widget* widget_;
 };
 
 check::check(void)
     : check(nullptr)
 {}
 
-check::check(widget* content)
-    : check(content, false)
+check::check(class widget* widget)
+    : check(widget, false)
 {}
 
-check::check(widget* content, bool checked)
-    : impl_(new implement(content, checked))
+check::check(class widget* widget, bool checked)
+    : impl_(new implement(widget, checked))
 {
-    add(content);
+    if (widget)
+        add(widget);
 }
 
 check::~check(void)
@@ -38,9 +40,14 @@ check::~check(void)
     delete impl_;
 }
 
-widget* check::content(void) const
+class widget* check::widget(void)
 {
-    return impl_->content_;
+    return impl_->widget_;
+}
+
+const class widget* check::widget(void) const
+{
+    return impl_->widget_;
 }
 
 bool check::checked(void) const
@@ -50,19 +57,32 @@ bool check::checked(void) const
 
 Size check::optimal(OptimalPolicy policy) const
 {
-    Size optsize = impl_->content_->optimal(policy);
+    if (!impl_->widget_)
+        return Size(implement::boxsize, implement::boxsize);
+    else
+    {
+        Size optsize = impl_->widget_->optimal(policy);
 
-    optsize.width += implement::boxsize + implement::spacing;
+        optsize.width += implement::boxsize + implement::spacing;
+        if (optsize.height < implement::boxsize)
+            optsize.height = implement::boxsize;
 
-    return optsize;
+        return optsize;
+    }
 }
 
-void check::content(widget* content)
+void check::widget(class widget* widget)
 {
-    remove(impl_->content_);
-    add((impl_->content_ = content));
+    if (!impl_->widget_)
+        widget::remove(impl_->widget_);
 
-    onSize();
+    impl_->widget_ = widget;
+
+    if (impl_->widget_)
+    {
+        widget::add(impl_->widget_);
+        onSize();
+    }
 }
 
 void check::checked(bool checked)
@@ -77,14 +97,13 @@ void check::checked(bool checked)
 
 void check::onSize(void)
 {
-    if (impl_->content_)
+    if (impl_->widget_)
     {
-        widget*& content = impl_->content_;
-
-        content->x(implement::boxsize + implement::spacing);
-        content->width(width() - content->x());
-        content->height(content->optimal(opFixedWidth).height);
-        content->y(int(height() - content->height()) / 2);
+        impl_->widget_->size(width() - implement::widgetx, height());
+        impl_->widget_->xy(
+            implement::widgetx,
+            (height() - impl_->widget_->height()) / 2
+        );
     }
 }
 
@@ -94,7 +113,7 @@ void check::onPaint(graphics graphics, Rect)
     rectf rect;
 
     rect.left = 0;
-    rect.top  = ((int)height() - implement::boxsize) / 2;
+    rect.top  = (int)(height() - implement::boxsize) / 2;
     rect.width(implement::boxsize);
     rect.height(implement::boxsize);
 
@@ -106,28 +125,10 @@ void check::onPaint(graphics graphics, Rect)
 bool check::onMouseDown(sys::Button button, int times, Point point)
 {
     if (button == sys::btnLeft)
-    {
         checked(!checked());
-        return true;
-    }
 
-    return false;
+    return true;
 }
-
-class text_check::implement
-{
-    friend class text_check;
-
-public:
-    implement(const std::wstring& text)
-        : label_(text)
-    {
-        label_.show();
-    }
-
-private:
-    label label_;
-};
 
 text_check::text_check(const std::string& text)
     : text_check(text, sys::default_codec(), false)
@@ -151,22 +152,20 @@ text_check::text_check(const std::wstring& text)
 {}
 
 text_check::text_check(const std::wstring& text, bool checked)
-    : check(nullptr, checked), impl_(new implement(text))
+    : check(nullptr, checked), label_(text)
 {
-    content(&impl_->label_);
-}
+    label_.alignment(aLeft);
+    label_.show();
 
-text_check::~text_check(void)
-{
-    delete impl_;
+    widget(&label_);
 }
 
 label& text_check::text(void)
 {
-    return impl_->label_;
+    return label_;
 }
 
 const label& text_check::text(void) const
 {
-    return impl_->label_;
+    return label_;
 }

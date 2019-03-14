@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include <initializer_list>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/widget.h>
 #include <takisy/gui/widget/label.h>
@@ -20,8 +19,8 @@ public:
 
 public:
     radio(void);
-    radio(widget* content);
-    radio(widget* content, bool selected);
+    radio(class widget* widget);
+    radio(class widget* widget, bool selected);
    ~radio(void);
 
 private:
@@ -29,12 +28,12 @@ private:
     using widget::remove;
 
 public:
-    widget* content(void) const;
-    bool    selected(void) const;
-    Size    optimal(OptimalPolicy policy=opUnset) const override;
+    class widget* widget(void) const;
+    bool selected(void) const;
+    Size optimal(OptimalPolicy policy=opUnset) const override;
 
 public:
-    void content(widget* content);
+    void widget(class widget* widget);
     void select(void);
 
 public:
@@ -61,7 +60,7 @@ public:
    ~text_radio(void);
 
 private:
-    using radio::content;
+    using radio::widget;
 
 public:
     label&       text(void);
@@ -82,7 +81,6 @@ public:
     radio_group(void);
     radio_group(widget** items, unsigned int count);
     radio_group(const vector<widget*>& items);
-    radio_group(initializer_list<widget*> initlist);
    ~radio_group(void);
 
 private:
@@ -126,25 +124,9 @@ class text_radio_group : public radio_group
 {
 public:
     text_radio_group(void);
-    text_radio_group(const char** items, unsigned int count);
-    text_radio_group(const char** items, unsigned int count, const char* codec);
-    text_radio_group(const wchar_t** items, unsigned int count);
-    text_radio_group(const string* items, unsigned int count);
-    text_radio_group(const string* items, unsigned int count,
-                     const string& codec);
-    text_radio_group(const wstring* items, unsigned int count);
-    text_radio_group(const vector<const char*>& items);
-    text_radio_group(const vector<const char*>& items, const char* codec);
-    text_radio_group(const vector<const wchar_t*>& items);
     text_radio_group(const vector<string>& items);
     text_radio_group(const vector<string>& items, const string& codec);
     text_radio_group(const vector<wstring>& items);
-    text_radio_group(initializer_list<const char*> list);
-    text_radio_group(initializer_list<const char*> list, const char* codec);
-    text_radio_group(initializer_list<const wchar_t*> list);
-    text_radio_group(initializer_list<string> list);
-    text_radio_group(initializer_list<string> list, const string& codec);
-    text_radio_group(initializer_list<wstring> list);
    ~text_radio_group(void);
 
 private:

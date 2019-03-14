@@ -56,8 +56,10 @@ unsigned int bit_reverse(unsigned int bits, unsigned int count)
 }
 
 match_result match(stretchy_buffer<const unsigned char*>& positions,
-                   const unsigned char* curr, int limit)
+                   const unsigned char* curr,
+                   const unsigned char* end)
 {
+    const long long limit = end - curr;
     match_result result = {kMinMatchCount, -1};
 
     for (const unsigned char* position : positions)
@@ -161,25 +163,25 @@ void deflate_fixed(const unsigned char* buffer, int length,
 
     stretchy_buffer<const unsigned char*> hash_tables[kHashTableSize];
     const unsigned char *curr = buffer, *end = buffer + length;
-    match_result result, result2;
+    match_result result1, result2;
 
     while (curr < end - kMinMatchCount)
     {
-        result = match(hash_tables[hash(curr)], curr, end - curr);
+        result1 = match(hash_tables[hash(curr)], curr, end);
 
-        if (result.distance < 0)
+        if (result1.distance < 0)
             push_fixed_huffcode(output, *curr++);
         else
         {
-            result2 = match(hash_tables[hash(curr + 1)], curr + 1, end - curr);
+            result2 = match(hash_tables[hash(curr + 1)], curr + 1, end);
 
-            if (result2.length > result.length)
-                push_fixed_huffcode(output, *curr++), result = result2;
+            if (result2.length > result1.length)
+                push_fixed_huffcode(output, *curr++), result1 = result2;
 
-            push_fixed_length(output, result.length);
-            push_fixed_distance(output, result.distance);
+            push_fixed_length(output, result1.length);
+            push_fixed_distance(output, result1.distance);
 
-            curr += result.length;
+            curr += result1.length;
         }
     }
 
@@ -200,10 +202,10 @@ void deflate(const unsigned char* buffer, unsigned int length,
 {
     switch (level)
     {
-    default:
     case  0: deflate_store  (buffer, length, output); break;
     case  1: deflate_fixed  (buffer, length, output); break;
     case  2: deflate_dynamic(buffer, length, output); break;
+    default: throw ecInvalidBlockType;
     }
 
     output.align();

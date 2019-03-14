@@ -470,15 +470,15 @@ bezier_fitting_curve& bezier_fitting_curve::depth(unsigned int depth)
 }
 
 bezier_fitting_curve&
-    bezier_fitting_curve::angle_tolerance(double angle_tolerance)
+bezier_fitting_curve::angle_tolerance(double angle_tolerance)
 {
     impl_->ba_.angle_tolerance(angle_tolerance);
 
     return *this;
 }
 
-bezier_fitting_curve& bezier_fitting_curve::distance_tolerance(
-    double distance_tolerance)
+bezier_fitting_curve&
+bezier_fitting_curve::distance_tolerance(double distance_tolerance)
 {
     impl_->ba_.distance_tolerance(distance_tolerance);
 

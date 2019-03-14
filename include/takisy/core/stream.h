@@ -10,7 +10,10 @@
 class stream
 {
 public:
-    enum SeekType { stBegin, stCurrent, stEnd, };
+    typedef std::shared_ptr<stream> sptr;
+    enum seekdir {
+        beg, cur, end
+    };
 
 public:
     virtual ~stream(void) {}
@@ -20,29 +23,29 @@ public:
     virtual bool seekable(void) const = 0;
     virtual bool readable(void) const = 0;
     virtual bool writable(void) const = 0;
-    virtual bool seek(long offset, SeekType seek_type) const = 0;
+    virtual bool seek(long offset, seekdir seekdir) const = 0;
     virtual unsigned long read(void* buffer, unsigned long size) const = 0;
     virtual unsigned long write(const void* buffer, unsigned long size) = 0;
 
 public:
-    static std::shared_ptr<stream> from_uri(const std::string& uri);
+    static sptr from_uri(const std::string& uri);
 
 public:
     template <typename T>
-    inline bool read(T& value) const
+    bool read(T& value) const
     {
         return read(&value, sizeof(value)) == sizeof(value);
     }
 
     template <typename T>
-    inline bool write(const T& value)
+    bool write(const T& value)
     {
         return write(&value, sizeof(value)) == sizeof(value);
     }
 
     std::string read_all(void) const;
-    std::string read_line(void) const;
     std::string read_chars(unsigned long nchars) const;
+    std::string read_line(void) const;
     std::string read_until(char terminator) const;
     std::string read_until(const std::string& terminator) const;
 
@@ -67,7 +70,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long, SeekType) const override;
+    bool seek(long, seekdir) const override;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void*, unsigned long) override;
 
@@ -95,7 +98,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long offset, SeekType seek_type) const override;
+    bool seek(long offset, seekdir seekdir) const override;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
@@ -124,7 +127,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long offset, SeekType seek_type) const override;
+    bool seek(long offset, seekdir seekdir) const override;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
@@ -152,7 +155,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long, SeekType) const override final;
+    bool seek(long, seekdir) const override final;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
@@ -180,7 +183,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long, SeekType) const override final;
+    bool seek(long, seekdir) const override final;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
@@ -217,7 +220,7 @@ public:
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long, SeekType) const override final;
+    bool seek(long, seekdir) const override final;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void* buffer, unsigned long size) override;
 
@@ -247,15 +250,15 @@ public:
 
 public:
     int         status_code(void) const;
-    const char* status_description(void) const;
-    const char* header(const char* key) const;
+    std::string status_description(void) const;
+    std::string header(const char* key) const;
 
 public:
     long tell(void) const override;
     bool seekable(void) const override;
     bool readable(void) const override;
     bool writable(void) const override;
-    bool seek(long, SeekType) const override final;
+    bool seek(long, seekdir) const override final;
     unsigned long read(void* buffer, unsigned long size) const override;
     unsigned long write(const void*, unsigned long) override final;
 
@@ -266,5 +269,10 @@ public:
 private:
     class implement* impl_;
 };
+
+stream::sptr  operator""_us(const char* uri, size_t);
+buffer_stream operator""_bs(const char* buffer, size_t size);
+file_stream   operator""_fs(const char* filepath, size_t);
+http_stream   operator""_hs(const char* url, size_t);
 
 #endif // stream_h_20140410

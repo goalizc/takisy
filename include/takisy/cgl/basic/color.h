@@ -46,7 +46,7 @@ public:
     {}
 
 public:
-    inline color& operator=(const color& c)
+    color& operator=(const color& c)
     {
         r = c.r; g = c.g; b = c.b; a = c.a;
 
@@ -54,43 +54,43 @@ public:
     }
 
 public:
-    static inline color rgb(unsigned int rgb)
+    static color rgb(unsigned int rgb)
     {
         return argb(0xff000000 | rgb);
     }
 
-    static inline color argb(unsigned int argb)
+    static color argb(unsigned int argb)
     {
         return color((argb & 0x00ff0000) >> 16, (argb & 0x0000ff00) >>  8,
                      (argb & 0x000000ff),       (argb & 0xff000000) >> 24);
     }
 
-    static inline color rgba(unsigned int rgba)
+    static color rgba(unsigned int rgba)
     {
         return color((rgba & 0xff000000) >> 24, (rgba & 0x00ff0000) >> 16,
                      (rgba & 0x0000ff00) >>  8, (rgba & 0x000000ff));
     }
 
-    static inline color rand_rgb(void)
+    static color rand_rgb(void)
     {
         return rand_rgb(channel_mask);
     }
 
-    static inline color rand_rgb(channel_type a)
+    static color rand_rgb(channel_type a)
     {
         return color(math::rand(channel_scale),
                      math::rand(channel_scale),
                      math::rand(channel_scale), a);
     }
 
-    static inline color rand_rgba(void)
+    static color rand_rgba(void)
     {
         return rand_rgb(math::rand(channel_scale));
     }
 
-#define ALIAS(alias, r, g, b)                                               \
-    static inline color alias(void)           { return color(r, g, b);    } \
-    static inline color alias(channel_type a) { return color(r, g, b, a); }
+#define ALIAS(alias, r, g, b)                                        \
+    static color alias(void)           { return color(r, g, b);    } \
+    static color alias(channel_type a) { return color(r, g, b, a); }
 
     ALIAS(alice_blue,              0xf0, 0xf8, 0xff)
     ALIAS(antique_white,           0xfa, 0xeb, 0xd7)
@@ -235,64 +235,54 @@ public:
 #undef ALIAS
 
 public:
-    inline color& clear(void)
+    unsigned int rgb(void) const
+    {
+        return 0xff000000 | (r << 16) | (g << 8) | b;
+    }
+
+    unsigned int argb(void) const
+    {
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    unsigned int rgba(void) const
+    {
+        return (r << 24) | (g << 16) | (b << 8) | a;
+    }
+
+    channel_type grayscale(void) const
+    {
+        return static_cast<channel_type>((r + g + g + b) >> 2);
+    }
+
+    color copy(void) const
+    {
+        return *this;
+    }
+
+public:
+    color& clear(void)
     {
         r = g = b = a = 0;
 
         return *this;
     }
 
-    inline color copy(void) const
-    {
-        return *this;
-    }
-
-public:
-    inline unsigned int rgb(void) const
-    {
-        return 0xff000000 | (r << 16) | (g << 8) | b;
-    }
-
-    inline unsigned int argb(void) const
-    {
-        return (a << 24) | (r << 16) | (g << 8) | b;
-    }
-
-    inline unsigned int rgba(void) const
-    {
-        return (r << 24) | (g << 16) | (b << 8) | a;
-    }
-
-    inline unsigned char grayscale(void) const
-    {
-        return static_cast<unsigned char>((r + g + g + b) >> 2);
-    }
-
-    inline color grayscale_color(void) const
-    {
-        return color(grayscale(), a);
-    }
-
-    inline color& grayscale(channel_type grayscale)
+    color& grayscale(channel_type grayscale)
     {
         r = g = b = grayscale;
 
         return *this;
     }
 
-    inline color& multiply(channel_type alpha)
+    color& graying(void)
     {
-        a = (a * (alpha + 1)) >> channel_shift;
+        grayscale(grayscale());
 
         return *this;
     }
 
-    inline color multiply_copy(channel_type alpha) const
-    {
-        return copy().multiply(alpha);
-    }
-
-    inline color& premultiply(void)
+    color& premultiply(void)
     {
         unsigned int inc_a = a + 1;
 
@@ -303,121 +293,93 @@ public:
         return *this;
     }
 
-    inline color premultiply_copy(void) const
-    {
-        return copy().premultiply();
-    }
-
-    inline color& visual(void)
+    color& visual(void)
     {
         return premultiply().opaque();
     }
 
-    inline color visual_copy(void) const
-    {
-        return copy().visual();
-    }
-
-    inline color& transparent(void)
-    {
-        return a = 0, *this;
-    }
-
-    inline color transparent_copy(void) const
-    {
-        return copy().transparent();
-    }
-
-    inline color& opaque(void)
+    color& opaque(void)
     {
         return a = channel_mask, *this;
     }
 
-    inline color opaque_copy(void) const
-    {
-        return copy().opaque();
-    }
-
-    color& blend(const color& fg_color);
-
-    color blend_copy(const color& fg_color) const
-    {
-        return copy().blend(fg_color);
-    }
+    color& blend(const color& c);
 
 public:
-    inline color operator~(void) const
+    color operator~(void) const
     {
         return color(~r, ~g, ~b, a);
     }
 
-    inline color operator&(const color& c) const
+    color operator&(const color& c) const
     {
-        return (copy() &= c);
+        return copy() &= c;
     }
 
-    inline color& operator&=(const color& c)
+    color& operator&=(const color& c)
     {
         r &= c.r; g &= c.g; b &= c.b; a &= c.a;
 
         return *this;
     }
 
-    inline color operator^(const color& c) const
+    color operator^(const color& c) const
     {
-        return (copy() ^= c);
+        return copy() ^= c;
     }
 
-    inline color& operator^=(const color& c)
+    color& operator^=(const color& c)
     {
         r ^= c.r; g ^= c.g; b ^= c.b; a ^= c.a;
 
         return *this;
     }
 
-    inline color operator|(const color& c) const
+    color operator|(const color& c) const
     {
-        return (copy() |= c);
+        return copy() |= c;
     }
 
-    inline color& operator|=(const color& c)
+    color& operator|=(const color& c)
     {
         r |= c.r; g |= c.g; b |= c.b; a |= c.a;
 
         return *this;
     }
 
-    inline color operator*(channel_type factor) const
+    color operator*(channel_type factor) const
     {
-        return multiply_copy(factor);
+        return copy() *= factor;
     }
 
-    inline color& operator*=(channel_type factor)
+    color& operator*=(channel_type factor)
     {
-        return multiply(factor);
+        a = (a * (factor + 1)) >> channel_shift;
+
+        return *this;
     }
 
-    inline bool operator==(const color& color) const
+    bool operator==(const color& c) const
     {
-        return r == color.r && g == color.g && b == color.b && a == color.a;
+        return r == c.r && g == c.g && b == c.b && a == c.a;
     }
 
-    inline bool operator!=(const color& color) const
+    bool operator!=(const color& c) const
     {
-        return r != color.r || g != color.g || b != color.b || a != color.a;
+        return r != c.r || g != c.g || b != c.b || a != c.a;
     }
 };
 
-class absolute_color : public color
+class strict_color : public color
 {
 public:
     using color::color;
 
-    absolute_color(const color& c)
+    strict_color(const color& c)
         : color(c)
     {}
 };
 
-color operator*(color::channel_type factor, const color& color);
+color operator*(color::channel_type factor, const color& c);
 
 #endif //color_h_20130717

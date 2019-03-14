@@ -27,10 +27,9 @@ zlib::buffer_type zlib::compress(const void* buffer, unsigned int length,
     output.write(0x78, 8);
     output.write(0x5e, 8);
 
-    rfc1951::deflate((const unsigned char*)(buffer), length, output, level);
+    rfc1951::deflate((const unsigned char*)buffer, length, output, level);
 
     unsigned int adler = adler32(buffer, length).digest();
-
     for (int i = 24; i >= 0; i -= 8)
         output.write((adler >> i) & 0xff, 8);
 
@@ -44,7 +43,7 @@ zlib::buffer_type zlib::decompress(const buffer_type& buffer)
 
 zlib::buffer_type zlib::decompress(const void* buffer, unsigned int length)
 {
-    bit_buffer::input input((const unsigned char*)(buffer), length);
+    bit_buffer::input input((const unsigned char*)buffer, length);
 
     unsigned char flag = input.read(8);
     if (flag != 0x78 || ((flag << 8) | input.read(8)) % 31 != 0)

@@ -13,60 +13,21 @@ public:
     };
 
 public:
-    implement(widget* content)
-        : content_(content), state_(bsIdle)
+    implement(void)
+        : state_(bsIdle)
     {}
 
 private:
-    widget* content_;
     ButtonState state_;
 };
 
 button::button(void)
-    : button(nullptr)
+    : impl_(new implement)
 {}
-
-button::button(widget* content)
-    : impl_(new implement(content))
-{
-    if (content)
-        add(content);
-}
 
 button::~button(void)
 {
     delete impl_;
-}
-
-widget* button::content(void) const
-{
-    return impl_->content_;
-}
-
-Size button::optimal(OptimalPolicy policy) const
-{
-    if (impl_->content_)
-        return impl_->content_->optimal(policy);
-    else
-        return optimal();
-}
-
-void button::content(widget* content)
-{
-    remove(impl_->content_);
-    add((impl_->content_ = content));
-
-    onSize();
-}
-
-void button::onSize(void)
-{
-    if (impl_->content_)
-    {
-        impl_->content_->size(size());
-        impl_->content_->x((width() - impl_->content_->width()) / 2);
-        impl_->content_->y((height() - impl_->content_->height()) / 2);
-    }
 }
 
 void button::onPaint(graphics graphics, Rect rect)
@@ -94,7 +55,7 @@ bool button::onMouseDown(sys::Button button, int times, Point point)
     return true;
 }
 
-bool button::onMouseUp(sys::Button button, Point point)
+bool button::onMouseUp(sys::Button button, int times, Point point)
 {
     if (button == sys::btnLeft)
     {
@@ -124,13 +85,78 @@ bool button::onMouseLeave(void)
     return true;
 }
 
-class text_button::implement
+class widget_button::implement
 {
-    friend class text_button;
+    friend class widget_button;
+
+public:
+    implement(class widget* widget)
+        : widget_(widget)
+    {}
 
 private:
-    label label_;
+    class widget* widget_;
 };
+
+widget_button::widget_button(void)
+    : widget_button(nullptr)
+{}
+
+widget_button::widget_button(class widget* widget)
+    : impl_(new implement(widget))
+{
+    if (widget)
+        widget::add(widget);
+}
+
+widget_button::~widget_button(void)
+{
+    delete impl_;
+}
+
+class widget* widget_button::widget(void)
+{
+    return impl_->widget_;
+}
+
+const class widget* widget_button::widget(void) const
+{
+    return impl_->widget_;
+}
+
+Size widget_button::optimal(OptimalPolicy policy) const
+{
+    if (impl_->widget_)
+        return impl_->widget_->optimal(policy);
+    else
+        return optimal();
+}
+
+void widget_button::widget(class widget* widget)
+{
+    if (!impl_->widget_)
+        widget::remove(impl_->widget_);
+
+    impl_->widget_ = widget;
+
+    if (impl_->widget_)
+    {
+        widget::add(impl_->widget_);
+        onSize();
+    }
+}
+
+void widget_button::onSize(void)
+{
+    if (impl_->widget_)
+    {
+        impl_->widget_->size(size());
+        impl_->widget_->xy(
+            (width()  - impl_->widget_->width())  / 2,
+            (height() - impl_->widget_->height()) / 2
+        );
+    }
+}
 
 text_button::text_button(void)
     : text_button(L"")
@@ -145,33 +171,27 @@ text_button::text_button(const std::string& caption, const std::string& codec)
 {}
 
 text_button::text_button(const std::wstring& caption)
-    : button(), impl_(new implement)
+    : label_(caption)
 {
-    impl_->label_.text(caption);
-    impl_->label_.margin(3);
-    impl_->label_.word_wrap(true);
-    impl_->label_.alignment(aCenter);
-    impl_->label_.show();
+    label_.margin(3);
+    label_.word_wrap(true);
+    label_.alignment(aCenter);
+    label_.show();
 
-    content(&impl_->label_);
-}
-
-text_button::~text_button(void)
-{
-    delete impl_;
+    widget(&label_);
 }
 
 label& text_button::text(void)
 {
-    return impl_->label_;
+    return label_;
 }
 
 const label& text_button::text(void) const
 {
-    return impl_->label_;
+    return label_;
 }
 
 Size text_button::optimal(OptimalPolicy policy) const
 {
-    return impl_->label_.optimal(policy);
+    return label_.optimal(policy);
 }

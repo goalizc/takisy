@@ -24,15 +24,21 @@ public:
     }
 
 public:
-    inline void host(widget* host)
+    widget* host(void) const
+    {
+        return host_;
+    }
+
+public:
+    void host(widget* host)
     {
         host_ = host;
     }
 
-    inline color other(const std::string& name, unsigned char alpha)
+    color other(const std::string& name)
     {
         if (host_ && host_->disabled())
-            return scheme_[name] * alpha;
+            return scheme_[name] * 128;
         else
             return scheme_[name];
     }

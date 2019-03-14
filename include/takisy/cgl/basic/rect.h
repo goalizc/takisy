@@ -130,7 +130,7 @@ public:
 public:
     inline bool empty(void) const
     {
-        return left == right && top == bottom;
+        return left == right || top == bottom;
     }
 
     template <typename TT>

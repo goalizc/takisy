@@ -5,6 +5,7 @@
 #include <takisy/cgl/basic/rect.h>
 #include <takisy/cgl/basic/canvas.h>
 #include <takisy/cgl/basic/raster.h>
+#include <takisy/cgl/font/font.h>
 
 template <typename Canvas>
 class painter
@@ -163,6 +164,7 @@ void painter<Canvas>::text(rect area, const wchar_t* string,
         while (false)
 
     while ((c = *string++))
+    {
         if (c != '\n')
         {
             const bitmap* bitmap = font.get_bitmap(c);
@@ -178,6 +180,7 @@ void painter<Canvas>::text(rect area, const wchar_t* string,
         }
         else
             next_line();
+    }
 
     #undef next_line
 }

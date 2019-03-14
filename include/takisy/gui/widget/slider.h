@@ -36,7 +36,7 @@ public:
     void end(void);
 
 public:
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
 
 protected:

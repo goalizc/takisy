@@ -9,10 +9,10 @@ class color_scheme
 
 public:
     color_scheme(void);
-    color_scheme(const color_scheme& color_scheme);
+    color_scheme(const color_scheme& colorscheme);
    ~color_scheme(void);
 
-    color_scheme& operator=(const color_scheme& color_scheme);
+    color_scheme& operator=(const color_scheme& colorscheme);
 
 public:
     color theme(void) const;

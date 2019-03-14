@@ -4,7 +4,6 @@
 #include <set>
 #include <vector>
 #include <string>
-#include <initializer_list>
 #include <takisy/core/handler.h>
 #include <takisy/gui/widget/scroll.h>
 
@@ -44,14 +43,30 @@ public:
     DECLARE_HANDLER(onCurrentColumnChanged,
                     unsigned int /* current  */,
                     unsigned int /* previous */);
-    DECLARE_HANDLER(onItemTextChanged, index /* index */);
+    DECLARE_HANDLER(onItemTextChanged,
+                    index /* index */,
+                    const std::wstring& /* current  */,
+                    const std::wstring& /* previous */);
+    DECLARE_HANDLER(onItemEditComplete,
+                    index /* index */, std::wstring& /* text */);
     DECLARE_HANDLER(onItemClicked,
                     index        /* index  */,
-                    sys::Button  /* button */,
-                    unsigned int /* times  */);
+                    sys::Button  /* button */);
+    DECLARE_HANDLER(onRowHeaderClicked,
+                    unsigned int /* index */,
+                    sys::Button  /* button */);
+    DECLARE_HANDLER(onColumnHeaderClicked,
+                    unsigned int /* index */,
+                    sys::Button  /* button */);
     DECLARE_HANDLER(onItemDoubleClicked,
                     index       /* index  */,
                     sys::Button /* button */);
+    DECLARE_HANDLER(onRowHeaderDoubleClicked,
+                    unsigned int /* index */,
+                    sys::Button  /* button */);
+    DECLARE_HANDLER(onColumnHeaderDoubleClicked,
+                    unsigned int /* index */,
+                    sys::Button  /* button */);
     DECLARE_HANDLER(onItemMouseEnter, index /* index */)
     DECLARE_HANDLER(onItemMouseLeave, index /* index */)
     DECLARE_HANDLER(onItemSelected, index /* index */);
@@ -79,6 +94,8 @@ public:
     SelectionBehavior selection_behavior(void) const;
     unsigned int      edit_trigger(void) const;
     bool              selected(const index& index) const;
+    std::set<index>   selected(void) const;
+    bool              exists(const index& index) const;
 
 public:
     const struct item           item(const index& index) const;
@@ -157,14 +174,47 @@ public:
     void  scrollto_column(unsigned int col, unsigned int alignment);
     void  repaint_item(const index& index);
 
+private:
+    struct sort_handler {
+        virtual ~sort_handler(void) {}
+    public:
+        virtual bool operator()
+            ( const std::wstring& a, const std::wstring& b ) const
+            { return a < b; }
+    };
+
+    void sort(int col, const sort_handler& handler);
+
+public:
+    template <typename Lambda>
+    void sort(int col, Lambda lambda)
+    {
+        class lambda_sort_handler : public sort_handler {
+        public:
+            lambda_sort_handler(Lambda lambda)
+                : lambda(lambda) {}
+        public:
+            bool operator()
+                ( const std::wstring& a, const std::wstring& b ) const override
+                { return lambda(a, b); }
+        private:
+            Lambda lambda;
+        } lambda_handler(lambda);
+
+        return sort(col, dynamic_cast<const sort_handler&>(lambda_handler));
+    }
+
+    void sort(int col);
+
 public:
     void onSize(void) override;
     void onPaint(graphics graphics, Rect rect) override;
     bool onFocus(bool focus) override;
+    bool onSetCursor(Point point) override;
     bool onKeyDown(sys::VirtualKey vkey) override;
     bool onKeyPress(unsigned int chr) override;
     bool onMouseDown(sys::Button button, int times, Point point) override;
-    bool onMouseUp(sys::Button button, Point point) override;
+    bool onMouseUp(sys::Button button, int times, Point point) override;
     bool onMouseMove(Point point) override;
 
 private:
@@ -240,7 +290,6 @@ public:
     void color(const color& color);
     void brush(const brush_sptr& brush);
     void dash_array(const std::vector<double>& dash_array);
-    void dash_array(std::initializer_list<double> initlist);
     void dash_array(const double* dash_array, unsigned int count);
 };
 
@@ -251,12 +300,14 @@ struct table::row_headers
 
 public:
     bool visible(void) const;
+    bool scalable(void) const;
     unsigned int width(void) const;
 
 public:
     void show(void);
     void hide(void);
     void visible(bool visible);
+    void scalable(bool scalable);
     void width(unsigned int width);
 };
 
@@ -266,8 +317,12 @@ struct table::row_header : public item
     std::shared_ptr<struct implement> impl;
 
 public:
+    bool scalable(void) const;
     unsigned int height(void) const;
-    void         height(unsigned int height);
+
+public:
+    void scalable(bool scalable);
+    void height(unsigned int height);
 };
 
 struct table::row
@@ -277,8 +332,11 @@ struct table::row
 
 public:
     unsigned int height(void) const;
+    unsigned int optimal_height(void) const;
     const table::gridline gridline(void) const;
     const table::row_header header(void) const;
+    class table::item item(int col);
+    const class table::item item(int col) const;
 
 public:
     void height(unsigned int height);
@@ -299,12 +357,14 @@ struct table::column_headers
 
 public:
     bool visible(void) const;
+    bool scalable(void) const;
     unsigned int height(void) const;
 
 public:
     void show(void);
     void hide(void);
     void visible(bool visible);
+    void scalable(bool scalable);
     void height(unsigned int height);
 };
 
@@ -314,8 +374,12 @@ struct table::column_header : public item
     std::shared_ptr<struct implement> impl;
 
 public:
+    bool scalable(void) const;
     unsigned int width(void) const;
-    void         width(unsigned int width);
+
+public:
+    void scalable(bool scalable);
+    void width(unsigned int width);
 };
 
 struct table::column
@@ -325,8 +389,11 @@ struct table::column
 
 public:
     unsigned int width(void) const;
+    unsigned int optimal_width(void) const;
     const table::gridline gridline(void) const;
     const table::column_header header(void) const;
+    class table::item item(int row);
+    const class table::item item(int row) const;
 
 public:
     void width(unsigned int width);

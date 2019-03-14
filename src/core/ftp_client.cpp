@@ -134,7 +134,7 @@ ftp_client::response ftp_client::login(void) const
 }
 
 ftp_client::response
-    ftp_client::login(const char* user, const char* password) const
+ftp_client::login(const char* user, const char* password) const
 {
     response rsp = sendcmd("USER $0", user);
 
@@ -174,16 +174,16 @@ ftp_client::response ftp_client::pwd(void) const
 }
 
 ftp_client::response
-    ftp_client::list(const char* path, std::string& content) const
+ftp_client::list(const char* path, std::string& content) const
 {
     buffer_stream bufstream;
 
     response rsp = list(path, bufstream);
     if (rsp.status[0] == '2')
     {
-        bufstream.seek(0, stream::stEnd);
+        bufstream.seek(0, stream::end);
         content.resize(bufstream.tell());
-        bufstream.seek(0, stream::stBegin);
+        bufstream.seek(0, stream::beg);
         bufstream.read(const_cast<char*>(content.data()), content.size());
     }
 
@@ -251,7 +251,7 @@ ftp_client::response ftp_client::put(const char* localfile) const
 }
 
 ftp_client::response
-    ftp_client::put(const char* localfile, const char* remotefile) const
+ftp_client::put(const char* localfile, const char* remotefile) const
 {
     file_stream fs(localfile, "rb");
 
@@ -259,7 +259,7 @@ ftp_client::response
 }
 
 ftp_client::response
-    ftp_client::put(const stream& istream, const char* remotefile) const
+ftp_client::put(const stream& istream, const char* remotefile) const
 {
     response rsp;
 
@@ -299,7 +299,7 @@ ftp_client::response ftp_client::get(const char* remotefile) const
 }
 
 ftp_client::response
-    ftp_client::get(const char* remotefile, const char* localfile) const
+ftp_client::get(const char* remotefile, const char* localfile) const
 {
     file_stream fs(localfile, "wb");
 
@@ -307,7 +307,7 @@ ftp_client::response
 }
 
 ftp_client::response
-    ftp_client::get(const char* remotefile, stream& ostream) const
+ftp_client::get(const char* remotefile, stream& ostream) const
 {
     response rsp;
 
@@ -348,7 +348,7 @@ ftp_client::response
 }
 
 ftp_client::response
-    ftp_client::rename(const char* srcname, const char* dstname) const
+ftp_client::rename(const char* srcname, const char* dstname) const
 {
     response rsp = sendcmd("RNFR $0", srcname);
 

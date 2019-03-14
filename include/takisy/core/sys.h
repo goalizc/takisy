@@ -1,7 +1,7 @@
 #ifndef sys_h_20131122
 #define sys_h_20131122
 
-#include <vector>
+#include <string>
 
 class sys
 {
@@ -88,10 +88,8 @@ public:
 
 public:
     static unsigned long long rdtsc(void);
-    static const char* default_codec(void);
-    static void default_codec(const char* codec);
-    static bool key_pressed(VirtualKey vkey);
-    static bool key_pressed(const std::vector<VirtualKey>& vkeys);
+    static std::string default_codec(void);
+    static std::string default_codec(const std::string& codec);
 };
 
 #endif //sys_h_20131122

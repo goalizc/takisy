@@ -19,20 +19,20 @@ public:
     canvas_adapter& operator=(const PixelMatrix& pixel_format);
     canvas_adapter& operator=(const canvas_adapter& canvas_adapter);
 
-
 public:
     virtual void clear(void) = 0;
     virtual void clear(color color) = 0;
     virtual void resize(unsigned int width, unsigned int height) = 0;
-    virtual unsigned int pixel_flag(void) const = 0;
-    virtual unsigned int pixel_bytes(void) const { return 0; };
+    virtual bool strict(void) const { return false; }
+    virtual unsigned int pixel_flag(void) const { return 0; }
+    virtual unsigned int pixel_bytes(void) const = 0;
     virtual unsigned int width(void) const = 0;
     virtual unsigned int height(void) const = 0;
     virtual color pixel(int x, int y) const = 0;
     virtual unsigned char* buffer(void) = 0;
     virtual const unsigned char* buffer(void) const = 0;
     virtual void pixel(int x, int y, const color& color) = 0;
-    virtual void pixel(int x, int y, const absolute_color& color) = 0;
+    virtual void pixel(int x, int y, const strict_color& color) = 0;
 
     unsigned int row_bytes(void) const
         { return width() * pixel_bytes(); }
@@ -98,7 +98,7 @@ public:
         { return (const unsigned char*)(canvas.pixels().data()); }
     void pixel(int x, int y, const color& color) override
         { canvas.pixel(x, y, color); }
-    void pixel(int x, int y, const absolute_color& color) override
+    void pixel(int x, int y, const strict_color& color) override
         { canvas.pixel(x, y, color); }
 };
 
@@ -109,7 +109,7 @@ canvas_adapter& canvas_adapter::operator=(const PixelMatrix& pm)
 
     for (unsigned int y = 0; y < pm.height(); ++y)
     for (unsigned int x = 0; x < pm.width();  ++x)
-        pixel(x, y, absolute_color(pm.pixel(x, y)));
+        pixel(x, y, strict_color(pm.pixel(x, y)));
 
     return *this;
 }

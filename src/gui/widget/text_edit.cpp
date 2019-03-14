@@ -1,17 +1,16 @@
 #include <takisy/core/sys.h>
-#include <takisy/core/osdet.h>
 #include <takisy/core/codec.h>
 #include <takisy/core/timer.h>
 #include <takisy/algorithm/stralgo.h>
 #include <takisy/gui/basic/cursor.h>
 #include <takisy/gui/widget/text_edit.h>
-#include <takisy/gui/cross_platform_window.h>
+#include <takisy/gui/window.h>
 #include "editbox.h"
 
 namespace takisy {
 namespace gui
 {
-    cross_platform_window::Handle handleFromLPWIDGET(const widget* widget);
+    window::Handle handleFromLPWIDGET(const widget* widget);
 }}
 
 class text_edit::implement
@@ -98,16 +97,14 @@ text_edit::text_edit(const std::wstring& _text)
     impl_->text_.onCaretPointChanged(
         [this](class text* self)
         {
-            cross_platform_window::Handle handle =
-                            takisy::gui::handleFromLPWIDGET(forefather());
-            if (handle)
+            window::Handle hdl = takisy::gui::handleFromLPWIDGET(forefather());
+            if (hdl)
             {
-            #ifdef __os_win__
                 Point cp = window_xy()
                          + impl_->text_.caret_point()
                          - impl_->text_.offset();
 
-                HIMC himc = ImmGetContext(handle);
+                HIMC himc = ImmGetContext(hdl);
 
                 LOGFONT lf;
                 if (ImmGetCompositionFont(himc, &lf))
@@ -117,9 +114,10 @@ text_edit::text_edit(const std::wstring& _text)
                 cf.dwStyle = CFS_POINT;
                 cf.ptCurrentPos.x = cp.x;
                 cf.ptCurrentPos.y = cp.y + impl_->text_.font()->emheight();
+                if (cf.ptCurrentPos.y < 0)
+                    cf.ptCurrentPos.y = 0;
 
                 ImmSetCompositionWindow(himc, &cf);
-            #endif
             }
         });
     impl_->text_.onCaretChanged(
@@ -192,7 +190,7 @@ text_edit::~text_edit(void)
     delete impl_;
 }
 
-const std::wstring& text_edit::text(void) const
+std::wstring text_edit::text(void) const
 {
     return impl_->text_.content();
 }
@@ -459,7 +457,7 @@ void text_edit::hide_border(void)
 
 void text_edit::text_color(const color& color)
 {
-    text_brush(make_brushsptr<color_brush>(color));
+    text_brush(make_spbrush<color_brush>(color));
 }
 
 void text_edit::text_brush(const brush_sptr& brush)
@@ -473,7 +471,7 @@ void text_edit::text_brush(const brush_sptr& brush)
 
 void text_edit::background_color(const color& color)
 {
-    background_brush(make_brushsptr<color_brush>(color));
+    background_brush(make_spbrush<color_brush>(color));
 }
 
 void text_edit::background_brush(const brush_sptr& brush)
@@ -487,7 +485,7 @@ void text_edit::background_brush(const brush_sptr& brush)
 
 void text_edit::selection_color(const color& color)
 {
-    selection_brush(make_brushsptr<color_brush>(color));
+    selection_brush(make_spbrush<color_brush>(color));
 }
 
 void text_edit::selection_brush(const brush_sptr& brush)
@@ -534,6 +532,57 @@ void text_edit::redo(void)
 unsigned int text_edit::hittest(Point point) const
 {
     return impl_->text_.hittest(point);
+}
+
+void text_edit::cut(void)
+{
+    if (!impl_->readonly_)
+    {
+        copy();
+        impl_->text_.erase(0);
+        impl_->update();
+    }
+}
+
+void text_edit::copy(void)
+{
+    std::string text = stralgo::encode(selected_text(), "gbk");
+    if (!text.empty())
+    {
+        if (OpenClipboard(nullptr))
+        {
+            EmptyClipboard();
+            HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT,
+                                       text.size() + 1);
+            strncpy(reinterpret_cast<char*>(GlobalLock(data)),
+                    text.c_str(), text.size());
+            GlobalUnlock(data);
+            SetClipboardData(CF_TEXT, data);
+            CloseClipboard();
+        }
+    }
+}
+
+bool text_edit::paste(void)
+{
+    if (impl_->readonly_ || !OpenClipboard(nullptr))
+        return false;
+    else if (!IsClipboardFormatAvailable(CF_TEXT))
+    {
+        CloseClipboard();
+        return false;
+    }
+    else
+    {
+        HANDLE data = GetClipboardData(CF_TEXT);
+        std::wstring text =
+            stralgo::decode(reinterpret_cast<char*>(GlobalLock(data)), "gbk");
+        if (impl_->text_.typewrite(text))
+            impl_->update();
+        GlobalUnlock(data);
+        CloseClipboard();
+        return true;
+    }
 }
 
 void text_edit::onSize(void)
@@ -587,7 +636,7 @@ void text_edit::onPaint(graphics graphics, Rect rect)
 
         graphics.draw_line(cp.x + 0.5, cp.y,
                            cp.x + 0.5, cp.y + impl_->text_.font()->emheight(),
-                           make_brushsptr<lambda_brush>(
+                           make_spbrush<lambda_brush>(
             [&graphics](int x, int y) -> color
             {
                 return ~graphics.pixel(x, y).opaque();
@@ -622,8 +671,8 @@ bool text_edit::onKeyDown(sys::VirtualKey vkey)
 {
     class text& text = impl_->text_;
 
-    bool shift = sys::key_pressed(sys::vkShift);
-    bool ctrl  = sys::key_pressed(sys::vkControl);
+    bool shift = window::key_pressed(sys::vkShift);
+    bool ctrl  = window::key_pressed(sys::vkControl);
 
     switch (vkey)
     {
@@ -711,7 +760,7 @@ bool text_edit::onKeyPress(unsigned int chr)
     if (chr == 10)
         ctrl = false;
     else
-        ctrl = sys::key_pressed(sys::vkControl);
+        ctrl = window::key_pressed(sys::vkControl);
 
     if (ctrl)
     {
@@ -744,46 +793,15 @@ bool text_edit::onKeyPress(unsigned int chr)
             if (!impl_->readonly_ && impl_->text_.undo())
                 impl_->update();
             break;
-    #ifdef __os_win__
-        case 'c':
         case 'x':
-            if (OpenClipboard(nullptr))
-            {
-                std::string text = stralgo::encode(selected_text(), "gbk");
-                if (!text.empty())
-                {
-                    EmptyClipboard();
-                    HGLOBAL data = GlobalAlloc(GMEM_MOVEABLE | GMEM_ZEROINIT,
-                                               text.size() + 1);
-                    strncpy(reinterpret_cast<char*>(GlobalLock(data)),
-                            text.c_str(), text.size());
-                    GlobalUnlock(data);
-                    SetClipboardData(CF_TEXT, data);
-                }
-                if (!impl_->readonly_ && chr == 'x')
-                {
-                    impl_->text_.erase(0);
-                    impl_->update();
-                }
-                CloseClipboard();
-            }
+            cut();
+            break;
+        case 'c':
+            copy();
             break;
         case 'v':
-            if (!impl_->readonly_ && OpenClipboard(nullptr))
-            {
-                if (IsClipboardFormatAvailable(CF_TEXT))
-                {
-                    HANDLE data = GetClipboardData(CF_TEXT);
-                    std::wstring text = stralgo::decode(
-                            reinterpret_cast<char*>(GlobalLock(data)), "gbk");
-                    if (impl_->text_.typewrite(text))
-                        impl_->update();
-                    GlobalUnlock(data);
-                }
-                CloseClipboard();
-            }
+            paste();
             break;
-    #endif
         }
     }
     else
@@ -820,7 +838,7 @@ bool text_edit::onMouseDown(sys::Button button, int times, Point point)
 
         if (times == 1)
         {
-            bool shift = sys::key_pressed(sys::vkShift);
+            bool shift = window::key_pressed(sys::vkShift);
             if (!shift)
                 impl_->text_.cancel_select();
             impl_->text_.move(caret, shift);
@@ -855,7 +873,7 @@ bool text_edit::onMouseDown(sys::Button button, int times, Point point)
     return true;
 }
 
-bool text_edit::onMouseUp(sys::Button button, Point point)
+bool text_edit::onMouseUp(sys::Button button, int times, Point point)
 {
     capture(false);
     impl_->dragging_.underway = false;

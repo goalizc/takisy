@@ -9,7 +9,8 @@ class json::value
 {
 public:
     struct null;
-    struct boolean;
+    struct bool_true;
+    struct bool_false;
     struct number_double;
     struct number_integer;
     struct string;
@@ -17,74 +18,43 @@ public:
     struct object;
 
 public:
-    virtual ~value(void)
-    {}
-
-public:
-    virtual valuesptr& get(unsigned int index)
-    {
-        throw std::logic_error(
-            stralgo::sprintf("json type(%d) is not array(6).", type())
-        );
-    }
-
-    virtual valuesptr& get(const std::string& key)
-    {
-        throw std::logic_error(
-            stralgo::sprintf("json type(%d) is not object(7).", type())
-        );
-    }
-
+    virtual ~value(void) {}
     virtual Type type(void) const = 0;
     virtual valueptr copy(void) const = 0;
     virtual void dump(std::string& buffer, int level, int indent) const = 0;
 };
 
-struct json::value::null : public value
+struct json::value::null : public json::value
 {
     Type type(void) const override
-    {
-        return vtNull;
-    }
-
+        { return vtNull; }
     valueptr copy(void) const override
-    {
-        return new null();
-    }
-
+        { return new null(); }
     void dump(std::string& buffer, int, int) const override
-    {
-        buffer += "null";
-    }
+        { buffer += "null"; }
 };
 
-struct json::value::boolean : public value
+struct json::value::bool_true : public json::value
 {
-    bool value;
-
-public:
-    boolean(bool value)
-        : value(value)
-    {}
-
-public:
     Type type(void) const override
-    {
-        return vtBoolean;
-    }
-
+        { return vtBoolTrue; }
     valueptr copy(void) const override
-    {
-        return new boolean(value);
-    }
-
+        { return new bool_true(); }
     void dump(std::string& buffer, int, int) const override
-    {
-        buffer += value ? "true" : "false";
-    }
+        { buffer += "true"; }
 };
 
-struct json::value::number_double : public value
+struct json::value::bool_false : public json::value
+{
+    Type type(void) const override
+        { return vtBoolFalse; }
+    valueptr copy(void) const override
+        { return new bool_false(); }
+    void dump(std::string& buffer, int, int) const override
+        { buffer += "false"; }
+};
+
+struct json::value::number_double : public json::value
 {
     double value;
 
@@ -95,22 +65,14 @@ public:
 
 public:
     Type type(void) const override
-    {
-        return vtNumberDouble;
-    }
-
+        { return vtNumberDouble; }
     valueptr copy(void) const override
-    {
-        return new number_double(value);
-    }
-
+        { return new number_double(value); }
     void dump(std::string& buffer, int, int) const override
-    {
-        buffer += stralgo::strf(value);
-    }
+        { buffer += stralgo::strf(value); }
 };
 
-struct json::value::number_integer : public value
+struct json::value::number_integer : public json::value
 {
     long long value;
 
@@ -121,57 +83,39 @@ public:
 
 public:
     Type type(void) const override
-    {
-        return vtNumberInteger;
-    }
-
+        { return vtNumberInteger; }
     valueptr copy(void) const override
-    {
-        return new number_integer(value);
-    }
-
+        { return new number_integer(value); }
     void dump(std::string& buffer, int, int) const override
-    {
-        buffer += stralgo::strf(value);
-    }
+        { buffer += stralgo::strf(value); }
 };
 
-struct json::value::string : public value
+struct json::value::string : public json::value
 {
     std::string value;
 
 public:
-    string(const std::string& value)
-        : value(value)
+    string(void) {}
+
+    template <typename... Args>
+    string(Args&&... args)
+        : value(std::forward<Args>(args)...)
     {}
 
 public:
     Type type(void) const override
-    {
-        return vtString;
-    }
-
+        { return vtString; }
     valueptr copy(void) const override
-    {
-        return new string(value);
-    }
-
+        { return new string(value); }
     void dump(std::string& buffer, int, int) const override
-    {
-        dump_string(buffer, value);
-    }
+        { dump_string(buffer, value); }
 
 public:
-    static void dump_string(std::string& buffer, const std::string& str)
-    {
+    static void dump_string(std::string& buffer, const std::string& str) {
         buffer += '"';
-
-        for (unsigned int i = 0; i < str.size(); ++i)
-        {
-            switch (str[i])
-            {
-            default: buffer += str[i]; break;
-
+        for (char ch : str) {
+            switch (ch) {
+            default:           buffer += ch;         break;
             case 0x22 /* " */: buffer += "\x5c\x22"; break;
             case 0x5c /* \ */: buffer += "\x5c\x5c"; break;
             case 0x08 /* b */: buffer += "\x5c\x62"; break;
@@ -181,129 +125,88 @@ public:
             case 0x09 /* t */: buffer += "\x5c\x74"; break;
             }
         }
-
         buffer += '"';
     }
 };
 
-struct json::value::array : public value
+struct json::value::array : public json::value
 {
     std::vector<valuesptr> value;
 
 public:
-    ~array(void)
-    {
-        for (valuesptr& item : value)
-            item.reset();
-    }
-
-public:
-    valuesptr& get(unsigned int index) override
-    {
-        return value[index];
-    }
-
-    Type type(void) const override
-    {
+    Type type(void) const override {
         return vtArray;
     }
 
-    valueptr copy(void) const override
-    {
+    valueptr copy(void) const override {
         array* array = new struct array;
-
         for (const valuesptr& item : value)
-            array->value.emplace_back(item->copy());
-
+            if (item) array->value.emplace_back(item->copy());
         return array;
     }
 
-    void dump(std::string& buffer, int level, int indent) const override
-    {
-        bool has_value = false, is_first = true;
+    void dump(std::string& buffer, int level, int indent) const override {
+        bool hasitem = false, isfirst = true;
         buffer += '[';
         ++level;
-        for (const valuesptr& item : value)
-        {
-            if (!item) continue;
-            else has_value = true;
-            if (is_first) is_first = false;
-            else buffer += ", ";
-            if (indent > 0)
-                buffer += '\n', buffer.append(level * indent, ' ');
-            item->dump(buffer, level, indent);
+        for (const valuesptr& item : value) {
+            if (item) {
+                hasitem = true;
+                if (isfirst) isfirst = false; else buffer += ',';
+                if (indent) buffer += '\n', buffer.append(level * indent, ' ');
+                item->dump(buffer, level, indent);
+            }
         }
         --level;
-        if (indent > 0 && has_value)
+        if (indent && hasitem)
             buffer += '\n', buffer.append(level * indent, ' ');
         buffer += ']';
     }
 };
 
-struct json::value::object : public value
+struct json::value::object : public json::value
 {
-    typedef std::unordered_map<std::string, valuesptr> container;
-    typedef container::value_type value_type;
-
-    container value;
-
-public:
-    ~object(void)
-    {
-        for (value_type& pair : value)
-            pair.second.reset();
-    }
+    typedef std::unordered_map<std::string, valuesptr> dict_type;
+    typedef dict_type::value_type value_type;
+    dict_type value;
 
 public:
-    unsigned int realsize(void) const
-    {
+    unsigned int size(void) const {
         return std::accumulate(value.begin(), value.end(), 0,
-            [](unsigned int sum, const value_type& pair)
-            {
+            [](unsigned int sum, const value_type& pair) {
                 return pair.second ? sum + 1 : sum;
             });
     }
 
 public:
-    valuesptr& get(const std::string& key) override
-    {
-        return value[key];
-    }
-
-    Type type(void) const override
-    {
+    Type type(void) const override {
         return vtObject;
     }
 
-    valueptr copy(void) const override
-    {
+    valueptr copy(void) const override {
         object* object = new struct object;
-
         for (const value_type& pair : value)
-            object->value[pair.first] = valuesptr(pair.second->copy());
-
+            if (pair.second)
+                object->value[pair.first].reset(pair.second->copy());
         return object;
     }
 
-    void dump(std::string& buffer, int level, int indent) const override
-    {
-        bool has_value = false, is_first = true;
+    void dump(std::string& buffer, int level, int indent) const override {
+        bool hasitem = false, isfirst = true;
         buffer += '{';
         ++level;
-        for (const value_type& pair : value)
-        {
-            if (!pair.second) continue;
-            else has_value = true;
-            if (is_first) is_first = false;
-            else buffer += ", ";
-            if (indent > 0)
-                buffer += '\n', buffer.append(level * indent, ' ');
-            string::dump_string(buffer, pair.first);
-            buffer += ": ";
-            pair.second->dump(buffer, level, indent);
+        for (const value_type& pair : value) {
+            if (pair.second) {
+                hasitem = true;
+                if (isfirst) isfirst = false; else buffer += ',';
+                if (indent) buffer += '\n', buffer.append(level * indent, ' ');
+                string::dump_string(buffer, pair.first);
+                buffer += indent ? ": " : ":";
+                pair.second->dump(buffer, level, indent);
+            }
         }
         --level;
-        if (indent > 0 && has_value)
+        if (indent && hasitem)
             buffer += '\n', buffer.append(level * indent, ' ');
         buffer += '}';
     }
@@ -314,142 +217,124 @@ class json::implement
     friend class json;
 
 public:
-    implement(void) : value_() {}
+    implement(valueptr   value) : value_(value) {}
     implement(valuesptr& value) : value_(value) {}
 
 public:
-    valuesptr& value(void) { return value_.value(); }
-    const valuesptr& value(void) const { return value_.value(); }
-    template <typename T> T* value(void) const
-    {
+    Type type(void)
+        { return value() ? value()->type() : vtUndefined; }
+    valuesptr& value(void)
+        { return value_.real(); }
+    template <typename T> T* value(void) {
         return dynamic_cast<T*>(value().get());
     }
-
-    bool isref(void) const { return value_.isref;   }
-    Type type (void) const { return value() ? value()->type() : vtUndefined; }
 
 public:
     void value (valueptr  valueptr ) { value(valuesptr(valueptr)); }
     void value (valuesptr valuesptr) { value() = valuesptr; }
-    bool append(valueptr  valueptr ) { return append(valuesptr(valueptr)); }
-    bool append(valuesptr valuesptr)
-    {
-        if (!value())
-            value(new value::array());
-        else if (type() != vtArray)
-            return false;
 
+    bool append(valueptr  valueptr ) { return append(valuesptr(valueptr)); }
+    bool append(valuesptr valuesptr) {
         if (!valuesptr)
             return false;
-        else
-            return value<value::array>()->value.push_back(valuesptr), true;
+        if (!value())
+             value(new value::array());
+        else if (type() != vtArray)
+            return false;
+        value<value::array>()->value.emplace_back(valuesptr);
+        return true;
     }
 
 public:
-    static valueptr type2value(Type type)
-    {
-        switch (type)
-        {
-        default:
-            return nullptr;
-        case vtNull:
-            return new value::null();
-        case vtBoolean:
-            return new value::boolean(false);
-        case vtNumberDouble:
-            return new value::number_double(0);
-        case vtNumberInteger:
-            return new value::number_integer(0);
-        case vtString:
-            return new value::string("");
-        case vtArray:
-            return new value::array();
-        case vtObject:
-            return new value::object();
+    static valueptr type2value(Type type) {
+        switch (type) {
+        default:              return nullptr;
+        case vtNull:          return new value::null();
+        case vtBoolTrue:      return new value::bool_true();
+        case vtBoolFalse:     return new value::bool_false();
+        case vtNumberDouble:  return new value::number_double(0);
+        case vtNumberInteger: return new value::number_integer(0);
+        case vtString:        return new value::string();
+        case vtArray:         return new value::array();
+        case vtObject:        return new value::object();
         }
     }
 
 public:
-    static json::valueptr       parse(const stream& s);
-    static json::valueptr       parse_number(const stream& s);
+    static json::valueptr       parse       (const stream& s);
+    static json::valueptr       parse_number(const stream& s, char ch);
     static json::value::string* parse_string(const stream& s);
-    static json::value::array*  parse_array(const stream& s);
+    static json::value::array*  parse_array (const stream& s);
     static json::value::object* parse_object(const stream& s);
 
 public:
-    template <bool skip_space>
-    static char read_char(const stream& s);
+    static char read_char(const stream& s) {
+        char ch;
+        return s.read(ch) ? ch : 0;
+    }
+
+    static char read_char_nospace(const stream& s) {
+        char ch;
+        do { if (!s.read(ch)) return 0; } while (stralgo::isspace(ch));
+        return ch;
+    }
+
+    static std::string read_chars(const stream& s, unsigned int n) {
+        std::string chars(n, 0);
+        for (unsigned int i = 0; i < n; ++i)
+            chars[i] = read_char(s);
+        return std::move(chars);
+    }
 
 private:
     struct Value {
         bool isref;
         valuesptr obj, *ref;
     public:
-        Value(void) : isref(false), obj(nullptr) {}
-        Value(valuesptr& value) : isref(true), ref(&value) {}
+        Value(valueptr   value) : isref(false), obj( value) {}
+        Value(valuesptr& value) : isref(true),  ref(&value) {}
     public:
-        valuesptr& value(void) { return isref ? *ref : obj; }
-        const valuesptr& value(void) const { return isref ? *ref : obj; }
+        valuesptr& real(void) {
+            return isref ? *ref : obj;
+        }
     } value_;
 };
-
-template <>
-char json::implement::read_char<false>(const stream& s)
-{
-    char ch;
-
-    return s.read(ch) ? ch : 0;
-}
-
-template <>
-char json::implement::read_char<true>(const stream& s)
-{
-    char ch;
-
-    while (true)
-        if (!s.read(ch))
-            return 0;
-        else if (!stralgo::isspace(ch))
-            break;
-
-    return ch;
-}
 
 json::valueptr json::implement::parse(const stream& s)
 {
     typedef std::numeric_limits<double> double_limits;
 
-    switch (read_char<true>(s))
+    switch (char ch = read_char_nospace(s))
     {
     case 'n':
-        if (s.read_chars(3) == "ull")
-            return new value::null();
-        else
-            s.seek(-3, stream::stCurrent);
-        if (s.read_chars(2) == "an")
-            return new value::number_double(double_limits::quiet_NaN());
-        return nullptr;
+        {
+            std::string chars = read_chars(s, 2);
+            if (chars == "an")
+                return new value::number_double(double_limits::quiet_NaN());
+            chars += read_char(s);
+            if (chars == "ull")
+                return new value::null();
+            return nullptr;
+        }
 
     case 'i':
-        if (s.read_chars(2) == "nf")
+        if (read_chars(s, 2) == "nf")
             return new value::number_double(double_limits::infinity());
         return nullptr;
 
     case 't':
-        if (s.read_chars(3) == "rue")
-            return new value::boolean(true);
+        if (read_chars(s, 3) == "rue")
+            return new value::bool_true();
         return nullptr;
 
     case 'f':
-        if (s.read_chars(4) == "alse")
-            return new value::boolean(false);
+        if (read_chars(s, 4) == "alse")
+            return new value::bool_false();
 
-    case 0:
-        return nullptr;
-
-    default:
-        s.seek(-1, stream::stCurrent);
-        return parse_number(s);
+    case '-':
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+        return parse_number(s, ch);
 
     case '"':
         return parse_string(s);
@@ -460,56 +345,54 @@ json::valueptr json::implement::parse(const stream& s)
     case '{':
         return parse_object(s);
 
+    default:
+        return nullptr;
     };
-
-    return nullptr;
 }
 
-json::valueptr json::implement::parse_number(const stream& s)
+json::valueptr json::implement::parse_number(const stream& s, char ch)
 {
     std::string number;
-    bool is_double = false;
-    char ch;
+    bool isdouble = false;
 
-    ch = read_char<false>(s);
     number += ch;
     if (ch == '-')
-        number += read_char<false>(s);
+        number += read_char(s);
 
     if (!stralgo::isdigit(number.back()))
         return nullptr;
     else if (number.back() != '0')
-        while (stralgo::isdigit((ch = read_char<false>(s))))
+        while (stralgo::isdigit((ch = read_char(s))))
             number += ch;
     else
-        ch = read_char<false>(s);
+        ch = read_char(s);
 
     if (ch == '.')
     {
-        is_double = true;
+        isdouble = true;
         number += ch;
-        while (stralgo::isdigit((ch = read_char<false>(s))))
+        while (stralgo::isdigit((ch = read_char(s))))
             number += ch;
     }
 
     if (ch == 'e' || ch == 'E')
     {
-        is_double = true;
+        isdouble = true;
         number += ch;
-        ch = read_char<false>(s);
+        ch = read_char(s);
         if (ch == '+' || ch == '-')
             number += ch;
         else if (!stralgo::isdigit(ch))
             return nullptr;
         else
             number += ch;
-        while (stralgo::isdigit((ch = read_char<false>(s))))
+        while (stralgo::isdigit((ch = read_char(s))))
             number += ch;
     }
 
-    s.seek(-1, stream::stCurrent);
+    s.seek(-1, stream::cur);
 
-    if (is_double)
+    if (isdouble)
         return new value::number_double(stralgo::atof(number.c_str()));
     else
         return new value::number_integer(stralgo::atoll(number.c_str()));
@@ -518,15 +401,14 @@ json::valueptr json::implement::parse_number(const stream& s)
 json::value::string* json::implement::parse_string(const stream& s)
 {
     std::string str;
-    char ch, ch2;
 
     while (true)
     {
-        switch ((ch = read_char<false>(s)))
+        switch (char ch = read_char(s))
         {
         default: str += ch; break;
         case 0x5c:
-            switch ((ch2 = read_char<false>(s)))
+            switch (char ch2 = read_char(s))
             {
             default:   str += ch; str += ch2; break;
             case 0x5c: str += 0x5c; break;
@@ -537,13 +419,13 @@ json::value::string* json::implement::parse_string(const stream& s)
             case 0x6e: str += 0x0a; break;
             case 0x72: str += 0x0d; break;
             case 0x74: str += 0x09; break;
-            case 0x75: str += strtol(s.read_chars(2).c_str(), nullptr, 16);
-                       str += strtol(s.read_chars(2).c_str(), nullptr, 16);
+            case 0x75: str += strtol(read_chars(s, 2).c_str(), nullptr, 16);
+                       str += strtol(read_chars(s, 2).c_str(), nullptr, 16);
                 break;
             }
             break;
+        case '"': return new value::string(std::move(str));
         case  0 : return nullptr;
-        case '"': return new value::string(str);
         }
     }
 }
@@ -551,27 +433,27 @@ json::value::string* json::implement::parse_string(const stream& s)
 json::value::array* json::implement::parse_array(const stream& s)
 {
     std::unique_ptr<value::array> array(new value::array());
-    if (read_char<true>(s) == ']')
+    if (read_char_nospace(s) == ']')
         return array.release();
     else
-        s.seek(-1, stream::stCurrent);
+        s.seek(-1, stream::cur);
 
     while (true)
     {
         json::valueptr value = parse(s);
-        if (!value)
-            return nullptr;
+        if (value)
+            array->value.emplace_back(value);
         else
-            array->value.push_back(valuesptr(value));
-
-        switch (read_char<true>(s))
-        {
-        default:
             return nullptr;
+
+        switch (read_char_nospace(s))
+        {
         case ']':
             return array.release();
         case ',':
             break;
+        default:
+            return nullptr;
         }
     }
 }
@@ -580,46 +462,40 @@ json::value::object* json::implement::parse_object(const stream& s)
 {
     std::unique_ptr<value::object> object(new value::object());
     std::unique_ptr<value::string> key;
-    char ch = read_char<true>(s);
+    char ch = read_char_nospace(s);
 
     while (true)
     {
         switch (ch)
         {
-        case '"':
-            key.reset(parse_string(s));
-            if (!key)
-        default:
-                return nullptr;
-            break;
         case '}':
             return object.release();
+        case '"':
+            key.reset(parse_string(s));
+            if (!key || read_char_nospace(s) != ':')
+        default:
+                return nullptr;
         }
 
-        if (read_char<true>(s) != ':')
-            return nullptr;
-
         json::valueptr value = parse(s);
-        if (!value)
-            return nullptr;
+        if (value)
+            object->value[key->value].reset(value);
         else
-            object->value[key->value] = valuesptr(value);
+            return nullptr;
 
-        ch = read_char<true>(s);
+        ch = read_char_nospace(s);
         if (ch == ',')
-            ch = read_char<true>(s);
+            ch = read_char_nospace(s);
     }
 }
 
 json::json(void)
-    : impl_(new implement)
+    : json(valueptr())
 {}
 
 json::json(Type type)
-    : json()
-{
-    impl_->value(implement::type2value(type));
-}
+    : json(implement::type2value(type))
+{}
 
 json::json(const std::string& buffer)
     : json()
@@ -633,15 +509,27 @@ json::json(const stream& istream)
     load(istream);
 }
 
+json::json(valueptr value)
+    : impl_(new implement(value))
+{}
+
 json::json(valuesptr& value)
     : impl_(new implement(value))
 {}
 
-json::json(const json& jsonobj)
-    : json()
+json::json(json& jsonobj)
+    : json(jsonobj.impl_->value())
+{}
+
+json::json(json&& jsonobj)
+    : impl_(jsonobj.impl_)
 {
-    impl_->value(jsonobj.impl_->value());
+    jsonobj.impl_ = nullptr;
 }
+
+json::json(const json& jsonobj)
+    : json(jsonobj.impl_->value()->copy())
+{}
 
 json::~json(void)
 {
@@ -653,12 +541,13 @@ bool json::load(const std::string& buffer)
     buffer_stream bufst(buffer.data(), buffer.size());
     valueptr value = implement::parse(bufst);
 
-    if (!value)
-        return false;
-    else
+    if (value)
+    {
         impl_->value(value);
+        return true;
+    }
 
-    return true;
+    return false;
 }
 
 bool json::load(const stream& istream)
@@ -670,12 +559,13 @@ bool json::load(const stream& istream)
     else
         value = implement::parse(seek_stream(istream));
 
-    if (!value)
-        return false;
-    else
+    if (value)
+    {
         impl_->value(value);
+        return true;
+    }
 
-    return true;
+    return false;
 }
 
 std::string json::dump(void) const
@@ -690,7 +580,7 @@ std::string json::dump(unsigned int indent) const
     if (impl_->value())
         impl_->value()->dump(buffer, 0, indent);
 
-    return buffer;
+    return std::move(buffer);
 }
 
 bool json::dump(stream& ostream) const
@@ -727,7 +617,12 @@ json& json::operator=(std::nullptr_t)
 
 json& json::operator=(bool boolean)
 {
-    return impl_->value(new value::boolean(boolean)), *this;
+    if (boolean)
+        impl_->value(new value::bool_true());
+    else
+        impl_->value(new value::bool_false());
+
+    return *this;
 }
 
 json& json::operator=(int number)
@@ -765,6 +660,11 @@ json& json::operator=(double number)
     return impl_->value(new value::number_double(number)), *this;
 }
 
+json& json::operator=(char ch)
+{
+    return impl_->value(new value::string(1, ch)), *this;
+}
+
 json& json::operator=(const char* string)
 {
     return impl_->value(new value::string(string)), *this;
@@ -775,12 +675,19 @@ json& json::operator=(const std::string& string)
     return impl_->value(new value::string(string)), *this;
 }
 
-json& json::operator=(const json& json)
+json& json::operator=(json& jsonobj)
 {
-    if (this != &json && impl_->value() != json.impl_->value())
-        impl_->value(json.impl_->value());
+    return impl_->value(jsonobj.impl_->value()), *this;
+}
 
-    return *this;
+json& json::operator=(json&& jsonobj)
+{
+    return operator=(jsonobj);
+}
+
+json& json::operator=(const json& jsonobj)
+{
+    return impl_->value(jsonobj.impl_->value()->copy()), *this;
 }
 
 bool json::append(Type type)
@@ -795,7 +702,10 @@ bool json::append(std::nullptr_t)
 
 bool json::append(bool boolean)
 {
-    return impl_->append(new value::boolean(boolean));
+    if (boolean)
+        return impl_->append(new value::bool_true());
+    else
+        return impl_->append(new value::bool_false());
 }
 
 bool json::append(int number)
@@ -833,6 +743,11 @@ bool json::append(double number)
     return impl_->append(new value::number_double(number));
 }
 
+bool json::append(char ch)
+{
+    return impl_->append(new value::string(1, ch));
+}
+
 bool json::append(const char* string)
 {
     return impl_->append(new value::string(string));
@@ -843,35 +758,39 @@ bool json::append(const std::string& string)
     return impl_->append(new value::string(string));
 }
 
-bool json::append(const json& json)
+bool json::append(json& jsonobj)
 {
-    return impl_->append(json.impl_->value());
+    return impl_->append(jsonobj.impl_->value());
+}
+
+bool json::append(json&& jsonobj)
+{
+    return append(jsonobj);
+}
+
+bool json::append(const json& jsonobj)
+{
+    return impl_->append(jsonobj.impl_->value()->copy());
 }
 
 bool json::clear(void)
 {
-    switch (impl_->type())
+    switch (type())
     {
-    default:
-        return false;
-    case vtArray:
-        impl_->value<value::array>()->value.clear();
-        return true;
-    case vtObject:
-        impl_->value<value::object>()->value.clear();
-        return true;
+    default:       return false;
+    case vtArray:  return impl_->value<value::array >()->value.clear(), true;
+    case vtObject: return impl_->value<value::object>()->value.clear(), true;
     }
 }
 
 bool json::remove(unsigned int index)
 {
-    if (impl_->type() == vtArray)
+    if (type() == vtArray)
     {
-        value::array* array = impl_->value<value::array>();
-
-        if (index < array->value.size())
+        std::vector<valuesptr>& array = impl_->value<value::array>()->value;
+        if (index < array.size())
         {
-            array->value.erase(array->value.begin() + index);
+            array.erase(array.begin() + index);
             return true;
         }
     }
@@ -881,7 +800,7 @@ bool json::remove(unsigned int index)
 
 bool json::remove(const std::string& key)
 {
-    if (impl_->type() == vtObject)
+    if (type() == vtObject)
     {
         impl_->value<value::object>()->value.erase(key);
         return true;
@@ -892,75 +811,52 @@ bool json::remove(const std::string& key)
 
 unsigned int json::size(void) const
 {
-    switch (impl_->type())
+    switch (type())
     {
-    default:
-        return 0;
-    case vtString:
-        return impl_->value<value::string>()->value.size();
-    case vtArray:
-        return impl_->value<value::array>()->value.size();
-    case vtObject:
-        return impl_->value<value::object>()->realsize();
+    default:       return 0;
+    case vtString: return impl_->value<value::string>()->value.size();
+    case vtArray:  return impl_->value<value::array >()->value.size();
+    case vtObject: return impl_->value<value::object>()->size();
     }
 }
 
-json json::operator[](const json& js)
+bool json::has_key(const std::string& key) const
 {
-    switch (js.impl_->type())
+    return type() == vtObject
+        && impl_->value<value::object>()->value.find(key)
+        != impl_->value<value::object>()->value.end();
+}
+
+std::vector<std::string> json::keys(void) const
+{
+    std::vector<std::string> keys;
+
+    if (type() == vtObject)
     {
-    default:
-        return json();
-    case vtNumberDouble:
-        return operator[](js.impl_->value<value::number_double>()->value);
-    case vtNumberInteger:
-        return operator[](js.impl_->value<value::number_integer>()->value);
-    case vtString:
-        return operator[](js.impl_->value<value::string>()->value);
+        typedef value::object::value_type value_type;
+        for (const value_type& pair : impl_->value<value::object>()->value)
+            keys.emplace_back(pair.first);
     }
+
+    return std::move(keys);
 }
 
 json json::operator[](unsigned int index)
 {
-    if (impl_->type() == vtObject)
-    {
-        typedef value::object::value_type value_type;
+    if (type() == vtArray)
+        return impl_->value<value::array>()->value[index];
 
-        for (const value_type& pair : impl_->value<value::object>()->value)
-        {
-            if (pair.second && index-- == 0)
-            {
-                json json;
-
-                json["key"]   = pair.first;
-                json["value"] = operator[](pair.first);
-
-                return json;
-            }
-        }
-
-        return json();
-    }
-    else
-    {
-        if (!impl_->value())
-            impl_->value(new value::array());
-
-        return impl_->value()->get(index);
-    }
+    return json();
 }
 
 json json::operator[](const std::string& key)
 {
     if (!impl_->value())
-        impl_->value(new value::object());
+         impl_->value(new value::object());
+    else if (type() != vtObject)
+        return json();
 
-    return impl_->value()->get(key);
-}
-
-const json json::operator[](const json& js) const
-{
-    return const_cast<json*>(this)->operator[](js);
+    return impl_->value<value::object>()->value[key];
 }
 
 const json json::operator[](unsigned int index) const
@@ -975,11 +871,7 @@ const json json::operator[](const std::string& key) const
 
 json json::copy(void) const
 {
-    json copy;
-
-    copy.impl_->value(impl_->value()->copy());
-
-    return copy;
+    return json(impl_->value()->copy());
 }
 
 json::Type json::type(void) const
@@ -989,68 +881,55 @@ json::Type json::type(void) const
 
 bool json::as_bool(void) const
 {
-    switch (impl_->type())
+    switch (type())
     {
     default:
-        return false;
-    case vtBoolean:
-        return impl_->value<value::boolean>()->value;
-    case vtNumberDouble:
-        return impl_->value<value::number_double>()->value;
-    case vtNumberInteger:
-        return impl_->value<value::number_integer>()->value;
-    case vtString:
-        return impl_->value<value::string>()->value.size();
-    case vtArray:
-        return impl_->value<value::array>()->value.size();
-    case vtObject:
-        return impl_->value<value::object>()->realsize();
+    case vtBoolFalse:     return false;
+    case vtBoolTrue:      return true;
+    case vtNumberDouble:  return impl_->value<value::number_double>()->value;
+    case vtNumberInteger: return impl_->value<value::number_integer>()->value;
+    case vtString:        return impl_->value<value::string>()->value.size();
+    case vtArray:         return impl_->value<value::array >()->value.size();
+    case vtObject:        return impl_->value<value::object>()->size();
     }
 }
 
 double json::as_double(void) const
 {
-    switch (impl_->type())
+    switch (type())
     {
     default:
-        return 0;
-    case vtBoolean:
-        return impl_->value<value::boolean>()->value;
-    case vtNumberDouble:
-        return impl_->value<value::number_double>()->value;
-    case vtNumberInteger:
-        return impl_->value<value::number_integer>()->value;
+    case vtBoolFalse:     return 0.0;
+    case vtBoolTrue:      return 1.0;
+    case vtNumberDouble:  return impl_->value<value::number_double>()->value;
+    case vtNumberInteger: return impl_->value<value::number_integer>()->value;
     }
 }
 
 long long json::as_integer(void) const
 {
-    switch (impl_->type())
+    switch (type())
     {
     default:
-        return 0;
-    case vtBoolean:
-        return impl_->value<value::boolean>()->value;
-    case vtNumberDouble:
-        return impl_->value<value::number_double>()->value;
-    case vtNumberInteger:
-        return impl_->value<value::number_integer>()->value;
+    case vtBoolFalse:     return 0;
+    case vtBoolTrue:      return 1;
+    case vtNumberDouble:  return impl_->value<value::number_double>()->value;
+    case vtNumberInteger: return impl_->value<value::number_integer>()->value;
     }
 }
 
 std::string json::as_string(void) const
 {
-    switch (impl_->type())
+    #define value(T) \
+        impl_->value<value::T>()->value
+
+    switch (type())
     {
-    default:
-        return "";
-    case vtBoolean:
-        return impl_->value<value::boolean>()->value ? "true" : "false";
-    case vtNumberDouble:
-        return stralgo::strf(impl_->value<value::number_double>()->value);
-    case vtNumberInteger:
-        return stralgo::strf(impl_->value<value::number_integer>()->value);
-    case vtString:
-        return impl_->value<value::string>()->value;
+    default:              return "";
+    case vtBoolTrue:      return "true";
+    case vtBoolFalse:     return "false";
+    case vtNumberDouble:  return stralgo::strf(value(number_double));
+    case vtNumberInteger: return stralgo::strf(value(number_integer));
+    case vtString:        return value(string);
     }
 }

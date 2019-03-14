@@ -12,12 +12,12 @@ public:
         : releivo(ratio, 1, 1)
     {}
 
-    releivo(double ratio, int offset_x, int offset_y)
-        : releivo(ratio, offset_x, offset_y, 127)
+    releivo(double ratio, int dx, int dy)
+        : releivo(ratio, dx, dy, 127)
     {}
 
-    releivo(double ratio, int offset_x, int offset_y, unsigned char surface)
-        : ratio(ratio), offset_x(offset_x), offset_y(offset_y), surface(surface)
+    releivo(double ratio, int dx, int dy, unsigned char surface)
+        : ratio(ratio), dx(dx), dy(dy), surface(surface)
     {}
 
 public:
@@ -37,7 +37,7 @@ public:
             for (unsigned int y = 0; y < dst.height(); ++y)
             for (unsigned int x = 0; x < dst.width();  ++x) {
                 int g1 = src.unsafe_pixel(x, y).grayscale();
-                int g2 = src.pixel(x + offset_x, y + offset_y).grayscale();
+                int g2 = src.pixel(x + dx, y + dy).grayscale();
 
                 dst.unsafe_pixel(x, y).grayscale(
                     clamp((g1 - g2) * ratio + surface, 0, channel_mask));
@@ -53,7 +53,7 @@ private:
 
 private:
     double ratio;
-    int offset_x, offset_y;
+    int dx, dy;
     unsigned char surface;
 };
 

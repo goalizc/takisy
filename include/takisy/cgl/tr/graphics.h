@@ -1,7 +1,6 @@
 #ifndef graphics_h_20131115
 #define graphics_h_20131115
 
-#include <takisy/core/osdet.h>
 #include <takisy/cgl/basic/point.h>
 #include <takisy/cgl/basic/color.h>
 #include <takisy/cgl/basic/canvas.h>
@@ -432,8 +431,6 @@ bool graphics<Canvas>::save(const char* filename)
     return image.dump_uri(filename);
 }
 
-#ifdef __os_win__
-
 #include <Windows.h>
 
 template <>
@@ -470,8 +467,8 @@ void graphics<canvas_bgr8>::play(HDC dc,
             memory::std::malloc<unsigned char>(fix_row_size * canvas_.height());
 
         for (unsigned int y = 0; y < canvas_.height(); ++y)
-            memory::std::memcpy(fix_pixels_data + y * fix_row_size,
-                                    pixels_data + y * row_size, row_size);
+            memcpy(fix_pixels_data + y * fix_row_size,
+                   pixels_data + y * row_size, row_size);
 
         pixels_data = fix_pixels_data;
         need_free   = true;
@@ -587,5 +584,3 @@ typedef graphics<canvas_argb16le> graphics_argb16le;
 typedef graphics<canvas_abgr16le> graphics_abgr16le;
 typedef graphics<canvas_mask16le> graphics_a16le;
 typedef graphics_a16le            graphics_mask16le;
-
-#endif //graphics_h_20131115

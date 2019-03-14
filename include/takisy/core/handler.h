@@ -25,6 +25,7 @@ public:
     {
         handlers(void) : std::set<sptr>() {}
         handlers(const handlers&) {}
+        handlers& operator=(const handlers&) { return *this; }
     };
 
 public:

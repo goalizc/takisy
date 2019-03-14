@@ -5,10 +5,10 @@ color_scheme::color_scheme(void)
     : impl_(new implement)
 {}
 
-color_scheme::color_scheme(const color_scheme& _color_scheme)
+color_scheme::color_scheme(const color_scheme& colorscheme)
     : color_scheme()
 {
-    operator=(_color_scheme);
+    operator=(colorscheme);
 }
 
 color_scheme::~color_scheme(void)
@@ -16,10 +16,10 @@ color_scheme::~color_scheme(void)
     delete impl_;
 }
 
-color_scheme& color_scheme::operator=(const color_scheme& color_scheme)
+color_scheme& color_scheme::operator=(const color_scheme& colorscheme)
 {
-    if (this != &color_scheme)
-        impl_->scheme_ = color_scheme.impl_->scheme_;
+    if (this != &colorscheme)
+        *impl_ = *colorscheme.impl_;
 
     return *this;
 }
@@ -66,7 +66,7 @@ color color_scheme::hyperlink(void) const
 
 color color_scheme::other(const char* name) const
 {
-    return impl_->other(name, 128);
+    return impl_->other(name);
 }
 
 void color_scheme::theme(const color& color)
@@ -113,7 +113,7 @@ void color_scheme::other(const char* name, const color& color)
 {
     impl_->scheme_[name] = color;
 
-    if (impl_->host_)
+    if (impl_->host_ && this == impl_->host_->p_color_scheme())
         impl_->host_->repaint();
 }
 
